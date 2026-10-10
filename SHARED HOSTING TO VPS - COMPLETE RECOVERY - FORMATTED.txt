@@ -1,0 +1,235 @@
+SHARED HOSTING -> VPS
+DATABASE + DEVELOPMENT DEPLOYMENT
+
+PURPOSE
+Use this guide only when the VPS is already set up.
+
+Source database: u156753521_gesu
+Target database: vps_u156753521_gesu
+
+IMPORTANT SAFETY RULES
+- Stop immediately if a verification command fails.
+- Do not repeat an import over a partially imported database.
+- Do not discard unrelated local changes on the VPS.
+- Keep email MX/TXT DNS records unchanged during a domain switch.
+
+
+======================================================================
+PART 1 - SHARED HOSTING: EXPORT AND TRANSFER
+======================================================================
+
+STEP 1 - Connect to shared hosting
+
+    ssh -p 65002 u156753521@193.203.188.90
+
+
+STEP 2 - Export the source database
+
+    mysqldump \
+      --single-transaction \
+      --quick \
+      --routines \
+      --triggers \
+      -u u156753521_gesu \
+      -p \
+      u156753521_gesu \
+    | gzip > ~/u156753521_gesu-to-vps_123.sql.gz
+
+
+STEP 3 - Verify the export
+
+    gzip -t ~/u156753521_gesu-to-vps_123.sql.gz && echo "EXPORT OK"
+
+STOP CONDITION
+Stop if "EXPORT OK" does not appear.
+
+
+STEP 4 - Send the export to the VPS
+
+    scp ~/u156753521_gesu-to-vps_123.sql.gz root@187.7.25.83:/root/
+
+
+======================================================================
+PART 2 - VPS: DATABASE IMPORT
+======================================================================
+
+STEP 1 - Connect to the VPS and open the project directory
+
+    ssh root@187.7.25.83
+    cd /var/www/erpportal
+
+
+STEP 2 - Verify the copied export
+
+    gzip -t /root/u156753521_gesu-to-vps_123.sql.gz && echo "VPS COPY OK"
+
+STOP CONDITION
+Stop if "VPS COPY OK" does not appear.
+
+
+STEP 3 - Recreate the target database
+
+Open MySQL:
+
+    mysql -u root
+
+Run:
+
+    DROP DATABASE IF EXISTS `vps_u156753521_gesu`;
+    CREATE DATABASE `vps_u156753521_gesu`
+      CHARACTER SET utf8mb4
+      COLLATE utf8mb4_unicode_ci;
+    EXIT;
+
+WARNING
+This deletes all existing data in vps_u156753521_gesu. Continue only
+when the export is verified and you intend to replace the database.
+
+
+STEP 4 - Import the database
+
+    zcat /root/u156753521_gesu-to-vps_123.sql.gz \
+    | sed -E \
+      -e 's/([^`]+`[[:space:]]+date[[:space:]][^,]*DEFAULT[[:space:]]+)current_timestamp(\(\))?/\1(CURRENT_DATE)/Ig' \
+      -e 's/([^`]+`[[:space:]]+date[[:space:]][^,]*DEFAULT[[:space:]]+)curdate\(\)/\1(CURRENT_DATE)/Ig' \
+      -e 's/([^`]+`[[:space:]]+time[[:space:]][^,]*DEFAULT[[:space:]]+)current_timestamp(\(\))?/\1(CURRENT_TIME)/Ig' \
+      -e 's/([^`]+`[[:space:]]+time[[:space:]][^,]*DEFAULT[[:space:]]+)curtime()/\1(CURRENT_TIME)/Ig' \
+      -e 's/utf8mb4_uca1400_ai_ci/utf8mb4_unicode_ci/Ig' \
+    | mysql -u vps_u156753521_gesu -p vps_u156753521_gesu
+
+STOP CONDITION
+Stop if an ERROR appears. Do not import again over partial data.
+
+
+STEP 5 - Check the imported table count
+
+    mysql -u vps_u156753521_gesu -p -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='vps_u156753521_gesu';"
+
+NOTE
+The previous result was 660 tables. Compare it with the current shared
+database before continuing.
+
+
+======================================================================
+PART 3 - VPS: PULL DEVELOPMENT
+======================================================================
+
+STEP 1 - Open the project directory
+
+    cd /var/www/erpportal
+
+
+STEP 2 - Check local changes
+
+    git status
+
+
+STEP 3 - Save the VPS configuration changes
+
+    git stash push -m "VPS config" -- .env config/database.php
+
+NOTE
+If other local changes exist, git switch or git pull may fail. Do not
+discard them unless you are sure they are unnecessary.
+
+
+STEP 4 - Pull the development branch
+
+    git switch development
+    git pull origin development
+
+
+STEP 5 - Restore the VPS configuration
+
+    git stash pop
+
+STOP CONDITION
+Stop if a conflict appears.
+
+
+STEP 6 - Install dependencies, if needed
+
+    composer install --no-dev --optimize-autoloader
+
+
+STEP 7 - Clear the Laravel cache
+
+    php artisan optimize:clear
+
+
+STEP 8 - Build the frontend, only if needed
+
+    npm install
+    npm run build
+
+
+STEP 9 - Fix permissions, if needed
+
+    chown -R www-data:www-data /var/www/erpportal
+    chmod -R g+rwX /var/www/erpportal
+
+
+STEP 10 - Perform a final Git check
+
+    git status
+
+
+======================================================================
+PART 4 - ACTIVATE AND TEST THE VPS
+======================================================================
+
+STEP 1 - Check services
+
+    systemctl is-active nginx
+    systemctl is-active php8.5-fpm
+    systemctl is-active mysql
+
+NOTE
+If a service is inactive, investigate or restart only that service.
+
+
+STEP 2 - Check database settings in .env
+
+    nano /var/www/erpportal/.env
+
+NOTE
+Verify the correct database connections and password. This project may
+use multiple databases; do not blindly replace DB_DATABASE.
+
+
+STEP 3 - Test the website
+
+Open:
+
+    https://gesutms.nl
+
+Test:
+- Login
+- TMS orders
+- Customers
+- Recent data
+
+
+STEP 4 - Switch the main domain, only if switching erpportaal.nl
+
+Before changing DNS:
+- Make sure Nginx and SSL for erpportaal.nl are ready.
+- Keep email MX/TXT records unchanged.
+- Check for conflicting AAAA records.
+
+Then point the website's DNS A record to:
+
+    187.7.25.83
+
+Set APP_URL to the final domain, then run:
+
+    php artisan optimize:clear
+
+
+======================================================================
+FINAL NOTE
+======================================================================
+
+If shared hosting is completely unavailable, Part 1 cannot run. Use an
+existing verified SQL backup instead. Data added after the latest backup
+may be missing.
