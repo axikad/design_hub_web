@@ -1,0 +1,17 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Shared-hosting fallback when the domain document root cannot be set to /public.
+    # Internally route every request through Laravel's public directory.
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+<IfModule mod_autoindex.c>
+    Options -Indexes
+</IfModule>
+
+# Never allow hidden environment/configuration files to be served.
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
