@@ -122,7 +122,7 @@ class OtpService
         $staticCode = config('designhub.otp_static_code');
 
         if (
-            app()->environment('local')
+            (app()->environment('local') || config('designhub.otp_static_enabled'))
             && is_string($staticCode)
             && strlen($staticCode) === $length
             && ctype_digit($staticCode)

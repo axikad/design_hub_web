@@ -7,6 +7,7 @@ return [
     'otp_resend_seconds' => 30,
     'otp_log_code' => env('DESIGNHUB_OTP_LOG', true),
     'otp_static_code' => env('DESIGNHUB_OTP_STATIC_CODE'),
+    'otp_static_enabled' => env('DESIGNHUB_OTP_STATIC_ENABLED', false),
 
     'upload_max_photo_bytes' => 5 * 1024 * 1024,
     'upload_max_stitch_bytes' => 5 * 1024 * 1024,

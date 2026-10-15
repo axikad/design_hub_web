@@ -62,6 +62,31 @@ class ApiResponseContractTest extends TestCase
             ->assertJsonStructure(['errors' => ['flow', 'countryCode', 'mobileNumber']]);
     }
 
+    public function test_explicit_static_otp_can_be_used_for_a_production_test_environment(): void
+    {
+        config([
+            'app.env' => 'production',
+            'designhub.otp_static_enabled' => true,
+            'designhub.otp_static_code' => '1234',
+            'designhub.otp_log_code' => false,
+        ]);
+
+        $payload = [
+            'flow' => 'register',
+            'name' => 'Rajvi',
+            'countryCode' => '+91',
+            'mobileNumber' => '9054632726',
+        ];
+
+        $this->postJson('/api/v1/auth/request-otp', $payload)->assertOk();
+
+        $this->postJson('/api/v1/auth/verify-otp', $payload + ['code' => '1234'])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.user.name', 'Rajvi')
+            ->assertJsonStructure(['data' => ['accessToken']]);
+    }
+
     public function test_missing_resources_use_the_standard_not_found_response(): void
     {
         Sanctum::actingAs(User::factory()->create());
