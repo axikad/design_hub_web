@@ -14,7 +14,7 @@ class DesignFileTypeManagementTest extends TestCase
 
     public function test_admin_can_create_and_update_a_design_file_type(): void
     {
-        $admin = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->superAdmin()->create();
 
         $this->actingAs($admin)->post('/admin/design-file-types', [
             'name' => 'PES',
@@ -43,7 +43,7 @@ class DesignFileTypeManagementTest extends TestCase
 
     public function test_file_type_used_by_a_design_cannot_be_deleted(): void
     {
-        $admin = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->superAdmin()->create();
         $owner = User::factory()->create();
         $fileType = DesignFileType::query()->create([
             'name' => 'DST',

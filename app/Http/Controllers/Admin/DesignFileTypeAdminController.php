@@ -12,13 +12,23 @@ use Inertia\Response;
 
 class DesignFileTypeAdminController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $search = trim((string) $request->string('search'));
+        $status = (string) $request->string('status');
+
         $fileTypes = DesignFileType::query()
             ->withCount('designs')
+            ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search) {
+                $searchQuery
+                    ->where('name', 'like', "%{$search}%")
+                    ->orWhere('extension', 'like', "%{$search}%");
+            }))
+            ->when(in_array($status, ['active', 'inactive'], true), fn ($query) => $query->where('is_active', $status === 'active'))
             ->orderBy('sort_order')
             ->orderBy('name')
             ->paginate(20)
+            ->withQueryString()
             ->through(fn (DesignFileType $fileType) => [
                 'id' => $fileType->public_id,
                 'name' => $fileType->name,
@@ -30,6 +40,10 @@ class DesignFileTypeAdminController extends Controller
 
         return Inertia::render('admin/design-file-types/index', [
             'fileTypes' => $fileTypes,
+            'filters' => [
+                'search' => $search,
+                'status' => $status,
+            ],
         ]);
     }
 

@@ -15,7 +15,7 @@ class MachineManagementTest extends TestCase
 
     public function test_admin_can_create_a_machine(): void
     {
-        $admin = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->superAdmin()->create();
 
         $this->actingAs($admin)->post('/admin/machines', [
             'name' => 'Embroidery',
@@ -32,7 +32,7 @@ class MachineManagementTest extends TestCase
 
     public function test_admin_can_create_a_machine_type_and_map_categories(): void
     {
-        $admin = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->superAdmin()->create();
         $machine = Machine::query()->create(['name' => 'Embroidery']);
         $category = DesignCategory::query()->create(['name' => 'Neckline']);
 
@@ -52,7 +52,7 @@ class MachineManagementTest extends TestCase
 
     public function test_machine_with_types_cannot_be_deleted(): void
     {
-        $admin = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->superAdmin()->create();
         $machine = Machine::query()->create(['name' => 'Embroidery']);
         MachineType::query()->create(['machine_id' => $machine->id, 'name' => 'Multi-head']);
 

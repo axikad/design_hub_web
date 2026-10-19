@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Permission;
 use App\Models\SiteSetting;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
@@ -38,13 +39,19 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
+        $user = $request->user();
 
         return array_merge(parent::share($request), [
             ...parent::share($request),
             'name' => config('app.name'),
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
+                'permissions' => fn () => $user
+                    ? ($user->isSuperAdmin()
+                        ? Permission::query()->where('is_active', true)->where('action', '!=', 'legacy')->pluck('slug')->all()
+                        : $user->role?->permissions()->where('is_active', true)->pluck('slug')->all() ?? [])
+                    : [],
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),

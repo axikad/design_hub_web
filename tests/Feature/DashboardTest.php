@@ -24,7 +24,7 @@ class DashboardTest extends TestCase
 
     public function test_admin_users_can_visit_the_dashboard()
     {
-        $this->actingAs($user = User::factory()->create(['is_admin' => true]));
+        $this->actingAs($user = User::factory()->superAdmin()->create());
 
         $this->get('/dashboard')->assertOk();
     }

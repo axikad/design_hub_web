@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Role;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -19,13 +20,16 @@ class DatabaseSeeder extends Seeder
         $this->call(DesignFormOptionSeeder::class);
         $this->call(DesignFileTypeSeeder::class);
 
-        User::query()->updateOrCreate(
+        $admin = User::query()->updateOrCreate(
             ['email' => 'admin@designhub.local'],
             [
                 'name' => 'DesignHub Admin',
                 'password' => 'password',
-                'is_admin' => true,
             ],
         );
+
+        $admin->update([
+            'role_id' => Role::query()->where('slug', 'super_admin')->value('id'),
+        ]);
     }
 }

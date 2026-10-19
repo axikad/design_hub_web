@@ -15,6 +15,10 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
+    protected $attributes = [
+        'status' => 'active',
+    ];
+
     protected $fillable = [
         'public_id',
         'role_id',
@@ -23,8 +27,10 @@ class User extends Authenticatable
         'mobile_number',
         'phone_key',
         'email',
+        'avatar_path',
         'password',
-        'is_admin',
+        'status',
+        'last_login_at',
     ];
 
     protected $hidden = [
@@ -36,8 +42,8 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_login_at' => 'datetime',
             'password' => 'hashed',
-            'is_admin' => 'boolean',
         ];
     }
 
@@ -82,20 +88,20 @@ class User extends Authenticatable
         return $this->role?->isSuperAdmin() === true;
     }
 
-    public function hasPermission(string $slug, string $action): bool
+    public function hasPermission(string $permission): bool
     {
-        if ($this->isSuperAdmin() || $this->is_admin) {
+        if ($this->isSuperAdmin()) {
             return true;
         }
 
         $this->loadMissing('role');
 
-        return $this->role?->hasPermission($slug, $action) ?? false;
+        return $this->role?->hasPermission($permission) ?? false;
     }
 
     public function canAccessPanel(): bool
     {
-        return $this->is_admin || $this->hasPermission('admin_access', 'read');
+        return $this->hasPermission('dashboard.read');
     }
 
     public function ownerKey(): ?string
@@ -126,6 +132,9 @@ class User extends Authenticatable
             'id' => $this->public_id,
             'name' => $this->name,
             'email' => $this->email,
+            'avatarPath' => $this->avatar_path,
+            'status' => $this->status,
+            'lastLoginAt' => $this->last_login_at?->toIso8601String(),
             'countryCode' => $this->country_code ?? '+91',
             'mobileNumber' => $this->mobile_number ?? '',
             'roleId' => $this->role_id,

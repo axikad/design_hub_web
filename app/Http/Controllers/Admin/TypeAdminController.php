@@ -13,14 +13,29 @@ use Inertia\Response;
 
 class TypeAdminController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $search = trim((string) $request->string('search'));
+        $status = (string) $request->string('status');
+        $categoryId = (string) $request->string('category');
+
         $types = DesignType::query()
             ->with('category')
             ->withCount('designs')
+            ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search) {
+                $searchQuery
+                    ->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            }))
+            ->when(in_array($status, ['active', 'inactive'], true), fn ($query) => $query->where('is_active', $status === 'active'))
+            ->when($categoryId !== '', fn ($query) => $query->whereHas(
+                'category',
+                fn ($categoryQuery) => $categoryQuery->where('public_id', $categoryId),
+            ))
             ->orderBy('sort_order')
             ->orderBy('name')
             ->paginate(20)
+            ->withQueryString()
             ->through(fn (DesignType $type) => [
                 'id' => $type->public_id,
                 'name' => $type->name,
@@ -35,6 +50,11 @@ class TypeAdminController extends Controller
         return Inertia::render('admin/types/index', [
             'types' => $types,
             'categories' => $this->categoryOptions(),
+            'filters' => [
+                'search' => $search,
+                'status' => $status,
+                'category' => $categoryId,
+            ],
         ]);
     }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Design;
 use App\Models\DesignCategory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -11,13 +12,23 @@ use Inertia\Response;
 
 class CategoryAdminController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $search = trim((string) $request->string('search'));
+        $status = (string) $request->string('status');
+
         $categories = DesignCategory::query()
-            ->withCount('types')
+            ->withCount(['types', 'machineTypes'])
+            ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search) {
+                $searchQuery
+                    ->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            }))
+            ->when(in_array($status, ['active', 'inactive'], true), fn ($query) => $query->where('is_active', $status === 'active'))
             ->orderBy('sort_order')
             ->orderBy('name')
             ->paginate(20)
+            ->withQueryString()
             ->through(fn (DesignCategory $category) => [
                 'id' => $category->public_id,
                 'name' => $category->name,
@@ -25,9 +36,16 @@ class CategoryAdminController extends Controller
                 'isActive' => $category->is_active,
                 'sortOrder' => $category->sort_order,
                 'typesCount' => $category->types_count,
+                'machineTypesCount' => $category->machine_types_count,
             ]);
 
-        return Inertia::render('admin/categories/index', ['categories' => $categories]);
+        return Inertia::render('admin/categories/index', [
+            'categories' => $categories,
+            'filters' => [
+                'search' => $search,
+                'status' => $status,
+            ],
+        ]);
     }
 
     public function create(): Response
@@ -70,8 +88,8 @@ class CategoryAdminController extends Controller
     {
         $model = DesignCategory::query()->where('public_id', $category)->firstOrFail();
 
-        if ($model->types()->exists()) {
-            return back()->withErrors(['category' => 'Remove or reassign types before deleting this category.']);
+        if ($model->types()->exists() || $model->machineTypes()->exists() || Design::query()->where('category_id', $model->public_id)->exists()) {
+            return back()->withErrors(['category' => 'Remove or reassign related machine types, design types, and designs before deleting this category.']);
         }
 
         $model->delete();

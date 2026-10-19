@@ -15,13 +15,24 @@ use Inertia\Response;
 
 class MachineTypeAdminController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $search = trim((string) $request->string('search'));
+        $status = (string) $request->string('status');
+        $machineId = (string) $request->string('machine');
+
         $machineTypes = MachineType::query()
             ->with(['machine', 'categories'])
+            ->when($search !== '', fn ($query) => $query->where('name', 'like', "%{$search}%"))
+            ->when(in_array($status, ['active', 'inactive'], true), fn ($query) => $query->where('is_active', $status === 'active'))
+            ->when($machineId !== '', fn ($query) => $query->whereHas(
+                'machine',
+                fn ($machineQuery) => $machineQuery->where('public_id', $machineId),
+            ))
             ->orderBy('sort_order')
             ->orderBy('name')
             ->paginate(20)
+            ->withQueryString()
             ->through(fn (MachineType $machineType) => [
                 'id' => $machineType->public_id,
                 'name' => $machineType->name,
@@ -31,7 +42,15 @@ class MachineTypeAdminController extends Controller
                 'sortOrder' => $machineType->sort_order,
             ]);
 
-        return Inertia::render('admin/machine-types/index', ['machineTypes' => $machineTypes]);
+        return Inertia::render('admin/machine-types/index', [
+            'machineTypes' => $machineTypes,
+            'machines' => $this->options()['machines'],
+            'filters' => [
+                'search' => $search,
+                'status' => $status,
+                'machine' => $machineId,
+            ],
+        ]);
     }
 
     public function create(): Response

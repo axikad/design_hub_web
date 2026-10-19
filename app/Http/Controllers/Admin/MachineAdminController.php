@@ -11,13 +11,21 @@ use Inertia\Response;
 
 class MachineAdminController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', 'in:active,inactive'],
+        ]);
+
         $machines = Machine::query()
             ->withCount('machineTypes')
+            ->when($filters['search'] ?? null, fn ($query, string $search) => $query->where('name', 'like', "%{$search}%"))
+            ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('is_active', $status === 'active'))
             ->orderBy('sort_order')
             ->orderBy('name')
             ->paginate(20)
+            ->withQueryString()
             ->through(fn (Machine $machine) => [
                 'id' => $machine->public_id,
                 'name' => $machine->name,
@@ -26,7 +34,13 @@ class MachineAdminController extends Controller
                 'machineTypesCount' => $machine->machine_types_count,
             ]);
 
-        return Inertia::render('admin/machines/index', ['machines' => $machines]);
+        return Inertia::render('admin/machines/index', [
+            'machines' => $machines,
+            'filters' => [
+                'search' => $filters['search'] ?? '',
+                'status' => $filters['status'] ?? '',
+            ],
+        ]);
     }
 
     public function create(): Response
@@ -67,7 +81,7 @@ class MachineAdminController extends Controller
         $model = Machine::query()->where('public_id', $machine)->firstOrFail();
 
         if ($model->machineTypes()->exists()) {
-            return back()->withErrors(['machine' => 'Delete or reassign this machine’s types first.']);
+            return back()->withErrors(['machine' => 'Delete or reassign this machine\'s types first.']);
         }
 
         $model->delete();

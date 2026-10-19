@@ -46,4 +46,9 @@ class Purchase extends Model
     {
         return $this->belongsTo(Design::class);
     }
+
+    public function paymentOrder(): BelongsTo
+    {
+        return $this->belongsTo(PaymentOrder::class);
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -18,9 +19,11 @@ class Role extends Model
         return $this->hasMany(User::class);
     }
 
-    public function permissionAssignments(): HasMany
+    public function permissions(): BelongsToMany
     {
-        return $this->hasMany(RolePermission::class);
+        return $this->belongsToMany(Permission::class)
+            ->withPivot('assigned_by')
+            ->withTimestamps();
     }
 
     public function isSuperAdmin(): bool
@@ -28,19 +31,15 @@ class Role extends Model
         return $this->slug === 'super_admin';
     }
 
-    public function hasPermission(string $slug, string $action): bool
+    public function hasPermission(string $permission): bool
     {
         if ($this->isSuperAdmin()) {
             return true;
         }
 
-        if (! in_array($action, ['read', 'create', 'update', 'delete'], true)) {
-            return false;
-        }
-
-        return $this->permissionAssignments()
-            ->where($action, true)
-            ->whereHas('permission', fn ($query) => $query->where('slug', $slug))
+        return $this->permissions()
+            ->where('slug', $permission)
+            ->where('is_active', true)
             ->exists();
     }
 

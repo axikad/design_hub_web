@@ -1,23 +1,27 @@
-import { AdminPageHeader } from '@/components/admin/page-header';
+import { AdminEmptyState } from '@/components/admin/admin-empty-state';
+import { AdminFormPanel } from '@/components/admin/admin-form-panel';
+import { AdminSearchInput } from '@/components/admin/admin-search-input';
+import { AdminStatusBadge } from '@/components/admin/admin-status-badge';
 import { ConfirmDelete } from '@/components/admin/confirm-delete';
+import { AdminPageHeader } from '@/components/admin/page-header';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
-import { Head, router, useForm } from '@inertiajs/react';
-import { FormEventHandler, useMemo, useState } from 'react';
+import { type BreadcrumbItem, type SharedData } from '@/types';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { KeyRound, LoaderCircle, Plus, Save, SearchX, ShieldCheck, UsersRound } from 'lucide-react';
+import { type FormEventHandler, useMemo, useState } from 'react';
 
 type RoleRow = { id: number; slug: string; name: string };
-type PermissionRow = { id: number; slug: string; name: string; module: string | null };
-type MatrixFlags = { read: boolean; create: boolean; update: boolean; delete: boolean };
+type PermissionRow = { id: number; slug: string; name: string; action: string; module: string | null };
 
 type Props = {
     roles: RoleRow[];
     permissions: PermissionRow[];
-    matrix: Record<number, Record<number, MatrixFlags>>;
+    assignedPermissionIds: Record<number, number[]>;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -25,154 +29,251 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Roles & permissions', href: '/admin/roles' },
 ];
 
-const actions: { key: keyof MatrixFlags; label: string }[] = [
-    { key: 'read', label: 'View' },
-    { key: 'create', label: 'Create' },
-    { key: 'update', label: 'Edit' },
-    { key: 'delete', label: 'Delete' },
-];
-
-export default function AdminRolesIndex({ roles, permissions, matrix }: Props) {
+export default function AdminRolesIndex({ roles, permissions, assignedPermissionIds }: Props) {
+    const authPermissions = usePage<SharedData>().props.auth.permissions ?? [];
+    const canCreate = authPermissions.includes('roles.create');
+    const canUpdate = authPermissions.includes('roles.assign_permissions');
+    const canDelete = authPermissions.includes('roles.delete');
     const [activeRoleId, setActiveRoleId] = useState<number>(roles[0]?.id ?? 0);
-
+    const [search, setSearch] = useState('');
     const activeRole = useMemo(() => roles.find((role) => role.id === activeRoleId) ?? roles[0], [activeRoleId, roles]);
+    const locked = activeRole?.slug === 'super_admin';
 
     const createForm = useForm({ name: '' });
-
-    const permissionForm = useForm<{ assignments: { permissionId: number; read: boolean; create: boolean; update: boolean; delete: boolean }[] }>({
-        assignments: permissions.map((permission) => {
-            const flags = matrix[activeRole?.id ?? 0]?.[permission.id] ?? { read: false, create: false, update: false, delete: false };
-            return {
-                permissionId: permission.id,
-                read: flags.read,
-                create: flags.create,
-                update: flags.update,
-                delete: flags.delete,
-            };
-        }),
+    const permissionForm = useForm<{ permissionIds: number[] }>({
+        permissionIds: assignedPermissionIds[activeRole?.id ?? 0] ?? [],
     });
 
-    const createRole: FormEventHandler = (e) => {
-        e.preventDefault();
+    const groupedPermissions = useMemo(() => {
+        const query = search.trim().toLowerCase();
+        return permissions.reduce<Record<string, PermissionRow[]>>((groups, permission) => {
+            if (query && !`${permission.name} ${permission.slug} ${permission.module ?? ''} ${permission.action}`.toLowerCase().includes(query)) {
+                return groups;
+            }
+            const module = permission.module ?? 'Other';
+            groups[module] = [...(groups[module] ?? []), permission];
+            return groups;
+        }, {});
+    }, [permissions, search]);
+
+    const createRole: FormEventHandler = (event) => {
+        event.preventDefault();
         createForm.post(route('admin.roles.store'), {
             preserveScroll: true,
             onSuccess: () => createForm.reset(),
         });
     };
 
-    const savePermissions: FormEventHandler = (e) => {
-        e.preventDefault();
-        if (!activeRole) return;
+    const savePermissions: FormEventHandler = (event) => {
+        event.preventDefault();
+        if (!activeRole || locked || !canUpdate) return;
         router.put(route('admin.roles.permissions.update', activeRole.id), {
-            assignments: permissionForm.data.assignments,
+            permissionIds: permissionForm.data.permissionIds,
         });
     };
 
-    const toggleFlag = (permissionId: number, key: keyof MatrixFlags, checked: boolean) => {
+    const changeRole = (roleId: number) => {
+        setActiveRoleId(roleId);
+        permissionForm.setData('permissionIds', assignedPermissionIds[roleId] ?? []);
+    };
+
+    const togglePermission = (permissionId: number, checked: boolean) => {
         permissionForm.setData(
-            'assignments',
-            permissionForm.data.assignments.map((row) => (row.permissionId === permissionId ? { ...row, [key]: checked } : row)),
+            'permissionIds',
+            checked
+                ? [...new Set([...permissionForm.data.permissionIds, permissionId])]
+                : permissionForm.data.permissionIds.filter((id) => id !== permissionId),
+        );
+    };
+
+    const toggleModule = (modulePermissions: PermissionRow[], checked: boolean) => {
+        const moduleIds = modulePermissions.map((permission) => permission.id);
+        permissionForm.setData(
+            'permissionIds',
+            checked
+                ? [...new Set([...permissionForm.data.permissionIds, ...moduleIds])]
+                : permissionForm.data.permissionIds.filter((id) => !moduleIds.includes(id)),
         );
     };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Roles & permissions" />
-            <div className="space-y-6">
-                <AdminPageHeader title="Roles & permissions" description="Define who can view, create, edit, and delete each admin module." />
+            <div className="space-y-6 p-4 md:p-6">
+                <AdminPageHeader title="Roles & permissions" description="Control exactly what each administrator role can access and manage." />
 
-                <form onSubmit={createRole} className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end dark:border-slate-800 dark:bg-slate-950">
-                    <div className="grid flex-1 gap-2">
-                        <Label htmlFor="roleName">New role name</Label>
-                        <Input id="roleName" value={createForm.data.name} onChange={(e) => createForm.setData('name', e.target.value)} placeholder="e.g. Content manager" />
-                        <InputError message={createForm.errors.name} />
-                    </div>
-                    <Button type="submit" disabled={createForm.processing} className="bg-indigo-600 hover:bg-indigo-700">
-                        Add role
-                    </Button>
-                </form>
+                <div className="grid gap-5 xl:grid-cols-[280px_1fr]">
+                    <aside className="space-y-5">
+                        {canCreate ? (
+                            <AdminFormPanel title="Create role" description="Add a new access profile for your team." icon={UsersRound}>
+                                <form onSubmit={createRole} className="space-y-3">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="roleName">Role name</Label>
+                                        <Input
+                                            id="roleName"
+                                            value={createForm.data.name}
+                                            onChange={(event) => createForm.setData('name', event.target.value)}
+                                            placeholder="Content manager"
+                                            className="h-10 rounded-xl border-slate-200 dark:border-slate-700"
+                                        />
+                                        <InputError message={createForm.errors.name} />
+                                    </div>
+                                    <Button
+                                        type="submit"
+                                        disabled={createForm.processing}
+                                        className="w-full rounded-xl bg-indigo-600 hover:bg-indigo-700"
+                                    >
+                                        {createForm.processing ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-4" />}
+                                        Add role
+                                    </Button>
+                                </form>
+                            </AdminFormPanel>
+                        ) : null}
 
-                <div className="flex flex-wrap gap-2">
-                    {roles.map((role) => (
-                        <Button
-                            key={role.id}
-                            type="button"
-                            variant={role.id === activeRole?.id ? 'default' : 'outline'}
-                            className={role.id === activeRole?.id ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
-                            onClick={() => {
-                                setActiveRoleId(role.id);
-                                permissionForm.setData(
-                                    'assignments',
-                                    permissions.map((permission) => {
-                                        const flags = matrix[role.id]?.[permission.id] ?? { read: false, create: false, update: false, delete: false };
-                                        return { permissionId: permission.id, ...flags };
-                                    }),
-                                );
-                            }}
-                        >
-                            {role.name}
-                        </Button>
-                    ))}
-                </div>
-
-                {activeRole ? (
-                    <form onSubmit={savePermissions} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-                            <div>
-                                <h2 className="font-semibold text-slate-900 dark:text-white">{activeRole.name}</h2>
-                                <p className="text-xs text-slate-500">{activeRole.slug}</p>
+                        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                            <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+                                <p className="text-xs font-bold tracking-wider text-slate-500 uppercase">Available roles</p>
                             </div>
-                            {activeRole.slug !== 'super_admin' ? (
-                                <ConfirmDelete
-                                    title="Delete role?"
-                                    description="Users must be reassigned before this role can be removed."
-                                    onConfirm={() => router.delete(route('admin.roles.destroy', activeRole.id))}
-                                />
-                            ) : null}
-                        </div>
-                        <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
-                            <thead className="bg-slate-50 dark:bg-slate-900/60">
-                                <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Module / permission</th>
-                                    {actions.map((action) => (
-                                        <th key={action.key} className="px-4 py-3 text-center text-xs font-semibold uppercase text-slate-500">
-                                            {action.label}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                {permissions.map((permission) => {
-                                    const row = permissionForm.data.assignments.find((item) => item.permissionId === permission.id);
-                                    const locked = activeRole.slug === 'super_admin';
-
+                            <div className="space-y-1 p-2">
+                                {roles.map((role) => {
+                                    const selected = role.id === activeRole?.id;
+                                    const count = assignedPermissionIds[role.id]?.length ?? 0;
                                     return (
-                                        <tr key={permission.id}>
-                                            <td className="px-4 py-3">
-                                                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{permission.name}</p>
-                                                <p className="text-xs text-slate-500">{permission.module}</p>
-                                            </td>
-                                            {actions.map((action) => (
-                                                <td key={action.key} className="px-4 py-3 text-center">
-                                                    <Checkbox
-                                                        checked={row?.[action.key] ?? false}
-                                                        disabled={locked}
-                                                        onCheckedChange={(checked) => toggleFlag(permission.id, action.key, checked === true)}
-                                                    />
-                                                </td>
-                                            ))}
-                                        </tr>
+                                        <button
+                                            key={role.id}
+                                            type="button"
+                                            onClick={() => changeRole(role.id)}
+                                            className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition ${
+                                                selected
+                                                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                                                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                                            }`}
+                                        >
+                                            <ShieldCheck className="size-4 shrink-0" />
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block truncate text-sm font-semibold">{role.name}</span>
+                                                <span className={`block text-xs ${selected ? 'text-indigo-100' : 'text-slate-400'}`}>
+                                                    {count} permissions
+                                                </span>
+                                            </span>
+                                        </button>
                                     );
                                 })}
-                            </tbody>
-                        </table>
-                        <div className="border-t border-slate-200 px-4 py-3 dark:border-slate-800">
-                            <Button type="submit" disabled={activeRole.slug === 'super_admin'} className="bg-indigo-600 hover:bg-indigo-700">
-                                Save permissions
-                            </Button>
-                        </div>
-                    </form>
-                ) : null}
+                            </div>
+                        </section>
+                    </aside>
+
+                    {activeRole ? (
+                        <form
+                            onSubmit={savePermissions}
+                            className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+                        >
+                            <div className="flex flex-col gap-4 border-b border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex size-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-300">
+                                        <KeyRound className="size-5" />
+                                    </div>
+                                    <div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h2 className="font-bold text-slate-900 dark:text-white">{activeRole.name}</h2>
+                                            {locked ? <AdminStatusBadge tone="info">Protected</AdminStatusBadge> : null}
+                                        </div>
+                                        <p className="mt-0.5 text-xs text-slate-400">{activeRole.slug}</p>
+                                    </div>
+                                </div>
+                                {canDelete && !locked ? (
+                                    <ConfirmDelete
+                                        title="Delete role?"
+                                        description="Users must be reassigned before this role can be removed."
+                                        onConfirm={() => router.delete(route('admin.roles.destroy', activeRole.id))}
+                                    />
+                                ) : null}
+                            </div>
+
+                            <div className="border-b border-slate-100 p-4 dark:border-slate-800">
+                                <AdminSearchInput
+                                    value={search}
+                                    onChange={(event) => setSearch(event.target.value)}
+                                    onClear={() => setSearch('')}
+                                    placeholder="Search modules or permissions..."
+                                />
+                            </div>
+
+                            <div className="space-y-4 p-4 sm:p-5">
+                                {Object.keys(groupedPermissions).length === 0 ? (
+                                    <AdminEmptyState
+                                        icon={SearchX}
+                                        title="No permissions found"
+                                        description="Try another module, action or permission name."
+                                    />
+                                ) : (
+                                    Object.entries(groupedPermissions).map(([module, modulePermissions]) => {
+                                        const allSelected =
+                                            locked ||
+                                            modulePermissions.every((permission) => permissionForm.data.permissionIds.includes(permission.id));
+                                        return (
+                                            <section
+                                                key={module}
+                                                className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800"
+                                            >
+                                                <div className="flex items-center justify-between bg-slate-50 px-4 py-3 dark:bg-slate-950/60">
+                                                    <div>
+                                                        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">{module}</h3>
+                                                        <p className="text-xs text-slate-400">{modulePermissions.length} available actions</p>
+                                                    </div>
+                                                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                                                        <Checkbox
+                                                            checked={allSelected}
+                                                            disabled={locked || !canUpdate}
+                                                            onCheckedChange={(checked) => toggleModule(modulePermissions, checked === true)}
+                                                        />
+                                                        Select all
+                                                    </label>
+                                                </div>
+                                                <div className="grid gap-px bg-slate-100 sm:grid-cols-2 lg:grid-cols-4 dark:bg-slate-800">
+                                                    {modulePermissions.map((permission) => (
+                                                        <label
+                                                            key={permission.id}
+                                                            className="flex cursor-pointer items-start gap-3 bg-white p-4 transition hover:bg-indigo-50/50 dark:bg-slate-900 dark:hover:bg-indigo-950/20"
+                                                        >
+                                                            <Checkbox
+                                                                checked={locked || permissionForm.data.permissionIds.includes(permission.id)}
+                                                                disabled={locked || !canUpdate}
+                                                                onCheckedChange={(checked) => togglePermission(permission.id, checked === true)}
+                                                            />
+                                                            <span className="min-w-0">
+                                                                <span className="block text-sm font-semibold text-slate-800 capitalize dark:text-slate-100">
+                                                                    {permission.action.replaceAll('_', ' ')}
+                                                                </span>
+                                                                <span className="mt-1 block truncate text-xs text-slate-400">{permission.slug}</span>
+                                                            </span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </section>
+                                        );
+                                    })
+                                )}
+                            </div>
+
+                            <div className="flex items-center justify-between gap-4 border-t border-slate-200 bg-slate-50/60 px-5 py-4 dark:border-slate-800 dark:bg-slate-950/40">
+                                <p className="text-xs text-slate-500">
+                                    {locked
+                                        ? 'Super Admin always has every permission.'
+                                        : `${permissionForm.data.permissionIds.length} permissions selected`}
+                                </p>
+                                {canUpdate && !locked ? (
+                                    <Button type="submit" className="rounded-xl bg-indigo-600 px-5 font-semibold hover:bg-indigo-700">
+                                        <Save className="size-4" />
+                                        Save permissions
+                                    </Button>
+                                ) : null}
+                            </div>
+                        </form>
+                    ) : (
+                        <AdminEmptyState icon={ShieldCheck} title="No roles available" description="Create a role to begin assigning permissions." />
+                    )}
+                </div>
             </div>
         </AppLayout>
     );

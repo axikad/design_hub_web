@@ -8,9 +8,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EnsurePermission
 {
-    public function handle(Request $request, Closure $next, string $permission, string $action = 'read'): Response
+    public function handle(Request $request, Closure $next, string $permission): Response
     {
-        if (! $request->user()?->hasPermission($permission, $action)) {
+        if (! $request->user()?->hasPermission($permission)) {
             abort(403);
         }
 

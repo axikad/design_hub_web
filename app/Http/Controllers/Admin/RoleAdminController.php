@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Permission;
 use App\Models\Role;
-use App\Models\RolePermission;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -16,10 +15,22 @@ class RoleAdminController extends Controller
 {
     public function index(): Response
     {
-        $roles = Role::query()->orderBy('name')->get(['id', 'slug', 'name']);
-        $permissions = Permission::query()->with('module')->orderBy('module_id')->orderBy('name')->get();
-
-        $assignments = RolePermission::query()->get()->groupBy('role_id');
+        $roles = Role::query()
+            ->with(['permissions' => fn ($query) => $query->where('is_active', true)->where('action', '!=', 'legacy')])
+            ->orderBy('name')
+            ->get(['id', 'slug', 'name']);
+        $permissions = Permission::query()
+            ->with('module')
+            ->where('is_active', true)
+            ->where('action', '!=', 'legacy')
+            ->get()
+            ->sortBy(fn (Permission $permission) => sprintf(
+                '%010d|%s|%010d',
+                $permission->module?->sort_order ?? 0,
+                $permission->module?->name ?? '',
+                $permission->id,
+            ))
+            ->values();
 
         return Inertia::render('admin/roles/index', [
             'roles' => $roles,
@@ -27,22 +38,12 @@ class RoleAdminController extends Controller
                 'id' => $permission->id,
                 'slug' => $permission->slug,
                 'name' => $permission->name,
+                'action' => $permission->action,
                 'module' => $permission->module?->name,
             ]),
-            'matrix' => $roles->mapWithKeys(function (Role $role) use ($assignments) {
-                $rows = $assignments->get($role->id, collect());
-
-                return [
-                    $role->id => $rows->mapWithKeys(fn (RolePermission $row) => [
-                        $row->permission_id => [
-                            'read' => $row->read,
-                            'create' => $row->create,
-                            'update' => $row->update,
-                            'delete' => $row->delete,
-                        ],
-                    ]),
-                ];
-            }),
+            'assignedPermissionIds' => $roles->mapWithKeys(fn (Role $role) => [
+                $role->id => $role->permissions->pluck('id')->values(),
+            ]),
         ]);
     }
 
@@ -63,13 +64,6 @@ class RoleAdminController extends Controller
             'slug' => $slug,
         ]);
 
-        foreach (Permission::query()->pluck('id') as $permissionId) {
-            RolePermission::query()->create([
-                'role_id' => $role->id,
-                'permission_id' => $permissionId,
-            ]);
-        }
-
         return redirect()->route('admin.roles.index')->with('success', 'Role created.');
     }
 
@@ -80,28 +74,21 @@ class RoleAdminController extends Controller
         }
 
         $validated = $request->validate([
-            'assignments' => ['required', 'array'],
-            'assignments.*.permissionId' => ['required', 'integer', Rule::exists('permissions', 'id')],
-            'assignments.*.read' => ['boolean'],
-            'assignments.*.create' => ['boolean'],
-            'assignments.*.update' => ['boolean'],
-            'assignments.*.delete' => ['boolean'],
+            'permissionIds' => ['present', 'array'],
+            'permissionIds.*' => [
+                'integer',
+                'distinct',
+                Rule::exists('permissions', 'id')->where(
+                    fn ($query) => $query->where('is_active', true)->where('action', '!=', 'legacy'),
+                ),
+            ],
         ]);
 
-        foreach ($validated['assignments'] as $assignment) {
-            RolePermission::query()->updateOrCreate(
-                [
-                    'role_id' => $role->id,
-                    'permission_id' => $assignment['permissionId'],
-                ],
-                [
-                    'read' => $assignment['read'] ?? false,
-                    'create' => $assignment['create'] ?? false,
-                    'update' => $assignment['update'] ?? false,
-                    'delete' => $assignment['delete'] ?? false,
-                ],
-            );
-        }
+        $syncData = collect($validated['permissionIds'])->mapWithKeys(fn (int $permissionId) => [
+            $permissionId => ['assigned_by' => $request->user()?->id],
+        ])->all();
+
+        $role->permissions()->sync($syncData);
 
         return redirect()->route('admin.roles.index')->with('success', 'Permissions updated.');
     }

@@ -21,7 +21,7 @@ class DesignManagementTest extends TestCase
     {
         Storage::fake('public');
         Storage::fake('local');
-        $admin = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->superAdmin()->create();
         $owner = User::factory()->create();
         [$machine, $machineType, $category, $type, $fileType] = $this->catalog();
 
@@ -57,7 +57,7 @@ class DesignManagementTest extends TestCase
     {
         Storage::fake('public');
         Storage::fake('local');
-        $admin = User::factory()->create(['is_admin' => true]);
+        $admin = User::factory()->superAdmin()->create();
         $owner = User::factory()->create();
         [, $machineType, $category, $type, $fileType] = $this->catalog();
         $differentMachine = Machine::query()->create(['name' => 'Different Machine']);

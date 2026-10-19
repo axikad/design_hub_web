@@ -24,20 +24,59 @@ class DesignAdminController extends Controller
 {
     public function __construct(private readonly DesignPresenter $presenter) {}
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $search = trim((string) $request->string('search'));
+        $ownerId = (string) $request->string('owner');
+        $machineId = (string) $request->string('machine');
+        $fileTypeId = (string) $request->string('fileType');
+
         $designs = Design::query()
             ->listed()
-            ->with(['owner', 'type.category'])
+            ->with(['owner', 'type.category', 'machineType.machine', 'fileType'])
+            ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search) {
+                $searchQuery
+                    ->where('title', 'like', "%{$search}%")
+                    ->orWhere('public_id', 'like', "%{$search}%")
+                    ->orWhere('file_name', 'like', "%{$search}%")
+                    ->orWhereHas('owner', fn ($ownerQuery) => $ownerQuery
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('mobile_number', 'like', "%{$search}%"));
+            }))
+            ->when($ownerId !== '', fn ($query) => $query->whereHas('owner', fn ($ownerQuery) => $ownerQuery->where('public_id', $ownerId)))
+            ->when($machineId !== '', fn ($query) => $query->whereHas(
+                'machineType.machine',
+                fn ($machineQuery) => $machineQuery->where('public_id', $machineId),
+            ))
+            ->when($fileTypeId !== '', fn ($query) => $query->whereHas('fileType', fn ($fileTypeQuery) => $fileTypeQuery->where('public_id', $fileTypeId)))
             ->latest('created_at')
             ->paginate(20)
-            ->through(fn (Design $design) => array_merge(
-                $this->presenter->forUser($design, $design->owner),
-                ['ownerName' => $design->owner?->name],
-            ));
+            ->withQueryString()
+            ->through(function (Design $design) {
+                $presented = $this->presenter->forUser($design, $design->owner);
+
+                return array_merge($presented, [
+                    'ownerName' => $design->owner?->name,
+                    'machineName' => $design->machineType?->machine?->name,
+                    'machineTypeName' => $design->machineType?->name,
+                    'thumbnailUri' => $presented['images'][0]['thumbnailUri'] ?? $presented['imageUri'],
+                ]);
+            });
 
         return Inertia::render('admin/designs/index', [
             'designs' => $designs,
+            'owners' => $this->ownerOptions(),
+            'machines' => Machine::query()->orderBy('sort_order')->orderBy('name')->get()->map(fn (Machine $machine) => [
+                'id' => $machine->public_id,
+                'name' => $machine->name,
+            ])->values(),
+            'fileTypes' => $this->fileTypeOptions(),
+            'filters' => [
+                'search' => $search,
+                'owner' => $ownerId,
+                'machine' => $machineId,
+                'fileType' => $fileTypeId,
+            ],
         ]);
     }
 
