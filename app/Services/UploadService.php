@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Design;
 use App\Models\Upload;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -84,6 +85,31 @@ class UploadService
             }
 
             return $upload->path;
+        }
+
+        if ($expectedKind === 'stitch' && preg_match('#/api/v1/designs/([^/]+)/download(?:\?|$)#', $url, $matches)) {
+            $design = Design::query()
+                ->where('public_id', $matches[1])
+                ->where('user_id', $user->id)
+                ->first();
+
+            if ($design === null) {
+                throw new \InvalidArgumentException('Design attachment was not found.');
+            }
+
+            parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+            $fileIndex = max((int) ($query['file'] ?? 0), 0);
+            $files = $design->files;
+
+            if (is_array($files) && isset($files[$fileIndex]['path'])) {
+                return $files[$fileIndex]['path'];
+            }
+
+            if ($fileIndex === 0 && $design->stitch_path !== null) {
+                return $design->stitch_path;
+            }
+
+            throw new \InvalidArgumentException('Design attachment was not found.');
         }
 
         throw new \InvalidArgumentException('Attachment must come from this server upload flow.');

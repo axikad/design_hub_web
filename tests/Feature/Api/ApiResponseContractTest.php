@@ -215,6 +215,21 @@ class ApiResponseContractTest extends TestCase
             'design_file_type_id' => DesignFileType::query()->where('public_id', 'dst')->value('id'),
         ]);
 
+        $created = $response->json('data');
+        $updatePayload = $payload;
+        $updatePayload['title'] = 'Updated floral neckline';
+        $updatePayload['details'][0]['names'][0] = 'Updated floral neckline';
+        $updatePayload['images'] = $created['images'];
+        $updatePayload['files'] = $created['files'];
+        $updatePayload['imageUri'] = $created['imageUri'];
+        $updatePayload['fileName'] = $created['fileName'];
+        $updatePayload['fileUri'] = $created['fileUri'];
+
+        $this->patchJson('/api/v1/designs/'.$designId, $updatePayload)
+            ->assertOk()
+            ->assertJsonPath('data.title', 'Updated floral neckline')
+            ->assertJsonPath('data.files.0.uri', $created['files'][0]['uri']);
+
         $viewer = User::factory()->create();
         Sanctum::actingAs($viewer);
         $this->getJson('/api/v1/designs/'.$designId)
