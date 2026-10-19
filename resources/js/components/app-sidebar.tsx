@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { FolderTree, LayoutGrid, Layers, Palette, Settings, ShieldCheck, ShoppingBag, UsersRound } from 'lucide-react';
+import { Cog, Cpu, FolderTree, Layers, LayoutGrid, Palette, Settings, ShieldCheck, ShoppingBag, UsersRound } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -14,12 +14,22 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
     {
+        title: 'Machines',
+        url: '/admin/machines',
+        icon: Cpu,
+    },
+    {
+        title: 'Machine Types',
+        url: '/admin/machine-types',
+        icon: Cog,
+    },
+    {
         title: 'Categories',
         url: '/admin/categories',
         icon: FolderTree,
     },
     {
-        title: 'Types',
+        title: 'Design Types',
         url: '/admin/types',
         icon: Layers,
     },
