@@ -2,9 +2,9 @@
 
 namespace App\Support;
 
-use App\Models\DesignMachineType;
-use App\Models\DesignOptionCategory;
+use App\Models\DesignCategory;
 use App\Models\DesignType;
+use App\Models\MachineType;
 
 final class DesignTypeResolver
 {
@@ -28,7 +28,7 @@ final class DesignTypeResolver
         ?string $categoryId,
         ?string $machineTypeId,
     ): array {
-        $optionCategory = DesignOptionCategory::query()
+        $optionCategory = DesignCategory::query()
             ->where('public_id', $typeId)
             ->where('is_active', true)
             ->first();
@@ -38,7 +38,7 @@ final class DesignTypeResolver
                 throw new \InvalidArgumentException('categoryId and typeId must use the same design option ID.');
             }
 
-            $machine = DesignMachineType::query()
+            $machine = MachineType::query()
                 ->where('public_id', $machineTypeId)
                 ->where('is_active', true)
                 ->first();

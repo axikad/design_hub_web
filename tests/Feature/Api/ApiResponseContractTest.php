@@ -11,7 +11,9 @@ use App\Services\UploadService;
 use App\Support\ApiResponse;
 use Database\Seeders\DesignFormOptionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use RuntimeException;
 use Tests\TestCase;
@@ -217,7 +219,10 @@ class ApiResponseContractTest extends TestCase
         $this->getJson('/api/v1/catalog/design-options')
             ->assertOk()
             ->assertJsonPath('message', 'Design options retrieved successfully.')
+            ->assertJsonPath('data.machines.0.id', 'embroidery')
+            ->assertJsonPath('data.machines.0.machineTypeIds.0', 'machine-embroidery')
             ->assertJsonPath('data.machineTypes.0.id', 'machine-embroidery')
+            ->assertJsonPath('data.machineTypes.0.machineId', 'embroidery')
             ->assertJsonPath('data.categories.0.id', 'neckline')
             ->assertJsonPath('data.categories.0.machineTypeIds.0', 'machine-embroidery')
             ->assertJsonMissingPath('meta')
@@ -250,6 +255,47 @@ class ApiResponseContractTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonPath('code', 'validation_error')
             ->assertJsonStructure(['errors' => ['details.0.stitch']]);
+    }
+
+    public function test_non_image_design_files_are_not_restricted_by_mime_type(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->post('/api/v1/uploads', [
+            'file' => UploadedFile::fake()->create('machine-design.pes', 6000, 'application/x-custom-design'),
+        ], ['Accept' => 'application/json'])
+            ->assertCreated()
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseHas('uploads', [
+            'user_id' => $user->id,
+            'kind' => 'stitch',
+            'original_name' => 'machine-design.pes',
+        ]);
+    }
+
+    public function test_additional_raster_image_types_are_accepted(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $gif = base64_decode('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==');
+
+        $this->post('/api/v1/uploads', [
+            'file' => UploadedFile::fake()->createWithContent('preview.gif', $gif),
+        ], ['Accept' => 'application/json'])
+            ->assertCreated()
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseHas('uploads', [
+            'user_id' => $user->id,
+            'kind' => 'photo',
+            'original_name' => 'preview.gif',
+            'mime' => 'image/gif',
+        ]);
     }
 
     public function test_rate_limits_use_the_standard_error_response(): void

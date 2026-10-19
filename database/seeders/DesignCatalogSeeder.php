@@ -12,36 +12,29 @@ class DesignCatalogSeeder extends Seeder
     {
         $hoop = DesignCategory::query()->firstOrCreate(
             ['name' => 'Hoop size'],
-            ['description' => 'Physical embroidery hoop dimensions', 'sort_order' => 1],
+            ['description' => 'Physical embroidery hoop dimensions', 'sort_order' => 10],
         );
 
-        $colorCat = DesignCategory::query()->firstOrCreate(
+        $color = DesignCategory::query()->firstOrCreate(
             ['name' => 'Color family'],
-            ['description' => 'Primary thread palette', 'sort_order' => 2],
+            ['description' => 'Primary thread palette', 'sort_order' => 20],
         );
 
         $style = DesignCategory::query()->firstOrCreate(
             ['name' => 'Design style'],
-            ['description' => 'Motif classification', 'sort_order' => 3],
+            ['description' => 'Motif classification', 'sort_order' => 30],
         );
 
-        foreach (['4″ hoop', '6″ hoop', '8″ hoop', 'Saree border', 'Motif'] as $index => $name) {
-            DesignType::query()->firstOrCreate(
-                ['design_category_id' => $hoop->id, 'name' => $name],
-                ['sort_order' => $index + 1],
-            );
-        }
+        $this->seedTypes($hoop, ['4-inch hoop', '6-inch hoop', '8-inch hoop', 'Saree border', 'Motif']);
+        $this->seedTypes($color, ['Maroon', 'Gold', 'Ivory', 'Forest', 'Navy', 'Blush', 'Black', 'Copper']);
+        $this->seedTypes($style, ['Floral', 'Geometric', 'Traditional', 'Minimal']);
+    }
 
-        foreach (['Maroon', 'Gold', 'Ivory', 'Forest', 'Navy', 'Blush', 'Black', 'Copper'] as $index => $name) {
+    private function seedTypes(DesignCategory $category, array $names): void
+    {
+        foreach ($names as $index => $name) {
             DesignType::query()->firstOrCreate(
-                ['design_category_id' => $colorCat->id, 'name' => $name],
-                ['sort_order' => $index + 1],
-            );
-        }
-
-        foreach (['Floral', 'Geometric', 'Traditional', 'Minimal'] as $index => $name) {
-            DesignType::query()->firstOrCreate(
-                ['design_category_id' => $style->id, 'name' => $name],
+                ['design_category_id' => $category->id, 'name' => $name],
                 ['sort_order' => $index + 1],
             );
         }

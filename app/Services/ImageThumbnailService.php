@@ -33,7 +33,7 @@ class ImageThumbnailService
         $height = max(1, (int) round($sourceHeight * $scale));
         $thumbnail = imagecreatetruecolor($width, $height);
 
-        $extension = Str::lower(pathinfo($originalPath, PATHINFO_EXTENSION));
+        $extension = Str::lower(pathinfo($thumbnailPath, PATHINFO_EXTENSION));
         if (in_array($extension, ['png', 'webp'], true)) {
             imagealphablending($thumbnail, false);
             imagesavealpha($thumbnail, true);
@@ -85,7 +85,8 @@ class ImageThumbnailService
     {
         $directory = trim(pathinfo($originalPath, PATHINFO_DIRNAME), '.\\/');
         $filename = pathinfo($originalPath, PATHINFO_FILENAME);
-        $extension = Str::lower(pathinfo($originalPath, PATHINFO_EXTENSION)) ?: 'jpg';
+        $originalExtension = Str::lower(pathinfo($originalPath, PATHINFO_EXTENSION));
+        $extension = in_array($originalExtension, ['png', 'webp'], true) ? $originalExtension : 'jpg';
         $prefix = $directory === '' ? 'thumbnails' : 'thumbnails/'.$directory;
 
         return $prefix.'/'.$filename.'-thumb.'.$extension;

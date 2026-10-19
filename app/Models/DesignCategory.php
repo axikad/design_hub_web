@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -41,5 +42,10 @@ class DesignCategory extends Model
     public function activeTypes(): HasMany
     {
         return $this->types()->where('is_active', true);
+    }
+
+    public function machineTypes(): BelongsToMany
+    {
+        return $this->belongsToMany(MachineType::class, 'category_machine_type');
     }
 }

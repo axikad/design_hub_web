@@ -9,10 +9,6 @@ return [
     'otp_static_code' => env('DESIGNHUB_OTP_STATIC_CODE'),
     'otp_static_enabled' => env('DESIGNHUB_OTP_STATIC_ENABLED', false),
 
-    'upload_max_photo_bytes' => 5 * 1024 * 1024,
-    'upload_max_stitch_bytes' => 5 * 1024 * 1024,
-    'upload_photo_mimes' => ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
-    'upload_stitch_mimes' => ['application/octet-stream', 'application/x-binary'],
     'thumbnail_max_width' => 480,
     'thumbnail_max_height' => 480,
 

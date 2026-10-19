@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Design;
-use App\Models\DesignOptionCategory;
+use App\Models\DesignCategory;
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
 
@@ -22,7 +22,7 @@ class DesignPresenter
         $files = $this->files($design, $canAccessFile);
         $formCategory = $design->category_id === null
             ? null
-            : DesignOptionCategory::query()->where('public_id', $design->category_id)->first();
+            : DesignCategory::query()->where('public_id', $design->category_id)->first();
 
         $payload = [
             'id' => $design->public_id,
