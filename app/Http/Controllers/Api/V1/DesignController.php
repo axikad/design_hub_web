@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\DesignResource;
 use App\Models\Design;
+use App\Models\DesignFileType;
 use App\Services\PurchaseAccessService;
 use App\Services\UploadService;
 use App\Support\ApiResponse;
@@ -13,6 +14,7 @@ use App\Support\Pagination;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class DesignController extends Controller
@@ -26,7 +28,7 @@ class DesignController extends Controller
     {
         $designs = Design::query()
             ->listed()
-            ->with(['owner', 'type.category'])
+            ->with(['owner', 'type.category', 'fileType'])
             ->latest('created_at')
             ->paginate(Pagination::perPage($request))
             ->withQueryString();
@@ -61,6 +63,7 @@ class DesignController extends Controller
         $design = Design::query()->create([
             'user_id' => $request->user()->id,
             'design_type_id' => $validated['design_type_id'],
+            'design_file_type_id' => $validated['design_file_type_id'],
             'machine_type_id' => $validated['machineTypeId'],
             'category_id' => $validated['categoryId'],
             'show_price' => $validated['showPrice'],
@@ -76,7 +79,7 @@ class DesignController extends Controller
             'file_name' => $validated['fileName'],
         ]);
 
-        $design->load(['owner', 'type.category']);
+        $design->load(['owner', 'type.category', 'fileType']);
 
         return ApiResponse::data(
             (new DesignResource($design))->resolve($request),
@@ -101,6 +104,7 @@ class DesignController extends Controller
 
         $design->update([
             'design_type_id' => $validated['design_type_id'],
+            'design_file_type_id' => $validated['design_file_type_id'],
             'machine_type_id' => $validated['machineTypeId'],
             'category_id' => $validated['categoryId'],
             'show_price' => $validated['showPrice'],
@@ -116,7 +120,7 @@ class DesignController extends Controller
             'file_name' => $validated['fileName'],
         ]);
 
-        $design->load(['owner', 'type.category']);
+        $design->load(['owner', 'type.category', 'fileType']);
 
         return ApiResponse::data(
             (new DesignResource($design))->resolve($request),
@@ -208,6 +212,11 @@ class DesignController extends Controller
             'fileName' => ['required', 'string', 'max:255'],
             'fileUri' => ['required', 'string'],
             'typeId' => ['required', 'string', 'max:120'],
+            'designFileTypeId' => [
+                'required',
+                'string',
+                Rule::exists('design_file_types', 'public_id')->where('is_active', true),
+            ],
             'details' => ['sometimes', 'array', 'min:1', 'max:50'],
             'details.*.names' => ['required_with:details', 'array', 'min:1', 'max:20'],
             'details.*.names.*' => ['required', 'string', 'max:120'],
@@ -233,6 +242,11 @@ class DesignController extends Controller
         } catch (\InvalidArgumentException $exception) {
             throw ValidationException::withMessages(['typeId' => $exception->getMessage()]);
         }
+
+        $designFileType = DesignFileType::query()
+            ->where('public_id', $validated['designFileTypeId'])
+            ->where('is_active', true)
+            ->firstOrFail();
 
         try {
             $images = $this->resolveAttachments(
@@ -273,6 +287,7 @@ class DesignController extends Controller
 
         return [
             'design_type_id' => $selection['design_type_id'],
+            'design_file_type_id' => $designFileType->id,
             'machineTypeId' => $selection['machine_type_id'],
             'categoryId' => $selection['category_id'],
             'showPrice' => $validated['showPrice'] ?? true,

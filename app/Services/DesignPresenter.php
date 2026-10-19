@@ -16,7 +16,7 @@ class DesignPresenter
 
     public function forUser(Design $design, ?User $viewer): array
     {
-        $design->loadMissing(['owner', 'type.category', 'machineType.machine']);
+        $design->loadMissing(['owner', 'type.category', 'machineType.machine', 'fileType']);
         $canAccessFile = $viewer !== null && $this->access->canDownloadStitch($viewer, $design);
         $images = $this->images($design);
         $files = $this->files($design, $canAccessFile);
@@ -31,6 +31,9 @@ class DesignPresenter
             'title' => $design->title,
             'typeId' => $design->type?->public_id ?? $design->category_id,
             'typeName' => $design->type?->name ?? $formCategory?->name,
+            'designFileTypeId' => $design->fileType?->public_id,
+            'designFileTypeName' => $design->fileType?->name,
+            'designFileExtension' => $design->fileType?->extension,
             'categoryId' => $design->category_id ?? $design->type?->category?->public_id,
             'categoryName' => $formCategory?->name ?? $design->type?->category?->name,
             'showPrice' => $design->show_price,
@@ -42,6 +45,7 @@ class DesignPresenter
             'color' => $design->color,
             'imageUri' => $images[0]['uri'] ?? $this->previewUrl($design),
             'fileName' => $design->file_name,
+            'displayName' => $design->display_name,
             'fileUri' => $files[0]['uri'] ?? null,
             'hasFile' => $design->stitch_path !== null,
             'createdAt' => $design->created_at?->utc()->toIso8601String(),
@@ -97,6 +101,7 @@ class DesignPresenter
         if (is_array($design->files) && $design->files !== []) {
             return collect($design->files)->map(fn (array $file, int $index) => [
                 'name' => $file['name'],
+                'displayName' => $design->displayNameFor($file['name']),
                 'uri' => $canAccessFile ? $this->stitchReferenceUrl($design, $index) : null,
             ])->values()->all();
         }
@@ -107,6 +112,7 @@ class DesignPresenter
 
         return [[
             'name' => $design->file_name ?? 'design.dst',
+            'displayName' => $design->displayNameFor($design->file_name ?? 'design.dst'),
             'uri' => $canAccessFile ? $this->stitchReferenceUrl($design) : null,
         ]];
     }

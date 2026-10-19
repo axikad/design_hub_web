@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,10 +10,13 @@ use Illuminate\Support\Str;
 
 class Design extends Model
 {
+    protected $appends = ['display_name'];
+
     protected $fillable = [
         'public_id',
         'user_id',
         'design_type_id',
+        'design_file_type_id',
         'machine_type_id',
         'category_id',
         'show_price',
@@ -60,6 +64,11 @@ class Design extends Model
         return $this->belongsTo(DesignType::class, 'design_type_id');
     }
 
+    public function fileType(): BelongsTo
+    {
+        return $this->belongsTo(DesignFileType::class, 'design_file_type_id');
+    }
+
     public function machineType(): BelongsTo
     {
         return $this->belongsTo(MachineType::class, 'machine_type_id', 'public_id');
@@ -73,5 +82,25 @@ class Design extends Model
     public function scopeListed($query)
     {
         return $query->whereNull('deleted_at');
+    }
+
+    protected function displayName(): Attribute
+    {
+        return Attribute::get(fn () => $this->displayNameFor($this->file_name));
+    }
+
+    public function displayNameFor(?string $originalFileName): string
+    {
+        $selectedExtension = strtolower(ltrim((string) $this->fileType?->extension, '.'));
+        $actualExtension = strtolower(pathinfo((string) $originalFileName, PATHINFO_EXTENSION));
+        $title = trim($this->title);
+
+        if ($selectedExtension !== '' && $actualExtension !== '') {
+            return $title.'.'.$selectedExtension.' (.'.$actualExtension.')';
+        }
+
+        $extension = $selectedExtension !== '' ? $selectedExtension : $actualExtension;
+
+        return $extension !== '' ? $title.'.'.$extension : $title;
     }
 }

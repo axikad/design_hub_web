@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\DesignCategory;
+use App\Models\DesignFileType;
 use App\Models\Machine;
 use App\Models\MachineType;
 use App\Support\ApiResponse;
@@ -11,6 +12,22 @@ use Illuminate\Http\Request;
 
 class CatalogController extends Controller
 {
+    public function designFileTypes()
+    {
+        $fileTypes = DesignFileType::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (DesignFileType $fileType) => [
+                'id' => $fileType->public_id,
+                'name' => $fileType->name,
+                'extension' => $fileType->extension,
+            ]);
+
+        return ApiResponse::data($fileTypes->values(), message: 'Design file types retrieved successfully.');
+    }
+
     public function machines()
     {
         $machines = Machine::query()

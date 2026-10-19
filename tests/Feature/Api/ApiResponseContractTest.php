@@ -4,12 +4,14 @@ namespace Tests\Feature\Api;
 
 use App\Models\Design;
 use App\Models\DesignCategory;
+use App\Models\DesignFileType;
 use App\Models\DesignType;
 use App\Models\Upload;
 use App\Models\User;
 use App\Services\UploadService;
 use App\Support\ApiResponse;
 use Database\Seeders\DesignCatalogSeeder;
+use Database\Seeders\DesignFileTypeSeeder;
 use Database\Seeders\DesignFormOptionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -149,6 +151,7 @@ class ApiResponseContractTest extends TestCase
         $user = User::factory()->create();
         $this->seed(DesignCatalogSeeder::class);
         $this->seed(DesignFormOptionSeeder::class);
+        $this->seed(DesignFileTypeSeeder::class);
         $preview = $this->upload($user, 'public', 'previews/'.$user->public_id.'/front.jpg', 'photo', 'front.jpg');
         $stitch = $this->upload($user, 'local', 'stitch/'.$user->public_id.'/floral.dst', 'stitch', 'floral.dst');
         $uploads = app(UploadService::class);
@@ -158,6 +161,7 @@ class ApiResponseContractTest extends TestCase
             'machineTypeId' => 'machine-embroidery',
             'categoryId' => 'blouse-top',
             'typeId' => 'neckline',
+            'designFileTypeId' => 'dst',
             'showPrice' => false,
             'pricePaise' => 29900,
             'details' => [[
@@ -190,10 +194,15 @@ class ApiResponseContractTest extends TestCase
             ->assertJsonPath('data.machineTypeId', 'machine-embroidery')
             ->assertJsonPath('data.categoryId', 'blouse-top')
             ->assertJsonPath('data.typeId', 'neckline')
+            ->assertJsonPath('data.designFileTypeId', 'dst')
+            ->assertJsonPath('data.designFileTypeName', 'DST')
+            ->assertJsonPath('data.designFileExtension', 'dst')
             ->assertJsonPath('data.showPrice', false)
             ->assertJsonPath('data.details.0.names.1', 'Rose neckline')
             ->assertJsonPath('data.images.0.name', 'front.jpg')
             ->assertJsonPath('data.files.0.name', 'floral.dst')
+            ->assertJsonPath('data.files.0.displayName', 'Floral neckline.dst (.dst)')
+            ->assertJsonPath('data.displayName', 'Floral neckline.dst (.dst)')
             ->assertJsonPath('data.title', 'Floral neckline')
             ->assertJsonPath('data.size', '6 × 6');
 
@@ -203,6 +212,7 @@ class ApiResponseContractTest extends TestCase
             'machine_type_id' => 'machine-embroidery',
             'category_id' => 'blouse-top',
             'show_price' => false,
+            'design_file_type_id' => DesignFileType::query()->where('public_id', 'dst')->value('id'),
         ]);
 
         $viewer = User::factory()->create();
@@ -288,6 +298,38 @@ class ApiResponseContractTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.id', 'pallu')
             ->assertJsonPath('data.0.categoryId', 'saree');
+    }
+
+    public function test_design_file_types_are_active_ordered_and_non_paginated(): void
+    {
+        $this->seed(DesignFileTypeSeeder::class);
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->getJson('/api/v1/catalog/design-file-types')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Design file types retrieved successfully.')
+            ->assertJsonCount(3, 'data')
+            ->assertJsonPath('data.0.id', 'emb')
+            ->assertJsonPath('data.0.name', 'EMB')
+            ->assertJsonPath('data.0.extension', 'emb')
+            ->assertJsonPath('data.1.id', 'dst')
+            ->assertJsonPath('data.2.id', 'dhb')
+            ->assertJsonMissingPath('meta')
+            ->assertJsonMissingPath('links');
+    }
+
+    public function test_design_display_name_uses_selected_and_actual_file_extensions(): void
+    {
+        $this->seed(DesignFileTypeSeeder::class);
+        $fileType = DesignFileType::query()->where('public_id', 'dst')->firstOrFail();
+        $design = $this->createDesign(User::factory()->create(), [
+            'title' => 'Abcd',
+            'design_file_type_id' => $fileType->id,
+            'file_name' => 'original.emb',
+        ]);
+
+        $this->assertSame('Abcd.dst (.emb)', $design->display_name);
     }
 
     public function test_nested_design_validation_errors_use_precise_field_paths(): void

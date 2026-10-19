@@ -18,6 +18,7 @@ Design and user collection endpoints accept `page` and `per_page` (default 20, m
 | POST | `/auth/verify-otp` | Same fields plus `{ code: "1234" }` | `{ user: User, accessToken: string }` |
 | GET | `/users/me` | Bearer token | `User` |
 | GET | `/catalog/design-options` | Bearer token | Combined machines, machine types, and compatible categories (backward-compatible) |
+| GET | `/catalog/design-file-types` | Bearer token | Active design file types ordered by `sort_order` |
 | GET | `/catalog/machines` | Bearer token | Active machines |
 | GET | `/catalog/machines/:machineId/machine-types` | Bearer token | Active machine types for the selected machine |
 | GET | `/catalog/machine-types/:machineTypeId/categories` | Bearer token | Compatible categories for the selected machine type |
@@ -41,6 +42,7 @@ type DesignRequest = {
   machineTypeId: string | null;
   categoryId: string | null;
   typeId: string;
+  designFileTypeId: string; // ID returned by /catalog/design-file-types
   showPrice: boolean;
   title: string;
   pricePaise: number; // INR integer paise; 100..100000000
@@ -53,7 +55,7 @@ type DesignRequest = {
     width: string;
   }>;
   images: Array<{ name: string; uri: string }>;
-  files: Array<{ name: string; uri: string }>;
+  files: Array<{ name: string; uri: string; displayName?: string }>;
   size: string;
   color: string;
   imageUri: string;
@@ -62,6 +64,9 @@ type DesignRequest = {
 };
 type Design = DesignRequest & {
   id: string;
+  designFileTypeName: string | null;
+  designFileExtension: string | null;
+  displayName: string; // Example: "Abcd.dst (.emb)"
   machineId: string | null; // Derived by the backend from machineTypeId
   createdAt: string; // ISO 8601
   ownerKey: string | null; // countryCode + mobileNumber, e.g. +919876543210

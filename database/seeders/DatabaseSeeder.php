@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
         $this->call(SiteSettingSeeder::class);
         $this->call(DesignCatalogSeeder::class);
         $this->call(DesignFormOptionSeeder::class);
+        $this->call(DesignFileTypeSeeder::class);
 
         User::query()->updateOrCreate(
             ['email' => 'admin@designhub.local'],
