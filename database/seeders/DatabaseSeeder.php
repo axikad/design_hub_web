@@ -18,11 +18,13 @@ class DatabaseSeeder extends Seeder
         $this->call(DesignCatalogSeeder::class);
         $this->call(DesignFormOptionSeeder::class);
 
-        User::factory()->create([
-            'name' => 'DesignHub Admin',
-            'email' => 'admin@designhub.local',
-            'password' => 'password',
-            'is_admin' => true,
-        ]);
+        User::query()->updateOrCreate(
+            ['email' => 'admin@designhub.local'],
+            [
+                'name' => 'DesignHub Admin',
+                'password' => 'password',
+                'is_admin' => true,
+            ],
+        );
     }
 }
