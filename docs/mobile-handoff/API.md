@@ -62,10 +62,13 @@ type DesignRequest = {
 };
 type Design = DesignRequest & {
   id: string;
+  machineId: string | null; // Derived by the backend from machineTypeId
   createdAt: string; // ISO 8601
   ownerKey: string | null; // countryCode + mobileNumber, e.g. +919876543210
 };
 ```
+
+Clients send only `machineTypeId` when creating or updating a design. The backend derives and returns `machineId`, so clients do not need to submit duplicate machine data.
 
 The server derives ownership from the token, never from request data, and must enforce it for update/delete and `/users/me/designs`. Null ownerKey is reserved for shared samples. Keep phone formatting consistent with `User`; ownerKey is a compatibility field used by the existing app.
 

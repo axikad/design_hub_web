@@ -60,6 +60,11 @@ class Design extends Model
         return $this->belongsTo(DesignType::class, 'design_type_id');
     }
 
+    public function machineType(): BelongsTo
+    {
+        return $this->belongsTo(MachineType::class, 'machine_type_id', 'public_id');
+    }
+
     public function purchases(): HasMany
     {
         return $this->hasMany(Purchase::class);

@@ -16,7 +16,7 @@ class DesignPresenter
 
     public function forUser(Design $design, ?User $viewer): array
     {
-        $design->loadMissing(['owner', 'type.category']);
+        $design->loadMissing(['owner', 'type.category', 'machineType.machine']);
         $canAccessFile = $viewer !== null && $this->access->canDownloadStitch($viewer, $design);
         $images = $this->images($design);
         $files = $this->files($design, $canAccessFile);
@@ -26,6 +26,7 @@ class DesignPresenter
 
         $payload = [
             'id' => $design->public_id,
+            'machineId' => $design->machineType?->machine?->public_id,
             'machineTypeId' => $design->machine_type_id,
             'title' => $design->title,
             'typeId' => $design->category_id ?? $design->type?->public_id,

@@ -184,6 +184,7 @@ class ApiResponseContractTest extends TestCase
 
         $response = $this->postJson('/api/v1/designs', $payload)
             ->assertCreated()
+            ->assertJsonPath('data.machineId', 'embroidery')
             ->assertJsonPath('data.machineTypeId', 'machine-embroidery')
             ->assertJsonPath('data.categoryId', 'neckline')
             ->assertJsonPath('data.typeId', 'neckline')

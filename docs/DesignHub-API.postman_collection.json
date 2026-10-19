@@ -1962,7 +1962,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": true,\n    \"message\": \"Design retrieved successfully.\",\n    \"data\": {\n        \"id\": \"design_example\",\n        \"machineTypeId\": \"machine-embroidery\",\n        \"categoryId\": \"neckline\",\n        \"typeId\": \"neckline\",\n        \"title\": \"Floral neckline\",\n        \"pricePaise\": 29900,\n        \"images\": [\n            {\n                \"name\": \"front.jpg\",\n                \"uri\": \"https://app.designshub.org/storage/previews/front.jpg\",\n                \"thumbnailUri\": \"https://app.designshub.org/storage/thumbnails/previews/front-thumb.jpg\"\n            }\n        ],\n        \"files\": [\n            {\n                \"name\": \"floral.dst\",\n                \"uri\": null\n            }\n        ]\n    }\n}"
+                            "body": "{\n    \"success\": true,\n    \"message\": \"Design retrieved successfully.\",\n    \"data\": {\n        \"machineId\": \"embroidery\",\n        \"id\": \"design_example\",\n        \"machineTypeId\": \"machine-embroidery\",\n        \"categoryId\": \"neckline\",\n        \"typeId\": \"neckline\",\n        \"title\": \"Floral neckline\",\n        \"pricePaise\": 29900,\n        \"images\": [\n            {\n                \"name\": \"front.jpg\",\n                \"uri\": \"https://app.designshub.org/storage/previews/front.jpg\",\n                \"thumbnailUri\": \"https://app.designshub.org/storage/thumbnails/previews/front-thumb.jpg\"\n            }\n        ],\n        \"files\": [\n            {\n                \"name\": \"floral.dst\",\n                \"uri\": null\n            }\n        ]\n    }\n}"
                         },
                         {
                             "name": "401 - Unauthenticated",
@@ -2084,7 +2084,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": true,\n    \"message\": \"Design created successfully.\",\n    \"data\": {\n        \"id\": \"design_example\",\n        \"machineTypeId\": \"machine-embroidery\",\n        \"categoryId\": \"neckline\",\n        \"typeId\": \"neckline\",\n        \"title\": \"Floral neckline\"\n    }\n}"
+                            "body": "{\n    \"success\": true,\n    \"message\": \"Design created successfully.\",\n    \"data\": {\n        \"machineId\": \"embroidery\",\n        \"id\": \"design_example\",\n        \"machineTypeId\": \"machine-embroidery\",\n        \"categoryId\": \"neckline\",\n        \"typeId\": \"neckline\",\n        \"title\": \"Floral neckline\"\n    }\n}"
                         },
                         {
                             "name": "401 - Unauthenticated",
