@@ -229,6 +229,30 @@ class ApiResponseContractTest extends TestCase
             ->assertJsonMissingPath('links');
     }
 
+    public function test_design_options_can_be_loaded_from_separate_catalog_endpoints(): void
+    {
+        $this->seed(DesignFormOptionSeeder::class);
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->getJson('/api/v1/catalog/machines')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', 'embroidery');
+
+        $this->getJson('/api/v1/catalog/machines/embroidery/machine-types')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', 'machine-embroidery')
+            ->assertJsonPath('data.0.machineId', 'embroidery');
+
+        $this->getJson('/api/v1/catalog/machine-types/machine-embroidery/categories')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', 'neckline')
+            ->assertJsonPath('data.0.machineTypeId', 'machine-embroidery');
+
+        $this->getJson('/api/v1/catalog/categories/neckline/types')
+            ->assertOk()
+            ->assertJsonPath('data', []);
+    }
+
     public function test_nested_design_validation_errors_use_precise_field_paths(): void
     {
         $user = User::factory()->create();

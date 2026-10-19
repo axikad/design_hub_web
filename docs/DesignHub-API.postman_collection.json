@@ -1216,6 +1216,330 @@
                             "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
                         }
                     ]
+                },
+                {
+                    "name": "List Machines",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const json = pm.response.json();",
+                                    "const first = json.data?.[0];",
+                                    "if (first) pm.collectionVariables.set('machine_id', first.id);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/catalog/machines",
+                        "description": "Read-only catalog endpoint. Run the preceding catalog request first so its selected ID is saved automatically."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - Machines retrieved successfully.",
+                            "originalRequest": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/catalog/machines",
+                                "description": "Read-only catalog endpoint. Run the preceding catalog request first so its selected ID is saved automatically."
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": true,\n    \"message\": \"Machines retrieved successfully.\",\n    \"data\": [\n        {\n            \"id\": \"embroidery\",\n            \"name\": \"Embroidery\"\n        }\n    ]\n}"
+                        },
+                        {
+                            "name": "401 - Unauthenticated",
+                            "originalRequest": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/catalog/machines",
+                                "description": "Read-only catalog endpoint. Run the preceding catalog request first so its selected ID is saved automatically."
+                            },
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                        }
+                    ]
+                },
+                {
+                    "name": "List Machine Types",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const json = pm.response.json();",
+                                    "const first = json.data?.[0];",
+                                    "if (first) pm.collectionVariables.set('machine_type_id', first.id);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/catalog/machines/{{machine_id}}/machine-types",
+                        "description": "Read-only catalog endpoint. Run the preceding catalog request first so its selected ID is saved automatically."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - Machine types retrieved successfully.",
+                            "originalRequest": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/catalog/machines/{{machine_id}}/machine-types",
+                                "description": "Read-only catalog endpoint. Run the preceding catalog request first so its selected ID is saved automatically."
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": true,\n    \"message\": \"Machine types retrieved successfully.\",\n    \"data\": [\n        {\n            \"id\": \"machine-embroidery\",\n            \"name\": \"Embroidery machine\",\n            \"machineId\": \"embroidery\"\n        }\n    ]\n}"
+                        },
+                        {
+                            "name": "401 - Unauthenticated",
+                            "originalRequest": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/catalog/machines/{{machine_id}}/machine-types",
+                                "description": "Read-only catalog endpoint. Run the preceding catalog request first so its selected ID is saved automatically."
+                            },
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                        }
+                    ]
+                },
+                {
+                    "name": "List Machine Type Categories",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const json = pm.response.json();",
+                                    "const first = json.data?.[0];",
+                                    "if (first) pm.collectionVariables.set('category_id', first.id);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/catalog/machine-types/{{machine_type_id}}/categories",
+                        "description": "Read-only catalog endpoint. Run the preceding catalog request first so its selected ID is saved automatically."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - Categories retrieved successfully.",
+                            "originalRequest": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/catalog/machine-types/{{machine_type_id}}/categories",
+                                "description": "Read-only catalog endpoint. Run the preceding catalog request first so its selected ID is saved automatically."
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": true,\n    \"message\": \"Categories retrieved successfully.\",\n    \"data\": [\n        {\n            \"id\": \"neckline\",\n            \"name\": \"Neckline\",\n            \"machineTypeId\": \"machine-embroidery\"\n        }\n    ]\n}"
+                        },
+                        {
+                            "name": "401 - Unauthenticated",
+                            "originalRequest": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/catalog/machine-types/{{machine_type_id}}/categories",
+                                "description": "Read-only catalog endpoint. Run the preceding catalog request first so its selected ID is saved automatically."
+                            },
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                        }
+                    ]
+                },
+                {
+                    "name": "List Category Types",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const json = pm.response.json();",
+                                    "const first = json.data?.[0];",
+                                    "if (first) pm.collectionVariables.set('type_id', first.id);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/catalog/categories/{{category_id}}/types",
+                        "description": "Read-only catalog endpoint. Run the preceding catalog request first so its selected ID is saved automatically."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - Design types retrieved successfully.",
+                            "originalRequest": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/catalog/categories/{{category_id}}/types",
+                                "description": "Read-only catalog endpoint. Run the preceding catalog request first so its selected ID is saved automatically."
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": true,\n    \"message\": \"Design types retrieved successfully.\",\n    \"data\": []\n}"
+                        },
+                        {
+                            "name": "401 - Unauthenticated",
+                            "originalRequest": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/catalog/categories/{{category_id}}/types",
+                                "description": "Read-only catalog endpoint. Run the preceding catalog request first so its selected ID is saved automatically."
+                            },
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                        }
+                    ]
                 }
             ]
         },

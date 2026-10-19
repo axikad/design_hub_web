@@ -21,6 +21,10 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('catalog/categories', [CatalogController::class, 'categories']);
         Route::get('catalog/design-options', [CatalogController::class, 'designOptions']);
+        Route::get('catalog/machines', [CatalogController::class, 'machines']);
+        Route::get('catalog/machines/{machineId}/machine-types', [CatalogController::class, 'machineTypes']);
+        Route::get('catalog/machine-types/{machineTypeId}/categories', [CatalogController::class, 'machineTypeCategories']);
+        Route::get('catalog/categories/{categoryId}/types', [CatalogController::class, 'categoryTypes']);
 
         Route::get('users/me', [UserController::class, 'me']);
         Route::get('users/me/designs', [UserController::class, 'myDesigns']);

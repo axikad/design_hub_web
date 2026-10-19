@@ -11,6 +11,81 @@ use Illuminate\Http\Request;
 
 class CatalogController extends Controller
 {
+    public function machines()
+    {
+        $machines = Machine::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Machine $machine) => [
+                'id' => $machine->public_id,
+                'name' => $machine->name,
+            ]);
+
+        return ApiResponse::data($machines->values(), message: 'Machines retrieved successfully.');
+    }
+
+    public function machineTypes(string $machineId)
+    {
+        $machine = Machine::query()
+            ->where('public_id', $machineId)
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        $machineTypes = $machine->machineTypes()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (MachineType $machineType) => [
+                'id' => $machineType->public_id,
+                'name' => $machineType->name,
+                'machineId' => $machine->public_id,
+            ]);
+
+        return ApiResponse::data($machineTypes->values(), message: 'Machine types retrieved successfully.');
+    }
+
+    public function machineTypeCategories(string $machineTypeId)
+    {
+        $machineType = MachineType::query()
+            ->where('public_id', $machineTypeId)
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        $categories = $machineType->categories()
+            ->where('design_categories.is_active', true)
+            ->orderBy('design_categories.sort_order')
+            ->orderBy('design_categories.name')
+            ->get()
+            ->map(fn (DesignCategory $category) => [
+                'id' => $category->public_id,
+                'name' => $category->name,
+                'machineTypeId' => $machineType->public_id,
+            ]);
+
+        return ApiResponse::data($categories->values(), message: 'Categories retrieved successfully.');
+    }
+
+    public function categoryTypes(string $categoryId)
+    {
+        $category = DesignCategory::query()
+            ->where('public_id', $categoryId)
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        $types = $category->activeTypes
+            ->map(fn ($type) => [
+                'id' => $type->public_id,
+                'name' => $type->name,
+                'description' => $type->description,
+                'categoryId' => $category->public_id,
+            ]);
+
+        return ApiResponse::data($types->values(), message: 'Design types retrieved successfully.');
+    }
+
     public function designOptions()
     {
         $machines = Machine::query()

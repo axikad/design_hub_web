@@ -17,6 +17,11 @@ Design and user collection endpoints accept `page` and `per_page` (default 20, m
 | POST | `/auth/request-otp` | `{ flow: "login" or "register", name: string or null, countryCode: "+91", mobileNumber: "9876543210" }` | `{ message: "OTP sent successfully." }` |
 | POST | `/auth/verify-otp` | Same fields plus `{ code: "1234" }` | `{ user: User, accessToken: string }` |
 | GET | `/users/me` | Bearer token | `User` |
+| GET | `/catalog/design-options` | Bearer token | Combined machines, machine types, and compatible categories (backward-compatible) |
+| GET | `/catalog/machines` | Bearer token | Active machines |
+| GET | `/catalog/machines/:machineId/machine-types` | Bearer token | Active machine types for the selected machine |
+| GET | `/catalog/machine-types/:machineTypeId/categories` | Bearer token | Compatible categories for the selected machine type |
+| GET | `/catalog/categories/:categoryId/types` | Bearer token | Active design types for the selected category |
 | GET | `/designs` | Bearer token | `Design[]`, all community designs, newest first |
 | GET | `/users/me/designs` | Bearer token | `Design[]`, only authenticated user's designs |
 | GET | `/designs/:id` | Bearer token | `Design` (404 if missing) |
