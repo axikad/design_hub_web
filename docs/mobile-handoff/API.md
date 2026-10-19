@@ -70,6 +70,14 @@ type Design = DesignRequest & {
 
 Clients send only `machineTypeId` when creating or updating a design. The backend derives and returns `machineId`, so clients do not need to submit duplicate machine data.
 
+Catalog selection uses two levels. `categoryId` is the main product group and `typeId` is its placement/type:
+
+- `saree`: `pallu`, `border`, `all-over`
+- `blouse-top`: `neckline`, `sleeve`, `back`
+- `general`: `motif`, `logo`, `patch`
+
+Load compatible categories after selecting a machine type, then load types for the selected category. Legacy requests that used the same category and type ID remain temporarily supported.
+
 The server derives ownership from the token, never from request data, and must enforce it for update/delete and `/users/me/designs`. Null ownerKey is reserved for shared samples. Keep phone formatting consistent with `User`; ownerKey is a compatibility field used by the existing app.
 
 Local photo/file URIs are uploaded before saving. The ordered `images` and `files` arrays contain URLs returned by `/uploads`; the server verifies that every attachment belongs to the authenticated user. Image URLs are public, while stitch file names are visible but their URIs are returned only to the owner or a paid buyer through the protected signed-download flow. The flat attachment and summary fields remain for catalog-card and older-client compatibility.

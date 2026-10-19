@@ -9,6 +9,7 @@ use App\Models\Upload;
 use App\Models\User;
 use App\Services\UploadService;
 use App\Support\ApiResponse;
+use Database\Seeders\DesignCatalogSeeder;
 use Database\Seeders\DesignFormOptionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -146,6 +147,7 @@ class ApiResponseContractTest extends TestCase
     public function test_design_create_preserves_the_complete_mobile_form_contract(): void
     {
         $user = User::factory()->create();
+        $this->seed(DesignCatalogSeeder::class);
         $this->seed(DesignFormOptionSeeder::class);
         $preview = $this->upload($user, 'public', 'previews/'.$user->public_id.'/front.jpg', 'photo', 'front.jpg');
         $stitch = $this->upload($user, 'local', 'stitch/'.$user->public_id.'/floral.dst', 'stitch', 'floral.dst');
@@ -154,7 +156,7 @@ class ApiResponseContractTest extends TestCase
 
         $payload = [
             'machineTypeId' => 'machine-embroidery',
-            'categoryId' => 'neckline',
+            'categoryId' => 'blouse-top',
             'typeId' => 'neckline',
             'showPrice' => false,
             'pricePaise' => 29900,
@@ -186,7 +188,7 @@ class ApiResponseContractTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.machineId', 'embroidery')
             ->assertJsonPath('data.machineTypeId', 'machine-embroidery')
-            ->assertJsonPath('data.categoryId', 'neckline')
+            ->assertJsonPath('data.categoryId', 'blouse-top')
             ->assertJsonPath('data.typeId', 'neckline')
             ->assertJsonPath('data.showPrice', false)
             ->assertJsonPath('data.details.0.names.1', 'Rose neckline')
@@ -199,7 +201,7 @@ class ApiResponseContractTest extends TestCase
         $this->assertDatabaseHas('designs', [
             'public_id' => $designId,
             'machine_type_id' => 'machine-embroidery',
-            'category_id' => 'neckline',
+            'category_id' => 'blouse-top',
             'show_price' => false,
         ]);
 
@@ -222,9 +224,15 @@ class ApiResponseContractTest extends TestCase
             ->assertJsonPath('message', 'Design options retrieved successfully.')
             ->assertJsonPath('data.machines.0.id', 'embroidery')
             ->assertJsonPath('data.machines.0.machineTypeIds.0', 'machine-embroidery')
+            ->assertJsonFragment(['id' => 'machine-embroidery', 'name' => 'Multi Head'])
+            ->assertJsonFragment(['id' => 'sequin', 'name' => 'Sequin'])
+            ->assertJsonFragment(['id' => 'multi-sequin', 'name' => 'Multi Sequin'])
+            ->assertJsonFragment(['id' => 'air-jet-loom', 'name' => 'Air Jet Loom'])
+            ->assertJsonFragment(['id' => 'dobby-air-jet', 'machineId' => 'air-jet-loom'])
+            ->assertJsonFragment(['id' => 'jacquard-air-jet', 'machineId' => 'air-jet-loom'])
             ->assertJsonPath('data.machineTypes.0.id', 'machine-embroidery')
             ->assertJsonPath('data.machineTypes.0.machineId', 'embroidery')
-            ->assertJsonPath('data.categories.0.id', 'neckline')
+            ->assertJsonPath('data.categories.0.id', 'saree')
             ->assertJsonPath('data.categories.0.machineTypeIds.0', 'machine-embroidery')
             ->assertJsonMissingPath('meta')
             ->assertJsonMissingPath('links');
@@ -233,6 +241,7 @@ class ApiResponseContractTest extends TestCase
     public function test_design_options_can_be_loaded_from_separate_catalog_endpoints(): void
     {
         $this->seed(DesignFormOptionSeeder::class);
+        $this->seed(DesignCatalogSeeder::class);
         Sanctum::actingAs(User::factory()->create());
 
         $this->getJson('/api/v1/catalog/machines')
@@ -244,14 +253,20 @@ class ApiResponseContractTest extends TestCase
             ->assertJsonPath('data.0.id', 'machine-embroidery')
             ->assertJsonPath('data.0.machineId', 'embroidery');
 
+        $this->getJson('/api/v1/catalog/machines/air-jet-loom/machine-types')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', 'dobby-air-jet')
+            ->assertJsonPath('data.1.id', 'jacquard-air-jet');
+
         $this->getJson('/api/v1/catalog/machine-types/machine-embroidery/categories')
             ->assertOk()
-            ->assertJsonPath('data.0.id', 'neckline')
+            ->assertJsonPath('data.0.id', 'saree')
             ->assertJsonPath('data.0.machineTypeId', 'machine-embroidery');
 
-        $this->getJson('/api/v1/catalog/categories/neckline/types')
+        $this->getJson('/api/v1/catalog/categories/saree/types')
             ->assertOk()
-            ->assertJsonPath('data', []);
+            ->assertJsonPath('data.0.id', 'pallu')
+            ->assertJsonPath('data.0.categoryId', 'saree');
     }
 
     public function test_nested_design_validation_errors_use_precise_field_paths(): void

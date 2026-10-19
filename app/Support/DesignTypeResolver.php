@@ -54,10 +54,33 @@ final class DesignTypeResolver
             ];
         }
 
+        $type = DesignType::query()
+            ->with('category')
+            ->where('public_id', $typeId)
+            ->where('is_active', true)
+            ->first();
+
+        if ($type === null || $type->category === null || ! $type->category->is_active) {
+            throw new \InvalidArgumentException('Selected type is invalid or inactive.');
+        }
+
+        if ($categoryId !== $type->category->public_id) {
+            throw new \InvalidArgumentException('The selected type does not belong to this category.');
+        }
+
+        $machine = MachineType::query()
+            ->where('public_id', $machineTypeId)
+            ->where('is_active', true)
+            ->first();
+
+        if ($machine === null || ! $type->category->machineTypes()->whereKey($machine->id)->exists()) {
+            throw new \InvalidArgumentException('The selected category is not available for this machine type.');
+        }
+
         return [
-            'design_type_id' => self::idFromPublicId($typeId),
-            'category_id' => $categoryId,
-            'machine_type_id' => $machineTypeId,
+            'design_type_id' => $type->id,
+            'category_id' => $type->category->public_id,
+            'machine_type_id' => $machine->public_id,
         ];
     }
 }

@@ -67,7 +67,7 @@
         },
         {
             "key": "type_id",
-            "value": ""
+            "value": "pallu"
         },
         {
             "key": "machine_id",
@@ -79,7 +79,7 @@
         },
         {
             "key": "category_id",
-            "value": "neckline"
+            "value": "saree"
         }
     ],
     "auth": {
