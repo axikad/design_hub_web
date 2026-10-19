@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { Cog, Cpu, FolderTree, Layers, LayoutGrid, Palette, Settings, ShieldCheck, ShoppingBag, UsersRound } from 'lucide-react';
+import { Cog, Cpu, FileType2, FolderTree, Layers, LayoutGrid, Palette, Settings, ShieldCheck, ShoppingBag, UsersRound } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -32,6 +32,11 @@ const mainNavItems: NavItem[] = [
         title: 'Design Types',
         url: '/admin/types',
         icon: Layers,
+    },
+    {
+        title: 'Design File Types',
+        url: '/admin/design-file-types',
+        icon: FileType2,
     },
     {
         title: 'Designs',

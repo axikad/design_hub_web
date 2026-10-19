@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\CategoryAdminController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DesignAdminController;
+use App\Http\Controllers\Admin\DesignFileTypeAdminController;
 use App\Http\Controllers\Admin\MachineAdminController;
 use App\Http\Controllers\Admin\MachineTypeAdminController;
 use App\Http\Controllers\Admin\PurchaseAdminController;
@@ -58,6 +59,11 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('admin/types', TypeAdminController::class)
         ->parameters(['types' => 'type'])
         ->names('admin.types')
+        ->except(['show']);
+
+    Route::resource('admin/design-file-types', DesignFileTypeAdminController::class)
+        ->parameters(['design-file-types' => 'designFileType'])
+        ->names('admin.design-file-types')
         ->except(['show']);
 
     Route::resource('admin/designs', DesignAdminController::class)
