@@ -40,16 +40,34 @@ class DesignFormOptionSeeder extends Seeder
         // Retain the legacy row for existing designs, but hide the duplicate from selection APIs.
         MachineType::query()->where('public_id', 'multi-head')->update(['is_active' => false]);
 
-        collect([
+        $categories = collect([
             ['public_id' => 'saree', 'name' => 'Saree'],
             ['public_id' => 'blouse-top', 'name' => 'Blouse / Top'],
             ['public_id' => 'general', 'name' => 'General'],
-        ])->each(function (array $option, int $index) use ($machineTypes) {
+        ])->mapWithKeys(function (array $option, int $index) {
             $category = DesignCategory::query()->updateOrCreate(
                 ['public_id' => $option['public_id']],
                 ['name' => $option['name'], 'is_active' => true, 'sort_order' => $index + 1],
             );
-            $category->machineTypes()->sync($machineTypes->pluck('id'));
+
+            return [$category->public_id => $category];
+        });
+
+        $categoryMappings = [
+            'machine-embroidery' => ['saree', 'blouse-top', 'general'],
+            'sequin' => ['saree', 'blouse-top'],
+            'multi-sequin' => ['saree'],
+            'dobby-air-jet' => ['saree', 'general'],
+            'jacquard-air-jet' => ['saree'],
+        ];
+
+        $machineTypes->each(function (MachineType $machineType) use ($categories, $categoryMappings) {
+            $categoryIds = collect($categoryMappings[$machineType->public_id] ?? [])
+                ->map(fn (string $categoryId) => $categories->get($categoryId)?->id)
+                ->filter()
+                ->values();
+
+            $machineType->categories()->sync($categoryIds);
         });
 
         DesignCategory::query()

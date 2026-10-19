@@ -263,6 +263,27 @@ class ApiResponseContractTest extends TestCase
             ->assertJsonPath('data.0.id', 'saree')
             ->assertJsonPath('data.0.machineTypeId', 'machine-embroidery');
 
+        $this->getJson('/api/v1/catalog/machine-types/sequin/categories')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.id', 'saree')
+            ->assertJsonPath('data.1.id', 'blouse-top');
+
+        $this->getJson('/api/v1/catalog/machine-types/multi-sequin/categories')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', 'saree');
+
+        $this->getJson('/api/v1/catalog/machine-types/dobby-air-jet/categories')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.1.id', 'general');
+
+        $this->getJson('/api/v1/catalog/machine-types/jacquard-air-jet/categories')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', 'saree');
+
         $this->getJson('/api/v1/catalog/categories/saree/types')
             ->assertOk()
             ->assertJsonPath('data.0.id', 'pallu')
