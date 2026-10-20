@@ -35,7 +35,7 @@ type DesignForm = {
     designFileTypeId?: string | null;
     priceRupees: string;
     variants?: VariantInput[];
-    fileName?: string | null;
+    files?: { name: string }[];
     imageUri?: string | null;
 };
 type Props = {
@@ -93,7 +93,7 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                   ? [emptyVariant(initialType.id)]
                   : [],
         previewImage: null as File | null,
-        stitchFile: null as File | null,
+        stitchFiles: [] as File[],
     });
     const { data, setData, post, processing, errors } = form;
     const machineTypes = catalog.find((machine) => machine.id === data.machineId)?.machineTypes ?? [];
@@ -237,32 +237,6 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                         {!catalog.length ? <p className="mt-4 text-sm text-amber-700">Add active catalog options before creating designs.</p> : null}
                     </AdminFormPanel>
 
-                    <AdminFormPanel title="Pricing and format" description="Set the design file format and marketplace price." icon={Tag}>
-                        <div className="grid gap-5 sm:grid-cols-2">
-                            <div className="grid gap-2">
-                                <Label htmlFor="priceRupees">Price (INR)</Label>
-                                <Input
-                                    id="priceRupees"
-                                    type="number"
-                                    step="0.01"
-                                    min="1"
-                                    value={data.priceRupees}
-                                    onChange={(event) => setData('priceRupees', event.target.value)}
-                                    required
-                                    className={inputClass}
-                                />
-                                <InputError message={errors.priceRupees} />
-                            </div>
-                            <SelectField
-                                label="File type"
-                                value={data.designFileTypeId}
-                                onChange={(value) => setData('designFileTypeId', value)}
-                                options={fileTypes.map((item) => ({ ...item, name: `${item.name} (.${item.extension})` }))}
-                                error={errors.designFileTypeId}
-                            />
-                        </div>
-                    </AdminFormPanel>
-
                     <AdminFormPanel
                         title="Design type specifications"
                         description="Enter separate specifications for every selected design type."
@@ -334,6 +308,32 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                         </div>
                     </AdminFormPanel>
 
+                    <AdminFormPanel title="Pricing and format" description="Set the design file format and marketplace price." icon={Tag}>
+                        <div className="grid gap-5 sm:grid-cols-2">
+                            <div className="grid gap-2">
+                                <Label htmlFor="priceRupees">Price (INR)</Label>
+                                <Input
+                                    id="priceRupees"
+                                    type="number"
+                                    step="0.01"
+                                    min="1"
+                                    value={data.priceRupees}
+                                    onChange={(event) => setData('priceRupees', event.target.value)}
+                                    required
+                                    className={inputClass}
+                                />
+                                <InputError message={errors.priceRupees} />
+                            </div>
+                            <SelectField
+                                label="File type"
+                                value={data.designFileTypeId}
+                                onChange={(value) => setData('designFileTypeId', value)}
+                                options={fileTypes.map((item) => ({ ...item, name: `${item.name} (.${item.extension})` }))}
+                                error={errors.designFileTypeId}
+                            />
+                        </div>
+                    </AdminFormPanel>
+
                     <div className="grid gap-5 lg:grid-cols-2">
                         <AdminFormPanel
                             title="Preview image"
@@ -357,17 +357,29 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                             <InputError message={errors.previewImage} className="mt-2" />
                         </AdminFormPanel>
                         <AdminFormPanel
-                            title="Stitch file"
-                            description={editing ? `Current file: ${design?.fileName ?? 'none'}` : 'Upload the downloadable stitch file.'}
+                            title="Stitch files"
+                            description={editing ? 'Select new files only when you want to replace all current stitch files.' : 'Upload up to 20 downloadable stitch files.'}
                             icon={FileArchive}
                         >
+                            {editing && design?.files?.length ? (
+                                <div className="mb-4 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/70">
+                                    <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Current files</p>
+                                    <ul className="space-y-1 text-sm text-slate-700 dark:text-slate-200">
+                                        {design.files.map((file, index) => (
+                                            <li key={`${file.name}-${index}`}>{file.name}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ) : null}
                             <Input
-                                id="stitchFile"
+                                id="stitchFiles"
                                 type="file"
-                                onChange={(event) => setData('stitchFile', event.target.files?.[0] ?? null)}
+                                multiple
+                                onChange={(event) => setData('stitchFiles', Array.from(event.target.files ?? []))}
                                 className={inputClass}
                             />
-                            <InputError message={errors.stitchFile} className="mt-2" />
+                            <p className="mt-2 text-xs text-slate-500">Maximum 20 files, 5 MB per file.</p>
+                            <InputError message={errors.stitchFiles} className="mt-2" />
                         </AdminFormPanel>
                     </div>
 

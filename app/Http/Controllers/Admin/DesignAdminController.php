@@ -98,9 +98,10 @@ class DesignAdminController extends Controller
         $owner = User::query()->where('public_id', $validated['ownerId'])->firstOrFail();
 
         $previewPath = $request->file('previewImage')?->store('previews/'.$owner->public_id, 'public');
-        $stitchPath = $request->file('stitchFile')?->store('stitch/'.$owner->public_id, 'local');
+        $stitchFiles = $this->storeStitchFiles($request, $owner);
+        $firstStitchFile = $stitchFiles[0];
 
-        DB::transaction(function () use ($owner, $validated, $previewPath, $stitchPath, $request) {
+        DB::transaction(function () use ($owner, $validated, $previewPath, $stitchFiles, $firstStitchFile) {
             $design = Design::query()->create([
                 'user_id' => $owner->id,
                 'design_type_id' => $validated['designTypeId'],
@@ -112,9 +113,10 @@ class DesignAdminController extends Controller
                 'size' => $validated['size'],
                 'color' => '',
                 'details' => $validated['details'],
+                'files' => $stitchFiles,
                 'preview_path' => $previewPath,
-                'stitch_path' => $stitchPath,
-                'file_name' => $request->file('stitchFile')?->getClientOriginalName(),
+                'stitch_path' => $firstStitchFile['path'],
+                'file_name' => $firstStitchFile['name'],
             ]);
 
             $design->variants()->createMany($validated['variants']);
@@ -141,7 +143,9 @@ class DesignAdminController extends Controller
                 'designFileTypeId' => $model->fileType?->public_id,
                 'priceRupees' => $model->price_paise !== null ? number_format($model->price_paise / 100, 2, '.', '') : '',
                 'variants' => $this->variantsForForm($model),
-                'fileName' => $model->file_name,
+                'files' => collect($this->existingStitchFiles($model))->map(fn (array $file) => [
+                    'name' => $file['name'],
+                ])->values()->all(),
                 'imageUri' => $this->presenter->previewUrl($model),
             ],
             'owners' => $this->ownerOptions(),
@@ -165,17 +169,21 @@ class DesignAdminController extends Controller
             $previewPath = $request->file('previewImage')->store('previews/'.$owner->public_id, 'public');
         }
 
-        $stitchPath = $model->stitch_path;
-        $fileName = $model->file_name;
-        if ($request->hasFile('stitchFile')) {
-            if ($stitchPath) {
-                Storage::disk('local')->delete($stitchPath);
-            }
-            $stitchPath = $request->file('stitchFile')->store('stitch/'.$owner->public_id, 'local');
-            $fileName = $request->file('stitchFile')->getClientOriginalName();
+        $stitchFiles = $this->existingStitchFiles($model);
+        if ($request->hasFile('stitchFiles')) {
+            Storage::disk('local')->delete(collect($stitchFiles)->pluck('path')->filter()->unique()->all());
+            $stitchFiles = $this->storeStitchFiles($request, $owner);
         }
 
-        DB::transaction(function () use ($model, $owner, $validated, $previewPath, $stitchPath, $fileName) {
+        if ($stitchFiles === []) {
+            throw ValidationException::withMessages([
+                'stitchFiles' => 'Upload at least one stitch file.',
+            ]);
+        }
+
+        $firstStitchFile = $stitchFiles[0];
+
+        DB::transaction(function () use ($model, $owner, $validated, $previewPath, $stitchFiles, $firstStitchFile) {
             $model->update([
                 'user_id' => $owner->id,
                 'design_type_id' => $validated['designTypeId'],
@@ -187,9 +195,10 @@ class DesignAdminController extends Controller
                 'size' => $validated['size'],
                 'color' => '',
                 'details' => $validated['details'],
+                'files' => $stitchFiles,
                 'preview_path' => $previewPath,
-                'stitch_path' => $stitchPath,
-                'file_name' => $fileName,
+                'stitch_path' => $firstStitchFile['path'],
+                'file_name' => $firstStitchFile['name'],
             ]);
 
             $model->variants()->delete();
@@ -241,7 +250,8 @@ class DesignAdminController extends Controller
             'variants.*.height' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
             'variants.*.width' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
             'previewImage' => [$creating ? 'required' : 'nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'stitchFile' => [$creating ? 'required' : 'nullable', 'file', 'max:5120'],
+            'stitchFiles' => [$creating ? 'required' : 'nullable', 'array', 'min:1', 'max:20'],
+            'stitchFiles.*' => ['required', 'file', 'max:5120'],
         ];
 
         $validated = $request->validate($rules);
@@ -355,6 +365,35 @@ class DesignAdminController extends Controller
             'area' => 0,
             'height' => 0,
             'width' => 0,
+        ]];
+    }
+
+    /** @return list<array{name: string, path: string}> */
+    private function storeStitchFiles(Request $request, User $owner): array
+    {
+        return collect($request->file('stitchFiles', []))->map(fn ($file) => [
+            'name' => $file->getClientOriginalName(),
+            'path' => $file->store('stitch/'.$owner->public_id, 'local'),
+        ])->values()->all();
+    }
+
+    /** @return list<array{name: string, path: string}> */
+    private function existingStitchFiles(Design $design): array
+    {
+        if (is_array($design->files) && $design->files !== []) {
+            return collect($design->files)->map(fn (array $file) => [
+                'name' => $file['name'],
+                'path' => $file['path'],
+            ])->values()->all();
+        }
+
+        if ($design->stitch_path === null) {
+            return [];
+        }
+
+        return [[
+            'name' => $design->file_name ?? 'design-file',
+            'path' => $design->stitch_path,
         ]];
     }
 

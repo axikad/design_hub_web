@@ -60,7 +60,10 @@ class DesignManagementTest extends TestCase
                 ],
             ],
             'previewImage' => UploadedFile::fake()->image('preview.jpg'),
-            'stitchFile' => UploadedFile::fake()->create('original.emb', 100, 'application/octet-stream'),
+            'stitchFiles' => [
+                UploadedFile::fake()->create('original.emb', 100, 'application/octet-stream'),
+                UploadedFile::fake()->create('alternate.dst', 100, 'application/octet-stream'),
+            ],
         ])->assertRedirect(route('admin.designs.index'));
 
         $this->assertDatabaseHas('designs', [
@@ -82,6 +85,7 @@ class DesignManagementTest extends TestCase
             'name_or_number' => 'Border 102',
             'needle' => 8,
         ]);
+        $this->assertCount(2, Design::query()->where('title', 'Pallu 101')->firstOrFail()->files);
     }
 
     public function test_admin_design_rejects_a_machine_type_from_another_machine(): void
@@ -110,7 +114,7 @@ class DesignManagementTest extends TestCase
                 'width' => 6,
             ]],
             'previewImage' => UploadedFile::fake()->image('preview.jpg'),
-            'stitchFile' => UploadedFile::fake()->create('original.emb', 100, 'application/octet-stream'),
+            'stitchFiles' => [UploadedFile::fake()->create('original.emb', 100, 'application/octet-stream')],
         ])->assertSessionHasErrors('machineTypeId');
 
         $this->assertDatabaseMissing('designs', ['title' => 'Invalid selection']);
@@ -137,6 +141,12 @@ class DesignManagementTest extends TestCase
             'price_paise' => 29900,
             'size' => '6 x 6',
             'color' => '',
+            'stitch_path' => 'stitch/'.$owner->public_id.'/old.emb',
+            'file_name' => 'old.emb',
+            'files' => [[
+                'name' => 'old.emb',
+                'path' => 'stitch/'.$owner->public_id.'/old.emb',
+            ]],
         ]);
         $design->variants()->create([
             'design_type_id' => $type->id,
@@ -168,6 +178,10 @@ class DesignManagementTest extends TestCase
                 'height' => 3,
                 'width' => 12,
             ]],
+            'stitchFiles' => [
+                UploadedFile::fake()->create('new-border.dst', 100, 'application/octet-stream'),
+                UploadedFile::fake()->create('new-border.emb', 100, 'application/octet-stream'),
+            ],
         ])->assertRedirect(route('admin.designs.index'));
 
         $this->assertDatabaseMissing('design_variants', [
@@ -179,6 +193,9 @@ class DesignManagementTest extends TestCase
             'design_type_id' => $secondType->id,
             'name_or_number' => 'New border',
         ]);
+        $design->refresh();
+        $this->assertSame(['new-border.dst', 'new-border.emb'], collect($design->files)->pluck('name')->all());
+        $this->assertSame('new-border.dst', $design->file_name);
     }
 
     /** @return array{Machine, MachineType, DesignCategory, DesignType, DesignFileType} */
