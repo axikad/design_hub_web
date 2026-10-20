@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\OtpChallenge;
+use App\Models\Role;
 use App\Models\User;
 use App\Support\PhoneNormalizer;
 use Illuminate\Support\Facades\Hash;
@@ -97,8 +98,13 @@ class OtpService
 
         if ($flow === 'register') {
             $this->validateRegistrationName($name ?? $challenge->name);
+            $marketplaceRole = Role::query()->firstOrCreate(
+                ['slug' => 'marketplace_user'],
+                ['name' => 'Marketplace User'],
+            );
 
             return User::query()->create([
+                'role_id' => $marketplaceRole->id,
                 'name' => trim((string) ($name ?? $challenge->name)),
                 'country_code' => $countryCode,
                 'mobile_number' => preg_replace('/\D+/', '', $mobileNumber),

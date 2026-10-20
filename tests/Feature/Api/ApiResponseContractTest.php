@@ -6,6 +6,7 @@ use App\Models\Design;
 use App\Models\DesignCategory;
 use App\Models\DesignFileType;
 use App\Models\DesignType;
+use App\Models\Role;
 use App\Models\Upload;
 use App\Models\User;
 use App\Services\UploadService;
@@ -90,6 +91,11 @@ class ApiResponseContractTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.user.name', 'Rajvi')
             ->assertJsonStructure(['data' => ['accessToken']]);
+
+        $this->assertDatabaseHas('users', [
+            'phone_key' => '+919054632726',
+            'role_id' => Role::query()->where('slug', 'marketplace_user')->value('id'),
+        ]);
     }
 
     public function test_missing_resources_use_the_standard_not_found_response(): void
