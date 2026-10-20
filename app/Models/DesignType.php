@@ -44,4 +44,9 @@ class DesignType extends Model
     {
         return $this->hasMany(Design::class);
     }
+
+    public function variants(): HasMany
+    {
+        return $this->hasMany(DesignVariant::class);
+    }
 }

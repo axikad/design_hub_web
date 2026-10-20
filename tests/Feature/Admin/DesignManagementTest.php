@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Design;
 use App\Models\DesignCategory;
 use App\Models\DesignFileType;
 use App\Models\DesignType;
@@ -24,6 +25,10 @@ class DesignManagementTest extends TestCase
         $admin = User::factory()->superAdmin()->create();
         $owner = User::factory()->create();
         [$machine, $machineType, $category, $type, $fileType] = $this->catalog();
+        $secondType = DesignType::query()->create([
+            'design_category_id' => $category->id,
+            'name' => 'Border',
+        ]);
 
         $this->actingAs($admin)->get('/admin/designs/create')->assertOk();
 
@@ -32,12 +37,28 @@ class DesignManagementTest extends TestCase
             'machineId' => $machine->public_id,
             'machineTypeId' => $machineType->public_id,
             'categoryId' => $category->public_id,
-            'typeId' => $type->public_id,
             'designFileTypeId' => $fileType->public_id,
-            'title' => 'Admin floral design',
             'priceRupees' => '299.00',
-            'size' => '6 x 6',
-            'color' => 'Gold',
+            'variants' => [
+                [
+                    'typeId' => $type->public_id,
+                    'nameOrNumber' => 'Pallu 101',
+                    'stitchCount' => 12000,
+                    'needle' => 12,
+                    'area' => 36,
+                    'height' => 6,
+                    'width' => 6,
+                ],
+                [
+                    'typeId' => $secondType->public_id,
+                    'nameOrNumber' => 'Border 102',
+                    'stitchCount' => 8000,
+                    'needle' => 8,
+                    'area' => 36,
+                    'height' => 3,
+                    'width' => 12,
+                ],
+            ],
             'previewImage' => UploadedFile::fake()->image('preview.jpg'),
             'stitchFile' => UploadedFile::fake()->create('original.emb', 100, 'application/octet-stream'),
         ])->assertRedirect(route('admin.designs.index'));
@@ -48,8 +69,18 @@ class DesignManagementTest extends TestCase
             'design_file_type_id' => $fileType->id,
             'machine_type_id' => $machineType->public_id,
             'category_id' => $category->public_id,
-            'title' => 'Admin floral design',
+            'title' => 'Pallu 101',
             'file_name' => 'original.emb',
+        ]);
+        $this->assertDatabaseHas('design_variants', [
+            'design_type_id' => $type->id,
+            'name_or_number' => 'Pallu 101',
+            'needle' => 12,
+        ]);
+        $this->assertDatabaseHas('design_variants', [
+            'design_type_id' => $secondType->id,
+            'name_or_number' => 'Border 102',
+            'needle' => 8,
         ]);
     }
 
@@ -67,17 +98,83 @@ class DesignManagementTest extends TestCase
             'machineId' => $differentMachine->public_id,
             'machineTypeId' => $machineType->public_id,
             'categoryId' => $category->public_id,
-            'typeId' => $type->public_id,
             'designFileTypeId' => $fileType->public_id,
-            'title' => 'Invalid selection',
             'priceRupees' => '299.00',
-            'size' => '6 x 6',
-            'color' => 'Gold',
+            'variants' => [[
+                'typeId' => $type->public_id,
+                'nameOrNumber' => 'Invalid selection',
+                'stitchCount' => 12000,
+                'needle' => 12,
+                'area' => 36,
+                'height' => 6,
+                'width' => 6,
+            ]],
             'previewImage' => UploadedFile::fake()->image('preview.jpg'),
             'stitchFile' => UploadedFile::fake()->create('original.emb', 100, 'application/octet-stream'),
         ])->assertSessionHasErrors('machineTypeId');
 
         $this->assertDatabaseMissing('designs', ['title' => 'Invalid selection']);
+    }
+
+    public function test_admin_can_replace_design_type_variants_when_editing(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $admin = User::factory()->superAdmin()->create();
+        $owner = User::factory()->create();
+        [$machine, $machineType, $category, $type, $fileType] = $this->catalog();
+        $secondType = DesignType::query()->create([
+            'design_category_id' => $category->id,
+            'name' => 'Border',
+        ]);
+        $design = Design::query()->create([
+            'user_id' => $owner->id,
+            'design_type_id' => $type->id,
+            'design_file_type_id' => $fileType->id,
+            'machine_type_id' => $machineType->public_id,
+            'category_id' => $category->public_id,
+            'title' => 'Old pallu',
+            'price_paise' => 29900,
+            'size' => '6 x 6',
+            'color' => '',
+        ]);
+        $design->variants()->create([
+            'design_type_id' => $type->id,
+            'name_or_number' => 'Old pallu',
+            'stitch_count' => 10000,
+            'needle' => 10,
+            'area' => 36,
+            'height' => 6,
+            'width' => 6,
+        ]);
+
+        $this->actingAs($admin)->put('/admin/designs/'.$design->public_id, [
+            'ownerId' => $owner->public_id,
+            'machineId' => $machine->public_id,
+            'machineTypeId' => $machineType->public_id,
+            'categoryId' => $category->public_id,
+            'designFileTypeId' => $fileType->public_id,
+            'priceRupees' => '349.00',
+            'variants' => [[
+                'typeId' => $secondType->public_id,
+                'nameOrNumber' => 'New border',
+                'stitchCount' => 8000,
+                'needle' => 8,
+                'area' => 36,
+                'height' => 3,
+                'width' => 12,
+            ]],
+        ])->assertRedirect(route('admin.designs.index'));
+
+        $this->assertDatabaseMissing('design_variants', [
+            'design_id' => $design->id,
+            'design_type_id' => $type->id,
+        ]);
+        $this->assertDatabaseHas('design_variants', [
+            'design_id' => $design->id,
+            'design_type_id' => $secondType->id,
+            'name_or_number' => 'New border',
+        ]);
     }
 
     /** @return array{Machine, MachineType, DesignCategory, DesignType, DesignFileType} */

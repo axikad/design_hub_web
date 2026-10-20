@@ -79,6 +79,11 @@ class Design extends Model
         return $this->hasMany(Purchase::class);
     }
 
+    public function variants(): HasMany
+    {
+        return $this->hasMany(DesignVariant::class)->orderBy('sort_order')->orderBy('id');
+    }
+
     public function scopeListed($query)
     {
         return $query->whereNull('deleted_at');
