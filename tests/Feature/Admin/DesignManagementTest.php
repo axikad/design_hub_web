@@ -148,6 +148,10 @@ class DesignManagementTest extends TestCase
             'width' => 6,
         ]);
 
+        $this->actingAs($admin)
+            ->get('/admin/designs/'.$design->public_id.'/edit')
+            ->assertOk();
+
         $this->actingAs($admin)->put('/admin/designs/'.$design->public_id, [
             'ownerId' => $owner->public_id,
             'machineId' => $machine->public_id,

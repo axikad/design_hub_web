@@ -405,7 +405,7 @@ class DesignAdminController extends Controller
         return DesignFileType::query()
             ->where(fn ($query) => $query
                 ->where('is_active', true)
-                ->when($includeId !== null, fn ($query) => $query->orWhereKey($includeId)))
+                ->when($includeId !== null, fn ($query) => $query->orWhere('id', $includeId)))
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get()
