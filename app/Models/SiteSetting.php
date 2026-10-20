@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cache;
 
 class SiteSetting extends Model
@@ -11,6 +12,7 @@ class SiteSetting extends Model
         'name',
         'logo_path',
         'favicon_path',
+        'default_registration_role_id',
     ];
 
     public static function current(): self
@@ -41,6 +43,11 @@ class SiteSetting extends Model
     public function faviconUrl(): ?string
     {
         return $this->favicon_path ? '/storage/'.$this->favicon_path : null;
+    }
+
+    public function defaultRegistrationRole(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'default_registration_role_id');
     }
 
     /** @return array{name: string, logoUrl: string|null, faviconUrl: string|null} */

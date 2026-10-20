@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\Role;
+use App\Models\SiteSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -18,6 +20,13 @@ class RegistrationTest extends TestCase
 
     public function test_new_users_can_register()
     {
+        $role = Role::query()->create([
+            'name' => 'Staff',
+            'slug' => 'staff',
+        ]);
+        SiteSetting::current()->update(['default_registration_role_id' => $role->id]);
+        SiteSetting::forgetCache();
+
         $response = $this->post('/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',
@@ -27,5 +36,9 @@ class RegistrationTest extends TestCase
 
         $this->assertAuthenticated();
         $response->assertRedirect(route('dashboard', absolute: false));
+        $this->assertDatabaseHas('users', [
+            'email' => 'test@example.com',
+            'role_id' => $role->id,
+        ]);
     }
 }

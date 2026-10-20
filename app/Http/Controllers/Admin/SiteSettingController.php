@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Role;
 use App\Models\SiteSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -14,8 +16,18 @@ class SiteSettingController extends Controller
 {
     public function edit(): Response
     {
+        $settings = SiteSetting::current();
+
         return Inertia::render('admin/settings/site', [
-            'settings' => SiteSetting::current()->toBranding(),
+            'settings' => [
+                ...$settings->toBranding(),
+                'defaultRegistrationRoleId' => $settings->default_registration_role_id,
+            ],
+            'registrationRoles' => Role::query()
+                ->where('slug', '!=', 'super_admin')
+                ->whereHas('permissions', fn ($query) => $query->where('slug', 'dashboard.read')->where('is_active', true))
+                ->orderBy('name')
+                ->get(['id', 'name', 'slug']),
         ]);
     }
 
@@ -25,11 +37,27 @@ class SiteSettingController extends Controller
             'name' => ['required', 'string', 'min:2', 'max:80'],
             'logo' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp,svg', 'max:2048'],
             'favicon' => ['nullable', 'file', 'mimes:png,jpg,jpeg,ico,svg', 'max:1024'],
+            'defaultRegistrationRoleId' => [
+                'required',
+                'integer',
+                Rule::exists('roles', 'id')->where(fn ($query) => $query->where('slug', '!=', 'super_admin')),
+            ],
         ]);
 
         $setting = SiteSetting::current();
 
-        $payload = ['name' => trim($validated['name'])];
+        $registrationRole = Role::query()->findOrFail($validated['defaultRegistrationRoleId']);
+
+        if (! $registrationRole->hasPermission('dashboard.read')) {
+            return back()->withErrors([
+                'defaultRegistrationRoleId' => 'The registration role must have dashboard access.',
+            ]);
+        }
+
+        $payload = [
+            'name' => trim($validated['name']),
+            'default_registration_role_id' => $registrationRole->id,
+        ];
 
         if ($request->hasFile('logo')) {
             if ($setting->logo_path) {

@@ -4,22 +4,29 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
-import { Globe2, ImageIcon, LoaderCircle, Save } from 'lucide-react';
+import { Globe2, ImageIcon, LoaderCircle, Save, UserRoundCog } from 'lucide-react';
 import { type FormEventHandler } from 'react';
 
-type SiteSettings = { name: string; logoUrl: string | null; faviconUrl: string | null };
-type Props = { settings: SiteSettings };
+type SiteSettings = { name: string; logoUrl: string | null; faviconUrl: string | null; defaultRegistrationRoleId: number | null };
+type RegistrationRole = { id: number; name: string; slug: string };
+type Props = { settings: SiteSettings; registrationRoles: RegistrationRole[] };
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Overview', href: '/dashboard' },
     { title: 'Site settings', href: '/admin/settings/site' },
 ];
 const inputClass = 'h-11 rounded-xl border-slate-200 focus-visible:border-indigo-500 dark:border-slate-700';
 
-export default function AdminSiteSettings({ settings }: Props) {
-    const form = useForm({ name: settings.name, logo: null as File | null, favicon: null as File | null });
+export default function AdminSiteSettings({ settings, registrationRoles }: Props) {
+    const form = useForm({
+        name: settings.name,
+        logo: null as File | null,
+        favicon: null as File | null,
+        defaultRegistrationRoleId: settings.defaultRegistrationRoleId?.toString() ?? '',
+    });
     const { data, setData, post, processing, errors } = form;
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
@@ -44,6 +51,35 @@ export default function AdminSiteSettings({ settings }: Props) {
                                 className={inputClass}
                             />
                             <InputError message={errors.name} />
+                        </div>
+                    </AdminFormPanel>
+
+                    <AdminFormPanel
+                        title="Registration"
+                        description="Choose the role assigned to users who register from the admin login page."
+                        icon={UserRoundCog}
+                    >
+                        <div className="grid gap-2">
+                            <Label htmlFor="defaultRegistrationRoleId">Default registration role</Label>
+                            <Select
+                                value={data.defaultRegistrationRoleId}
+                                onValueChange={(value) => setData('defaultRegistrationRoleId', value)}
+                            >
+                                <SelectTrigger id="defaultRegistrationRoleId" className={inputClass}>
+                                    <SelectValue placeholder="Select a role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {registrationRoles.map((role) => (
+                                        <SelectItem key={role.id} value={role.id.toString()}>
+                                            {role.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs leading-5 text-slate-500">
+                                Only roles with dashboard access are available. Super Admin is never allowed.
+                            </p>
+                            <InputError message={errors.defaultRegistrationRoleId} />
                         </div>
                     </AdminFormPanel>
 
