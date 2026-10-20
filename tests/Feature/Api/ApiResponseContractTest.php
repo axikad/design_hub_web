@@ -270,6 +270,81 @@ class ApiResponseContractTest extends TestCase
             ->assertJsonMissingPath('links');
     }
 
+    public function test_design_create_and_update_support_multiple_design_types(): void
+    {
+        $user = User::factory()->create();
+        $this->seed(DesignCatalogSeeder::class);
+        $this->seed(DesignFormOptionSeeder::class);
+        $this->seed(DesignFileTypeSeeder::class);
+        $preview = $this->upload($user, 'public', 'previews/'.$user->public_id.'/multi.jpg', 'photo', 'multi.jpg');
+        $stitch = $this->upload($user, 'local', 'stitch/'.$user->public_id.'/multi.emb', 'stitch', 'multi.emb');
+        $uploads = app(UploadService::class);
+        Sanctum::actingAs($user);
+
+        $payload = [
+            'machineTypeId' => 'machine-embroidery',
+            'categoryId' => 'blouse-top',
+            'designFileTypeId' => 'emb',
+            'showPrice' => true,
+            'pricePaise' => 19900,
+            'designTypes' => [
+                [
+                    'typeId' => 'neckline',
+                    'details' => [
+                        'nameOrNumber' => 'Neck 101',
+                        'stitchCount' => 12000,
+                        'needle' => 8,
+                        'area' => 24.5,
+                        'height' => 6.5,
+                        'width' => 8,
+                    ],
+                ],
+                [
+                    'typeId' => 'sleeve',
+                    'details' => [
+                        'nameOrNumber' => 'Sleeve 202',
+                        'stitchCount' => 9000,
+                        'needle' => 6,
+                        'area' => 18,
+                        'height' => 5,
+                        'width' => 7,
+                    ],
+                ],
+            ],
+            'images' => [[
+                'name' => 'multi.jpg',
+                'uri' => $uploads->publicUrl($preview),
+            ]],
+            'files' => [[
+                'name' => 'multi.emb',
+                'uri' => $uploads->publicUrl($stitch),
+            ]],
+        ];
+
+        $response = $this->postJson('/api/v1/designs', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.title', 'Neck 101')
+            ->assertJsonPath('data.typeId', 'neckline')
+            ->assertJsonPath('data.designTypes.0.typeId', 'neckline')
+            ->assertJsonPath('data.designTypes.0.details.needle', 8)
+            ->assertJsonPath('data.designTypes.1.typeId', 'sleeve')
+            ->assertJsonPath('data.designTypes.1.details.nameOrNumber', 'Sleeve 202');
+
+        $designId = $response->json('data.id');
+        $this->assertDatabaseCount('design_variants', 2);
+
+        $payload['designTypes'] = [$payload['designTypes'][1]];
+        $payload['designTypes'][0]['details']['nameOrNumber'] = 'Sleeve updated';
+
+        $this->patchJson('/api/v1/designs/'.$designId, $payload)
+            ->assertOk()
+            ->assertJsonCount(1, 'data.designTypes')
+            ->assertJsonPath('data.designTypes.0.typeId', 'sleeve')
+            ->assertJsonPath('data.title', 'Sleeve updated');
+
+        $this->assertDatabaseCount('design_variants', 1);
+    }
+
     public function test_design_options_can_be_loaded_from_separate_catalog_endpoints(): void
     {
         $this->seed(DesignFormOptionSeeder::class);

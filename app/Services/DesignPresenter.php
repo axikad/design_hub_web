@@ -16,7 +16,7 @@ class DesignPresenter
 
     public function forUser(Design $design, ?User $viewer): array
     {
-        $design->loadMissing(['owner', 'type.category', 'machineType.machine', 'fileType']);
+        $design->loadMissing(['owner', 'type.category', 'machineType.machine', 'fileType', 'variants.type']);
         $canAccessFile = $viewer !== null && $this->access->canDownloadStitch($viewer, $design);
         $images = $this->images($design);
         $files = $this->files($design, $canAccessFile);
@@ -38,6 +38,7 @@ class DesignPresenter
             'categoryName' => $formCategory?->name ?? $design->type?->category?->name,
             'showPrice' => $design->show_price,
             'pricePaise' => $design->price_paise,
+            'designTypes' => $this->designTypes($design),
             'details' => $design->details ?? $this->legacyDetails($design),
             'images' => $images,
             'files' => $files,
@@ -126,6 +127,46 @@ class DesignPresenter
             'area' => $design->size,
             'height' => '',
             'width' => '',
+        ]];
+    }
+
+    private function designTypes(Design $design): array
+    {
+        if ($design->variants->isNotEmpty()) {
+            return $design->variants
+                ->sortBy('sort_order')
+                ->values()
+                ->map(fn ($variant) => [
+                    'typeId' => $variant->type?->public_id,
+                    'typeName' => $variant->type?->name,
+                    'details' => [
+                        'nameOrNumber' => $variant->name_or_number,
+                        'stitchCount' => $variant->stitch_count,
+                        'needle' => $variant->needle,
+                        'area' => $variant->area,
+                        'height' => $variant->height,
+                        'width' => $variant->width,
+                    ],
+                ])->all();
+        }
+
+        if ($design->type === null) {
+            return [];
+        }
+
+        $details = ($design->details ?? $this->legacyDetails($design))[0] ?? [];
+
+        return [[
+            'typeId' => $design->type->public_id,
+            'typeName' => $design->type->name,
+            'details' => [
+                'nameOrNumber' => $details['names'][0] ?? $design->title,
+                'stitchCount' => is_numeric($details['stitch'] ?? null) ? (int) $details['stitch'] : 0,
+                'needle' => (int) ($details['needle'] ?? 0),
+                'area' => $details['area'] ?? 0,
+                'height' => $details['height'] ?? 0,
+                'width' => $details['width'] ?? 0,
+            ],
         ]];
     }
 

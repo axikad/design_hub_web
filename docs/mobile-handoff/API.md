@@ -39,31 +39,30 @@ type User = {
   mobileNumber: string;
 };
 type DesignRequest = {
-  machineTypeId: string | null;
-  categoryId: string | null;
-  typeId: string;
+  machineTypeId: string;
+  categoryId: string;
+  designTypes: Array<{
+    typeId: string;
+    details: {
+      nameOrNumber: string;
+      stitchCount: number;
+      needle: number;
+      area: number;
+      height: number;
+      width: number;
+    };
+  }>;
   designFileTypeId: string; // ID returned by /catalog/design-file-types
   showPrice: boolean;
-  title: string;
   pricePaise: number; // INR integer paise; 100..100000000
-  details: Array<{
-    names: string[];
-    stitch: string;
-    needle: number;
-    area: string;
-    height: string;
-    width: string;
-  }>;
   images: Array<{ name: string; uri: string }>;
   files: Array<{ name: string; uri: string; displayName?: string }>;
-  size: string;
-  color: string;
-  imageUri: string;
-  fileName: string;
-  fileUri: string;
 };
 type Design = DesignRequest & {
   id: string;
+  typeId: string; // First selected type; legacy compatibility
+  title: string; // First selected type's nameOrNumber
+  details: Array<object>; // Legacy compatibility
   designFileTypeName: string | null;
   designFileExtension: string | null;
   displayName: string; // Example: "Abcd.dst (.emb)"
@@ -75,13 +74,13 @@ type Design = DesignRequest & {
 
 Clients send only `machineTypeId` when creating or updating a design. The backend derives and returns `machineId`, so clients do not need to submit duplicate machine data.
 
-Catalog selection uses two levels. `categoryId` is the main product group and `typeId` is its placement/type:
+Catalog selection uses two levels. `categoryId` is the main product group and every `designTypes[].typeId` is a selected placement/type with its own specifications:
 
 - `saree`: `pallu`, `border`, `all-over`
 - `blouse-top`: `neckline`, `sleeve`, `back`
 - `general`: `motif`, `logo`, `patch`
 
-Load compatible categories after selecting a machine type, then load types for the selected category. Legacy requests that used the same category and type ID remain temporarily supported.
+Load compatible categories after selecting a machine type, then load types for the selected category. All selected types must belong to that category. The first selected type supplies the legacy `typeId`, `title`, and `size` response fields. Old single-type requests using `typeId`, `details`, and flat summary/upload fields remain temporarily supported.
 
 Seeded compatibility examples:
 
