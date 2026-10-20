@@ -173,7 +173,7 @@ class ApiResponseContractTest extends TestCase
             'details' => [[
                 'names' => ['Floral neckline', 'Rose neckline'],
                 'stitch' => '24000',
-                'colour' => 'Gold',
+                'needle' => 12,
                 'area' => '6 x 6',
                 'height' => '6',
                 'width' => '6',
@@ -205,6 +205,7 @@ class ApiResponseContractTest extends TestCase
             ->assertJsonPath('data.designFileExtension', 'dst')
             ->assertJsonPath('data.showPrice', false)
             ->assertJsonPath('data.details.0.names.1', 'Rose neckline')
+            ->assertJsonPath('data.details.0.needle', 12)
             ->assertJsonPath('data.images.0.name', 'front.jpg')
             ->assertJsonPath('data.files.0.name', 'floral.dst')
             ->assertJsonPath('data.files.0.displayName', 'Floral neckline.dst (.dst)')
@@ -370,7 +371,7 @@ class ApiResponseContractTest extends TestCase
             'fileUri' => 'https://example.test/broken.dst',
             'details' => [[
                 'names' => ['Broken design'],
-                'colour' => 'Gold',
+                'needle' => 12,
                 'area' => '6 x 6',
                 'height' => '6',
                 'width' => '6',

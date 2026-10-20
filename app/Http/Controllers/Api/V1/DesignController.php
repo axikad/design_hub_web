@@ -221,7 +221,7 @@ class DesignController extends Controller
             'details.*.names' => ['required_with:details', 'array', 'min:1', 'max:20'],
             'details.*.names.*' => ['required', 'string', 'max:120'],
             'details.*.stitch' => ['required_with:details', 'string', 'max:30'],
-            'details.*.colour' => ['required_with:details', 'string', 'max:120'],
+            'details.*.needle' => ['required_with:details', 'integer', 'min:0'],
             'details.*.area' => ['required_with:details', 'string', 'max:120'],
             'details.*.height' => ['required_with:details', 'string', 'max:30'],
             'details.*.width' => ['required_with:details', 'string', 'max:30'],
@@ -278,7 +278,7 @@ class DesignController extends Controller
         $details = $validated['details'] ?? [[
             'names' => [$validated['title']],
             'stitch' => '',
-            'colour' => $validated['color'],
+            'needle' => 0,
             'area' => $validated['size'],
             'height' => '',
             'width' => '',
@@ -299,7 +299,7 @@ class DesignController extends Controller
             'size' => $firstDetail['height'] !== '' && $firstDetail['width'] !== ''
                 ? trim($firstDetail['height']).' × '.trim($firstDetail['width'])
                 : trim($validated['size']),
-            'color' => trim($firstDetail['colour'] ?? $validated['color']),
+            'color' => trim($validated['color']),
             'preview_path' => $images[0]['path'],
             'stitch_path' => $files[0]['path'],
             'fileName' => $files[0]['name'],

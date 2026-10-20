@@ -49,7 +49,7 @@ type DesignRequest = {
   details: Array<{
     names: string[];
     stitch: string;
-    colour: string;
+    needle: number;
     area: string;
     height: string;
     width: string;

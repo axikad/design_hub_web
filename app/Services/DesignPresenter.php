@@ -122,7 +122,7 @@ class DesignPresenter
         return [[
             'names' => [$design->title],
             'stitch' => '',
-            'colour' => $design->color,
+            'needle' => 0,
             'area' => $design->size,
             'height' => '',
             'width' => '',
