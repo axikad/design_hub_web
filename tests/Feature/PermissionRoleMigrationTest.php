@@ -46,5 +46,12 @@ class PermissionRoleMigrationTest extends TestCase
         $this->assertTrue($admin->permissions()->where('slug', 'users.read')->exists());
         $this->assertTrue($admin->permissions()->where('slug', 'users.delete')->exists());
         $this->assertFalse($admin->permissions()->where('slug', 'roles.create')->exists());
+
+        $marketplaceUser = Role::query()->where('slug', 'marketplace_user')->firstOrFail();
+
+        $this->assertEqualsCanonicalizing(
+            ['designs.read', 'designs.create', 'designs.update', 'designs.delete'],
+            $marketplaceUser->permissions()->pluck('slug')->all(),
+        );
     }
 }

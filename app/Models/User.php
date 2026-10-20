@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,7 +13,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $attributes = [
@@ -115,11 +116,27 @@ class User extends Authenticatable
 
     public function toMobileArray(): array
     {
+        $this->loadMissing('role.permissions');
+
+        $permissions = $this->isSuperAdmin()
+            ? Permission::query()->where('is_active', true)->pluck('slug')->values()->all()
+            : ($this->role?->permissions
+                ->where('is_active', true)
+                ->pluck('slug')
+                ->values()
+                ->all() ?? []);
+
         return [
             'id' => $this->public_id,
             'name' => $this->name,
             'countryCode' => $this->country_code,
             'mobileNumber' => $this->mobile_number,
+            'role' => $this->role === null ? null : [
+                'id' => $this->role->id,
+                'name' => $this->role->name,
+                'slug' => $this->role->slug,
+            ],
+            'permissions' => $permissions,
         ];
     }
 

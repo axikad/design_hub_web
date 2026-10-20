@@ -14,6 +14,7 @@ use App\Support\ApiResponse;
 use Database\Seeders\DesignCatalogSeeder;
 use Database\Seeders\DesignFileTypeSeeder;
 use Database\Seeders\DesignFormOptionSeeder;
+use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Route;
@@ -70,6 +71,8 @@ class ApiResponseContractTest extends TestCase
 
     public function test_explicit_static_otp_can_be_used_for_a_production_test_environment(): void
     {
+        $this->seed(RoleAndPermissionSeeder::class);
+
         config([
             'app.env' => 'production',
             'designhub.otp_static_enabled' => true,
@@ -90,6 +93,9 @@ class ApiResponseContractTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.user.name', 'Rajvi')
+            ->assertJsonPath('data.user.role.slug', 'marketplace_user')
+            ->assertJsonPath('data.user.permissions.0', 'designs.read')
+            ->assertJsonPath('data.user.permissions.1', 'designs.create')
             ->assertJsonStructure(['data' => ['accessToken']]);
 
         $this->assertDatabaseHas('users', [

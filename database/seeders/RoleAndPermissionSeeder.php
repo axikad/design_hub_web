@@ -86,7 +86,9 @@ class RoleAndPermissionSeeder extends Seeder
             'design_file_types.read',
             'purchases.read',
         ], $permissions);
-        $roles['marketplace_user']->permissions()->sync([]);
+        $this->syncPermissions($roles['marketplace_user'], [
+            'designs.read', 'designs.create', 'designs.update', 'designs.delete',
+        ], $permissions);
 
         User::query()
             ->where('email', 'admin@designhub.local')
@@ -96,8 +98,8 @@ class RoleAndPermissionSeeder extends Seeder
     }
 
     /**
-     * @param list<string> $slugs
-     * @param Collection<string, Permission> $permissions
+     * @param  list<string>  $slugs
+     * @param  Collection<string, Permission>  $permissions
      */
     private function syncPermissions(Role $role, array $slugs, Collection $permissions): void
     {
