@@ -28,9 +28,30 @@ class DesignController extends Controller
 
     public function index(Request $request)
     {
+        $filters = $request->validate([
+            'section' => ['sometimes', 'string', Rule::in(['latest', 'today', 'tomorrow'])],
+            'categoryId' => ['sometimes', 'string', 'max:120'],
+            'machineTypeId' => ['sometimes', 'string', 'max:120'],
+            'search' => ['sometimes', 'string', 'max:120'],
+        ]);
+        $today = now(config('designhub.marketplace_timezone'))->toDateString();
+        $tomorrow = now(config('designhub.marketplace_timezone'))->addDay()->toDateString();
+
         $designs = Design::query()
             ->listed()
+            ->when(($filters['section'] ?? null) === 'today', fn ($query) => $query->scheduledFor($today))
+            ->when(($filters['section'] ?? null) === 'tomorrow', fn ($query) => $query->scheduledFor($tomorrow))
+            ->when(! in_array(($filters['section'] ?? null), ['today', 'tomorrow'], true), fn ($query) => $query->published($today))
+            ->when($filters['categoryId'] ?? null, fn ($query, $categoryId) => $query->where('category_id', $categoryId))
+            ->when($filters['machineTypeId'] ?? null, fn ($query, $machineTypeId) => $query->where('machine_type_id', $machineTypeId))
+            ->when($filters['search'] ?? null, function ($query, $search) {
+                $query->where(function ($searchQuery) use ($search) {
+                    $searchQuery->where('title', 'like', '%'.$search.'%')
+                        ->orWhere('file_name', 'like', '%'.$search.'%');
+                });
+            })
             ->with(['owner', 'type.category', 'fileType', 'variants.type'])
+            ->orderByDesc('publish_date')
             ->latest('created_at')
             ->paginate(Pagination::perPage($request))
             ->withQueryString();
@@ -70,6 +91,7 @@ class DesignController extends Controller
                 'machine_type_id' => $validated['machineTypeId'],
                 'category_id' => $validated['categoryId'],
                 'show_price' => $validated['showPrice'],
+                'publish_date' => $validated['publishDate'],
                 'details' => $validated['details'],
                 'images' => $validated['images'],
                 'files' => $validated['files'],
@@ -108,7 +130,7 @@ class DesignController extends Controller
             return ApiResponse::error('You cannot edit this design.', 'design_update_forbidden', 403);
         }
 
-        $validated = $this->validatedDesignPayload($request);
+        $validated = $this->validatedDesignPayload($request, $design);
 
         DB::transaction(function () use ($design, $validated) {
             $design->update([
@@ -117,6 +139,7 @@ class DesignController extends Controller
                 'machine_type_id' => $validated['machineTypeId'],
                 'category_id' => $validated['categoryId'],
                 'show_price' => $validated['showPrice'],
+                'publish_date' => $validated['publishDate'],
                 'details' => $validated['details'],
                 'images' => $validated['images'],
                 'files' => $validated['files'],
@@ -211,12 +234,13 @@ class DesignController extends Controller
         );
     }
 
-    private function validatedDesignPayload(Request $request): array
+    private function validatedDesignPayload(Request $request, ?Design $existingDesign = null): array
     {
         $validated = $request->validate([
             'machineTypeId' => ['sometimes', 'nullable', 'string', 'max:120'],
             'categoryId' => ['sometimes', 'nullable', 'string', 'max:120'],
             'showPrice' => ['sometimes', 'boolean'],
+            'publishDate' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
             'title' => ['required_without:designTypes', 'nullable', 'string', 'min:1', 'max:120'],
             'pricePaise' => ['required', 'integer', 'min:100', 'max:100000000'],
             'size' => ['required_without:designTypes', 'nullable', 'string', 'max:120'],
@@ -330,6 +354,9 @@ class DesignController extends Controller
             'machineTypeId' => $selection['machine_type_id'],
             'categoryId' => $selection['category_id'],
             'showPrice' => $validated['showPrice'] ?? true,
+            'publishDate' => $validated['publishDate']
+                ?? $existingDesign?->publish_date?->format('Y-m-d')
+                ?? now(config('designhub.marketplace_timezone'))->toDateString(),
             'variants' => $variants,
             'details' => $details,
             'images' => $images,

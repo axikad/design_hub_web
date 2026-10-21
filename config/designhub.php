@@ -1,6 +1,8 @@
 <?php
 
 return [
+    'marketplace_timezone' => env('DESIGNHUB_MARKETPLACE_TIMEZONE', 'Asia/Kolkata'),
+
     'otp_length' => 4,
     'otp_ttl_minutes' => 10,
     'otp_max_attempts' => 5,

@@ -37,6 +37,7 @@ class DesignPresenter
             'categoryId' => $design->category_id ?? $design->type?->category?->public_id,
             'categoryName' => $formCategory?->name ?? $design->type?->category?->name,
             'showPrice' => $design->show_price,
+            'publishDate' => $design->publish_date?->format('Y-m-d'),
             'pricePaise' => $design->price_paise,
             'designTypes' => $this->designTypes($design),
             'details' => $design->details ?? $this->legacyDetails($design),

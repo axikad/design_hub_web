@@ -44,6 +44,11 @@ class DesignCategory extends Model
         return $this->types()->where('is_active', true);
     }
 
+    public function designs(): HasMany
+    {
+        return $this->hasMany(Design::class, 'category_id', 'public_id');
+    }
+
     public function machineTypes(): BelongsToMany
     {
         return $this->belongsToMany(MachineType::class, 'category_machine_type');

@@ -23,6 +23,7 @@ Design and user collection endpoints accept `page` and `per_page` (default 20, m
 | GET | `/catalog/machines/:machineId/machine-types` | Bearer token | Active machine types for the selected machine |
 | GET | `/catalog/machine-types/:machineTypeId/categories` | Bearer token | Compatible categories for the selected machine type |
 | GET | `/catalog/categories/:categoryId/types` | Bearer token | Active design types for the selected category |
+| GET | `/home` | Bearer token | Latest, today, tomorrow and category home sections |
 | GET | `/designs` | Bearer token | `Design[]`, all community designs, newest first |
 | GET | `/users/me/designs` | Bearer token | `Design[]`, only authenticated user's designs |
 | GET | `/designs/:id` | Bearer token | `Design` (404 if missing) |
@@ -54,6 +55,7 @@ type DesignRequest = {
   }>;
   designFileTypeId: string; // ID returned by /catalog/design-file-types
   showPrice: boolean;
+  publishDate?: string; // YYYY-MM-DD; defaults to today in marketplace timezone
   pricePaise: number; // INR integer paise; 100..100000000
   images: Array<{ name: string; uri: string }>;
   files: Array<{ name: string; uri: string; displayName?: string }>;
@@ -71,6 +73,37 @@ type Design = DesignRequest & {
   ownerKey: string | null; // countryCode + mobileNumber, e.g. +919876543210
 };
 ```
+
+## Home feed and View More
+
+`GET /home` returns compact home sections in one request:
+
+```ts
+type HomeSection = {
+  total: number;
+  items: Design[];
+  hasMore: boolean;
+  viewMoreUrl: string;
+};
+
+type HomeFeed = {
+  latest: HomeSection;
+  today: HomeSection;
+  tomorrow: HomeSection;
+  categories: Array<HomeSection & { id: string; name: string }>;
+};
+```
+
+Optional home parameters are `sliderLimit` (maximum 10), `sectionLimit` (maximum 20), and `categoryLimit` (maximum 20). Use each returned `viewMoreUrl`, or call the paginated design list directly:
+
+- `/designs?section=latest`
+- `/designs?section=today`
+- `/designs?section=tomorrow`
+- `/designs?categoryId=saree`
+- `/designs?search=floral`
+- `/designs?machineTypeId=machine-embroidery`
+
+Tomorrow designs use `publishDate` and are excluded from latest and category listings until their publish date.
 
 Clients send only `machineTypeId` when creating or updating a design. The backend derives and returns `machineId`, so clients do not need to submit duplicate machine data.
 

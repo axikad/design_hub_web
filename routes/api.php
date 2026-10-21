@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CatalogController;
 use App\Http\Controllers\Api\V1\DesignController;
+use App\Http\Controllers\Api\V1\HomeController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\UploadController;
 use App\Http\Controllers\Api\V1\UserController;
@@ -19,6 +20,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         ->middleware('signed');
 
     Route::middleware('auth:sanctum')->group(function () {
+        Route::get('home', [HomeController::class, 'index'])->name('home');
         Route::get('catalog/categories', [CatalogController::class, 'categories']);
         Route::get('catalog/design-options', [CatalogController::class, 'designOptions']);
         Route::get('catalog/design-file-types', [CatalogController::class, 'designFileTypes']);
@@ -34,7 +36,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::put('users/me/saved-designs/{designId}', [UserController::class, 'saveDesign']);
         Route::delete('users/me/saved-designs/{designId}', [UserController::class, 'unsaveDesign']);
 
-        Route::get('designs', [DesignController::class, 'index']);
+        Route::get('designs', [DesignController::class, 'index'])->name('designs.index');
         Route::post('designs', [DesignController::class, 'store']);
         Route::get('designs/{designId}', [DesignController::class, 'show']);
         Route::patch('designs/{designId}', [DesignController::class, 'update']);

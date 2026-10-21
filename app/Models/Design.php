@@ -20,6 +20,7 @@ class Design extends Model
         'machine_type_id',
         'category_id',
         'show_price',
+        'publish_date',
         'details',
         'images',
         'files',
@@ -39,6 +40,7 @@ class Design extends Model
             'deleted_at' => 'datetime',
             'price_paise' => 'integer',
             'show_price' => 'boolean',
+            'publish_date' => 'date:Y-m-d',
             'details' => 'array',
             'images' => 'array',
             'files' => 'array',
@@ -50,6 +52,10 @@ class Design extends Model
         static::creating(function (Design $design) {
             if (! $design->public_id) {
                 $design->public_id = 'design_'.Str::lower(Str::random(12));
+            }
+
+            if ($design->publish_date === null) {
+                $design->publish_date = now(config('designhub.marketplace_timezone'))->toDateString();
             }
         });
     }
@@ -87,6 +93,18 @@ class Design extends Model
     public function scopeListed($query)
     {
         return $query->whereNull('deleted_at');
+    }
+
+    public function scopePublished($query, ?string $date = null)
+    {
+        $date ??= now(config('designhub.marketplace_timezone'))->toDateString();
+
+        return $query->whereDate('publish_date', '<=', $date);
+    }
+
+    public function scopeScheduledFor($query, string $date)
+    {
+        return $query->whereDate('publish_date', $date);
     }
 
     protected function displayName(): Attribute

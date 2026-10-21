@@ -102,6 +102,82 @@
     },
     "item": [
         {
+            "name": "Home Feed",
+            "item": [
+                {
+                    "name": "Get Home Feed",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/home?sliderLimit=5&sectionLimit=6&categoryLimit=4",
+                        "description": "Returns latest slider, today's designs, tomorrow's scheduled designs, and published designs grouped by category. Each section includes total, items, and viewMoreUrl."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "View More - Latest Designs",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/designs?section=latest&page={{page}}&per_page={{per_page}}"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "View More - Today's Designs",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/designs?section=today&page={{page}}&per_page={{per_page}}"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "View More - Tomorrow's Designs",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/designs?section=tomorrow&page={{page}}&per_page={{per_page}}"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "View More - Designs by Category",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/designs?categoryId={{category_id}}&page={{page}}&per_page={{per_page}}"
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
             "name": "Authentication",
             "item": [
                 {
