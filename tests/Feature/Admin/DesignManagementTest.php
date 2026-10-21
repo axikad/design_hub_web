@@ -59,7 +59,10 @@ class DesignManagementTest extends TestCase
                     'width' => 12,
                 ],
             ],
-            'previewImage' => UploadedFile::fake()->image('preview.jpg'),
+            'previewImages' => [
+                UploadedFile::fake()->image('front.jpg'),
+                UploadedFile::fake()->image('back.png'),
+            ],
             'stitchFiles' => [
                 UploadedFile::fake()->create('original.emb', 100, 'application/octet-stream'),
                 UploadedFile::fake()->create('alternate.dst', 100, 'application/octet-stream'),
@@ -85,7 +88,11 @@ class DesignManagementTest extends TestCase
             'name_or_number' => 'Border 102',
             'needle' => 8,
         ]);
-        $this->assertCount(2, Design::query()->where('title', 'Pallu 101')->firstOrFail()->files);
+        $createdDesign = Design::query()->where('title', 'Pallu 101')->firstOrFail();
+        $this->assertCount(2, $createdDesign->images);
+        $this->assertSame(['front.jpg', 'back.png'], collect($createdDesign->images)->pluck('name')->all());
+        $this->assertSame($createdDesign->images[0]['path'], $createdDesign->preview_path);
+        $this->assertCount(2, $createdDesign->files);
     }
 
     public function test_admin_design_rejects_a_machine_type_from_another_machine(): void
@@ -141,6 +148,11 @@ class DesignManagementTest extends TestCase
             'price_paise' => 29900,
             'size' => '6 x 6',
             'color' => '',
+            'preview_path' => 'previews/'.$owner->public_id.'/old.jpg',
+            'images' => [[
+                'name' => 'old.jpg',
+                'path' => 'previews/'.$owner->public_id.'/old.jpg',
+            ]],
             'stitch_path' => 'stitch/'.$owner->public_id.'/old.emb',
             'file_name' => 'old.emb',
             'files' => [[
@@ -178,6 +190,10 @@ class DesignManagementTest extends TestCase
                 'height' => 3,
                 'width' => 12,
             ]],
+            'previewImages' => [
+                UploadedFile::fake()->image('new-front.jpg'),
+                UploadedFile::fake()->image('new-back.webp'),
+            ],
             'stitchFiles' => [
                 UploadedFile::fake()->create('new-border.dst', 100, 'application/octet-stream'),
                 UploadedFile::fake()->create('new-border.emb', 100, 'application/octet-stream'),
@@ -194,6 +210,8 @@ class DesignManagementTest extends TestCase
             'name_or_number' => 'New border',
         ]);
         $design->refresh();
+        $this->assertSame(['new-front.jpg', 'new-back.webp'], collect($design->images)->pluck('name')->all());
+        $this->assertSame($design->images[0]['path'], $design->preview_path);
         $this->assertSame(['new-border.dst', 'new-border.emb'], collect($design->files)->pluck('name')->all());
         $this->assertSame('new-border.dst', $design->file_name);
     }

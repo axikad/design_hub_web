@@ -35,8 +35,8 @@ type DesignForm = {
     designFileTypeId?: string | null;
     priceRupees: string;
     variants?: VariantInput[];
+    images?: { name: string; uri: string; thumbnailUri?: string | null }[];
     files?: { name: string }[];
-    imageUri?: string | null;
 };
 type Props = {
     design: DesignForm | null;
@@ -92,7 +92,7 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                 : initialType
                   ? [emptyVariant(initialType.id)]
                   : [],
-        previewImage: null as File | null,
+        previewImages: [] as File[],
         stitchFiles: [] as File[],
     });
     const { data, setData, post, processing, errors } = form;
@@ -104,22 +104,27 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
         const machineType = catalog.find((machine) => machine.id === machineId)?.machineTypes[0];
         const category = machineType?.categories[0];
         const typeId = category?.types[0]?.id;
-        setData({
-            ...data,
+        setData((current) => ({
+            ...current,
             machineId,
             machineTypeId: machineType?.id ?? '',
             categoryId: category?.id ?? '',
             variants: typeId ? [emptyVariant(typeId)] : [],
-        });
+        }));
     };
     const selectMachineType = (machineTypeId: string) => {
         const category = machineTypes.find((type) => type.id === machineTypeId)?.categories[0];
         const typeId = category?.types[0]?.id;
-        setData({ ...data, machineTypeId, categoryId: category?.id ?? '', variants: typeId ? [emptyVariant(typeId)] : [] });
+        setData((current) => ({
+            ...current,
+            machineTypeId,
+            categoryId: category?.id ?? '',
+            variants: typeId ? [emptyVariant(typeId)] : [],
+        }));
     };
     const selectCategory = (categoryId: string) => {
         const typeId = categories.find((category) => category.id === categoryId)?.types[0]?.id;
-        setData({ ...data, categoryId, variants: typeId ? [emptyVariant(typeId)] : [] });
+        setData((current) => ({ ...current, categoryId, variants: typeId ? [emptyVariant(typeId)] : [] }));
     };
     const toggleType = (typeId: string) => {
         const selected = data.variants.some((variant) => variant.typeId === typeId);
@@ -194,6 +199,7 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                         <div className="grid gap-5 sm:grid-cols-3">
                             <SelectField label="Machine" value={data.machineId} onChange={selectMachine} options={catalog} error={errors.machineId} />
                             <SelectField
+                                key={`machine-type-${data.machineId}`}
                                 label="Machine type"
                                 value={data.machineTypeId}
                                 onChange={selectMachineType}
@@ -202,6 +208,7 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                                 disabled={!machineTypes.length}
                             />
                             <SelectField
+                                key={`category-${data.machineTypeId}`}
                                 label="Category"
                                 value={data.categoryId}
                                 onChange={selectCategory}
@@ -336,25 +343,49 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
 
                     <div className="grid gap-5 lg:grid-cols-2">
                         <AdminFormPanel
-                            title="Preview image"
-                            description={editing ? 'Leave empty to keep the current image.' : 'Upload the marketplace preview image.'}
+                            title="Preview images"
+                            description={
+                                editing
+                                    ? 'Select new images only when you want to replace all current preview images.'
+                                    : 'Upload up to 20 marketplace preview images.'
+                            }
                             icon={ImageIcon}
                         >
-                            {design?.imageUri ? (
-                                <img
-                                    src={design.imageUri}
-                                    alt="Current design preview"
-                                    className="mb-4 h-36 w-36 rounded-2xl object-cover ring-1 ring-slate-200 dark:ring-slate-700"
-                                />
+                            {design?.images?.length ? (
+                                <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                    {design.images.map((image, index) => (
+                                        <div key={`${image.name}-${index}`} className="min-w-0">
+                                            <img
+                                                src={image.thumbnailUri ?? image.uri}
+                                                alt={image.name}
+                                                className="h-28 w-full rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                                            />
+                                            <p className="mt-1 truncate text-xs text-slate-500" title={image.name}>
+                                                {image.name}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
                             ) : null}
                             <Input
-                                id="previewImage"
+                                id="previewImages"
                                 type="file"
+                                multiple
                                 accept="image/jpeg,image/png,image/webp"
-                                onChange={(event) => setData('previewImage', event.target.files?.[0] ?? null)}
+                                onChange={(event) => setData('previewImages', Array.from(event.target.files ?? []))}
                                 className={inputClass}
                             />
-                            <InputError message={errors.previewImage} className="mt-2" />
+                            {data.previewImages.length ? (
+                                <ul className="mt-3 space-y-1 text-xs text-slate-500">
+                                    {data.previewImages.map((image, index) => (
+                                        <li key={`${image.name}-${index}`} className="truncate">
+                                            {image.name}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : null}
+                            <p className="mt-2 text-xs text-slate-500">Maximum 20 images, 5 MB per image.</p>
+                            <InputError message={errors.previewImages} className="mt-2" />
                         </AdminFormPanel>
                         <AdminFormPanel
                             title="Stitch files"

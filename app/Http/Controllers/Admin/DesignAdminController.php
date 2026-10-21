@@ -97,11 +97,12 @@ class DesignAdminController extends Controller
 
         $owner = User::query()->where('public_id', $validated['ownerId'])->firstOrFail();
 
-        $previewPath = $request->file('previewImage')?->store('previews/'.$owner->public_id, 'public');
+        $previewImages = $this->storePreviewImages($request, $owner);
+        $previewPath = $previewImages[0]['path'];
         $stitchFiles = $this->storeStitchFiles($request, $owner);
         $firstStitchFile = $stitchFiles[0];
 
-        DB::transaction(function () use ($owner, $validated, $previewPath, $stitchFiles, $firstStitchFile) {
+        DB::transaction(function () use ($owner, $validated, $previewImages, $previewPath, $stitchFiles, $firstStitchFile) {
             $design = Design::query()->create([
                 'user_id' => $owner->id,
                 'design_type_id' => $validated['designTypeId'],
@@ -113,6 +114,7 @@ class DesignAdminController extends Controller
                 'size' => $validated['size'],
                 'color' => '',
                 'details' => $validated['details'],
+                'images' => $previewImages,
                 'files' => $stitchFiles,
                 'preview_path' => $previewPath,
                 'stitch_path' => $firstStitchFile['path'],
@@ -133,6 +135,8 @@ class DesignAdminController extends Controller
             ->where('public_id', $design)
             ->firstOrFail();
 
+        $presented = $this->presenter->forUser($model, $model->owner);
+
         return Inertia::render('admin/designs/form', [
             'design' => [
                 'id' => $model->public_id,
@@ -146,7 +150,11 @@ class DesignAdminController extends Controller
                 'files' => collect($this->existingStitchFiles($model))->map(fn (array $file) => [
                     'name' => $file['name'],
                 ])->values()->all(),
-                'imageUri' => $this->presenter->previewUrl($model),
+                'images' => collect($presented['images'])->map(fn (array $image) => [
+                    'name' => $image['name'],
+                    'uri' => $image['uri'],
+                    'thumbnailUri' => $image['thumbnailUri'],
+                ])->values()->all(),
             ],
             'owners' => $this->ownerOptions(),
             'catalog' => $this->catalogForForm(),
@@ -161,13 +169,13 @@ class DesignAdminController extends Controller
 
         $owner = User::query()->where('public_id', $validated['ownerId'])->firstOrFail();
 
-        $previewPath = $model->preview_path;
-        if ($request->hasFile('previewImage')) {
-            if ($previewPath) {
-                Storage::disk('public')->delete($previewPath);
-            }
-            $previewPath = $request->file('previewImage')->store('previews/'.$owner->public_id, 'public');
+        $previewImages = $this->existingPreviewImages($model);
+        if ($request->hasFile('previewImages') || $request->hasFile('previewImage')) {
+            Storage::disk('public')->delete(collect($previewImages)->pluck('path')->filter()->unique()->all());
+            $previewImages = $this->storePreviewImages($request, $owner);
         }
+
+        $previewPath = $previewImages[0]['path'] ?? null;
 
         $stitchFiles = $this->existingStitchFiles($model);
         if ($request->hasFile('stitchFiles')) {
@@ -183,7 +191,7 @@ class DesignAdminController extends Controller
 
         $firstStitchFile = $stitchFiles[0];
 
-        DB::transaction(function () use ($model, $owner, $validated, $previewPath, $stitchFiles, $firstStitchFile) {
+        DB::transaction(function () use ($model, $owner, $validated, $previewImages, $previewPath, $stitchFiles, $firstStitchFile) {
             $model->update([
                 'user_id' => $owner->id,
                 'design_type_id' => $validated['designTypeId'],
@@ -195,6 +203,7 @@ class DesignAdminController extends Controller
                 'size' => $validated['size'],
                 'color' => '',
                 'details' => $validated['details'],
+                'images' => $previewImages,
                 'files' => $stitchFiles,
                 'preview_path' => $previewPath,
                 'stitch_path' => $firstStitchFile['path'],
@@ -249,7 +258,9 @@ class DesignAdminController extends Controller
             'variants.*.area' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
             'variants.*.height' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
             'variants.*.width' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
-            'previewImage' => [$creating ? 'required' : 'nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'previewImages' => [$creating ? 'required_without:previewImage' : 'nullable', 'array', 'min:1', 'max:20'],
+            'previewImages.*' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'previewImage' => [$creating ? 'required_without:previewImages' : 'nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'stitchFiles' => [$creating ? 'required' : 'nullable', 'array', 'min:1', 'max:20'],
             'stitchFiles.*' => ['required', 'file', 'max:5120'],
         ];
@@ -375,6 +386,41 @@ class DesignAdminController extends Controller
             'name' => $file->getClientOriginalName(),
             'path' => $file->store('stitch/'.$owner->public_id, 'local'),
         ])->values()->all();
+    }
+
+    /** @return list<array{name: string, path: string}> */
+    private function storePreviewImages(Request $request, User $owner): array
+    {
+        $files = collect($request->file('previewImages', []));
+
+        if ($files->isEmpty() && $request->hasFile('previewImage')) {
+            $files->push($request->file('previewImage'));
+        }
+
+        return $files->map(fn ($file) => [
+            'name' => $file->getClientOriginalName(),
+            'path' => $file->store('previews/'.$owner->public_id, 'public'),
+        ])->values()->all();
+    }
+
+    /** @return list<array{name: string, path: string}> */
+    private function existingPreviewImages(Design $design): array
+    {
+        if (is_array($design->images) && $design->images !== []) {
+            return collect($design->images)->map(fn (array $image) => [
+                'name' => $image['name'],
+                'path' => $image['path'],
+            ])->values()->all();
+        }
+
+        if ($design->preview_path === null) {
+            return [];
+        }
+
+        return [[
+            'name' => basename($design->preview_path),
+            'path' => $design->preview_path,
+        ]];
     }
 
     /** @return list<array{name: string, path: string}> */
