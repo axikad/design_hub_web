@@ -40,4 +40,11 @@ class Folder extends Model
     {
         return $this->hasMany(FolderFile::class)->orderBy('relative_path');
     }
+
+    public function previewFiles(): HasMany
+    {
+        return $this->hasMany(FolderFile::class)
+            ->whereIn('extension', ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'avif', 'svg'])
+            ->orderBy('relative_path');
+    }
 }

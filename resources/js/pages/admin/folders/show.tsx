@@ -139,7 +139,7 @@ export default function AdminFolderShow({ folder }: Props) {
                     </div>
 
                     {folder.files.length ? (
-                        <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-3">
+                        <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-4">
                             {folder.files.map((file) => (
                                 <FileCard key={file.id} file={file} />
                             ))}

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CatalogController;
 use App\Http\Controllers\Api\V1\DesignController;
+use App\Http\Controllers\Api\V1\FolderController;
 use App\Http\Controllers\Api\V1\HomeController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\UploadController;
@@ -17,6 +18,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
     Route::get('files/stitch/{design}', [DesignController::class, 'streamStitch'])
         ->name('files.stitch')
+        ->middleware('signed');
+    Route::get('files/folders/{folderId}/{fileId}/preview', [FolderController::class, 'streamPreview'])
+        ->name('files.folders.preview')
         ->middleware('signed');
 
     Route::middleware('auth:sanctum')->group(function () {
@@ -42,6 +46,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::patch('designs/{designId}', [DesignController::class, 'update']);
         Route::delete('designs/{designId}', [DesignController::class, 'destroy']);
         Route::post('designs/{designId}/download', [DesignController::class, 'download']);
+
+        Route::get('folders', [FolderController::class, 'index'])->name('folders.index');
+        Route::get('folders/{folderId}', [FolderController::class, 'show'])->name('folders.show');
 
         Route::post('uploads', [UploadController::class, 'store']);
 

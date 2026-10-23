@@ -1,13 +1,13 @@
 {
     "info": {
         "name": "DesignHub Mobile API",
-        "description": "Complete API v1 collection for the DesignHub embroidery marketplace (Laravel + Sanctum).\n\nSetup:\n1. Import this collection.\n2. The collection uses the LAN API URL `http://192.168.1.7:8000/api/v1`. Both devices must be on the same network.\n3. Run **Authentication \u2192 Request OTP (Register)**. Local development uses the static OTP `1234`.\n4. Run **Verify OTP (Register)**. Use the matching Login requests for an existing phone number. The test script saves `accessToken` automatically.\n5. All authenticated requests use Bearer `{{accessToken}}`.\n\nSuccess responses always contain `success`, `message`, and `data`. Paginated responses also contain `meta` and `links`. Errors contain `success: false`, `message`, and `code`; validation errors also contain field-level `errors`. List endpoints accept `page` and `per_page` (maximum 100).",
+        "description": "Complete API v1 collection for the DesignHub embroidery marketplace (Laravel + Sanctum).\n\nSetup:\n1. Import this collection.\n2. The collection uses the live API URL `https://app.designshub.org/api/v1`. Change `base_url` only when testing another environment.\n3. Run **Authentication \u2192 Request OTP (Register)**. Local development can use the configured static OTP.\n4. Run **Verify OTP (Register)**. Use the matching Login requests for an existing phone number. The test script saves `accessToken` automatically.\n5. All authenticated requests use Bearer `{{accessToken}}`.\n\nSuccess responses always contain `success`, `message`, and `data`. Paginated responses also contain `meta` and `links`. Errors contain `success: false`, `message`, and `code`; validation errors also contain field-level `errors`. List endpoints accept `page` and `per_page` (maximum 100).",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "variable": [
         {
             "key": "base_url",
-            "value": "http://192.168.1.7:8000/api/v1"
+            "value": "https://app.designshub.org/api/v1"
         },
         {
             "key": "accessToken",
@@ -63,6 +63,18 @@
         },
         {
             "key": "signed_download_url",
+            "value": ""
+        },
+        {
+            "key": "folder_id",
+            "value": "folder_example"
+        },
+        {
+            "key": "folder_file_id",
+            "value": "folder_file_example"
+        },
+        {
+            "key": "folder_preview_url",
             "value": ""
         },
         {
@@ -2761,6 +2773,190 @@
                             "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
                         }
                     ]
+                }
+            ]
+        },
+        {
+            "name": "Folders",
+            "item": [
+                {
+                    "name": "List Folders",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const json = pm.response.json();",
+                                    "const first = json.data?.[0];",
+                                    "if (first?.id) pm.collectionVariables.set('folder_id', first.id);",
+                                    "if (first?.coverImageUri) pm.collectionVariables.set('folder_preview_url', first.coverImageUri);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/folders?page={{page}}&per_page={{per_page}}",
+                        "description": "Returns a paginated folder marketplace list. Optional query: search. The first folder ID and cover preview URL are saved automatically."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - Folders retrieved successfully",
+                            "originalRequest": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/folders?page=1&per_page=20"
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": true,\n    \"message\": \"Folders retrieved successfully.\",\n    \"data\": [\n        {\n            \"id\": \"folder_example\",\n            \"name\": \"Bridal Pack\",\n            \"pricePaise\": 29900,\n            \"currency\": \"INR\",\n            \"fileCount\": 10,\n            \"totalSize\": 83251,\n            \"coverImageUri\": \"https://example.com/api/v1/files/folders/.../preview?signature=...\",\n            \"createdAt\": \"2026-10-23T10:00:00Z\",\n            \"updatedAt\": \"2026-10-23T10:00:00Z\"\n        }\n    ],\n    \"meta\": {\n        \"current_page\": 1,\n        \"per_page\": 20,\n        \"total\": 1,\n        \"last_page\": 1,\n        \"from\": 1,\n        \"to\": 1\n    },\n    \"links\": {\n        \"first\": \"https://example.com/api/v1/folders?page=1\",\n        \"last\": \"https://example.com/api/v1/folders?page=1\",\n        \"prev\": null,\n        \"next\": null\n    }\n}"
+                        },
+                        {
+                            "name": "401 - Unauthenticated",
+                            "originalRequest": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/folders"
+                            },
+                            "status": "Unauthorized",
+                            "code": 401,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Folder Details",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const json = pm.response.json();",
+                                    "const firstPreview = json.data?.files?.find(file => file.previewUri);",
+                                    "const firstFile = json.data?.files?.[0];",
+                                    "if (firstFile?.id) pm.collectionVariables.set('folder_file_id', firstFile.id);",
+                                    "if (firstPreview?.previewUri) pm.collectionVariables.set('folder_preview_url', firstPreview.previewUri);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/folders/{{folder_id}}",
+                        "description": "Returns folder metadata and ordered extracted files. Image files include temporary signed previewUri values; other files return previewUri as null."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - Folder retrieved successfully",
+                            "originalRequest": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/folders/{{folder_id}}"
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": true,\n    \"message\": \"Folder retrieved successfully.\",\n    \"data\": {\n        \"id\": \"folder_example\",\n        \"name\": \"Bridal Pack\",\n        \"pricePaise\": 29900,\n        \"currency\": \"INR\",\n        \"fileCount\": 2,\n        \"totalSize\": 83251,\n        \"coverImageUri\": \"https://example.com/api/v1/files/folders/.../preview?signature=...\",\n        \"zipName\": \"bridal.zip\",\n        \"files\": [\n            {\n                \"id\": \"folder_file_example\",\n                \"name\": \"preview.svg\",\n                \"relativePath\": \"images/preview.svg\",\n                \"extension\": \"svg\",\n                \"mimeType\": \"image/svg+xml\",\n                \"size\": 8325,\n                \"previewUri\": \"https://example.com/api/v1/files/folders/.../preview?signature=...\"\n            },\n            {\n                \"id\": \"folder_file_example_2\",\n                \"name\": \"design.emb\",\n                \"relativePath\": \"design.emb\",\n                \"extension\": \"emb\",\n                \"mimeType\": \"application/octet-stream\",\n                \"size\": 74926,\n                \"previewUri\": null\n            }\n        ],\n        \"createdAt\": \"2026-10-23T10:00:00Z\",\n        \"updatedAt\": \"2026-10-23T10:00:00Z\"\n    }\n}"
+                        },
+                        {
+                            "name": "404 - Folder not found",
+                            "originalRequest": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/folders/folder_missing"
+                            },
+                            "status": "Not Found",
+                            "code": 404,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Folder not found.\",\n    \"code\": \"folder_not_found\"\n}"
+                        }
+                    ]
+                },
+                {
+                    "name": "Open Folder Image Preview",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "image/*"
+                            }
+                        ],
+                        "url": "{{folder_preview_url}}",
+                        "description": "Uses the temporary signed previewUri saved by Get Folder Details. No Bearer token is required because the URL contains its own short-lived signature."
+                    },
+                    "response": []
                 }
             ]
         },

@@ -31,6 +31,8 @@ Design and user collection endpoints accept `page` and `per_page` (default 20, m
 | POST | `/designs` | `DesignRequest` below | Created `Design` |
 | PATCH | `/designs/:id` | `DesignRequest` below | Updated `Design` |
 | DELETE | `/designs/:id` | Bearer token | `{ message: "Design deleted successfully." }` |
+| GET | `/folders` | Bearer token; optional `search`, `page`, `per_page` | Paginated `Folder[]` |
+| GET | `/folders/:id` | Bearer token | Folder metadata and ordered extracted files |
 
 ```ts
 type User = {
@@ -72,7 +74,32 @@ type Design = DesignRequest & {
   createdAt: string; // ISO 8601
   ownerKey: string | null; // countryCode + mobileNumber, e.g. +919876543210
 };
+
+type FolderFile = {
+  id: string;
+  name: string;
+  relativePath: string;
+  extension: string | null;
+  mimeType: string;
+  size: number;
+  previewUri: string | null; // Temporary signed URL for images only
+};
+type Folder = {
+  id: string;
+  name: string;
+  pricePaise: number;
+  currency: "INR";
+  fileCount: number;
+  totalSize: number;
+  coverImageUri: string | null;
+  zipName?: string; // Detail response only
+  files?: FolderFile[]; // Detail response only, in ZIP path order
+  createdAt: string;
+  updatedAt: string;
+};
 ```
+
+Folder image previews use temporary signed URLs and can be displayed directly without a Bearer header. Non-image files intentionally return `previewUri: null`. Folder purchase and ZIP download are not part of this read-only folder API phase.
 
 ## Home feed and View More
 

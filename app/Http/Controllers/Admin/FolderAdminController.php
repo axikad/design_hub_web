@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Folder;
-use App\Models\FolderFile;
 use App\Services\FolderArchiveService;
+use App\Support\FolderFilePreview;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -68,7 +68,7 @@ class FolderAdminController extends Controller
     {
         $model = $this->find($folder);
         $folderFile = $model->files()->whereKey($file)->firstOrFail();
-        $mimeType = $this->previewMimeType($folderFile);
+        $mimeType = FolderFilePreview::mimeType($folderFile);
 
         abort_unless($mimeType !== null, 404);
 
@@ -209,25 +209,11 @@ class FolderAdminController extends Controller
                 'extension' => $file->extension,
                 'mimeType' => $file->mime_type,
                 'size' => $file->size,
-                'previewUrl' => $this->previewMimeType($file) !== null
+                'previewUrl' => FolderFilePreview::mimeType($file) !== null
                     ? route('admin.folders.files.preview', [$folder->public_id, $file->id])
                     : null,
             ])->all(),
         ];
-    }
-
-    private function previewMimeType(FolderFile $file): ?string
-    {
-        return match (strtolower((string) $file->extension)) {
-            'jpg', 'jpeg' => 'image/jpeg',
-            'png' => 'image/png',
-            'webp' => 'image/webp',
-            'gif' => 'image/gif',
-            'bmp' => 'image/bmp',
-            'avif' => 'image/avif',
-            'svg' => 'image/svg+xml',
-            default => null,
-        };
     }
 
     /** @return array{name: string, priceRupees: string} */
