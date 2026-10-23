@@ -3,14 +3,29 @@ import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
-import { Archive, ArrowLeft, File, Files, HardDrive, IndianRupee, Pencil } from 'lucide-react';
+import {
+    Archive,
+    ArrowLeft,
+    File,
+    FileArchive,
+    FileCode2,
+    FileCog,
+    FileText,
+    Files,
+    HardDrive,
+    IndianRupee,
+    Pencil,
+    type LucideIcon,
+} from 'lucide-react';
 
 type ExtractedFile = {
+    id: number;
     name: string;
     relativePath: string;
     extension: string | null;
     mimeType: string;
     size: number;
+    previewUrl: string | null;
 };
 
 type FolderDetails = {
@@ -41,6 +56,17 @@ function formatBytes(bytes: number) {
     }
 
     return `${value.toFixed(value >= 10 ? 1 : 2)} ${unit}`;
+}
+
+function iconForFile(extension: string | null): LucideIcon {
+    const normalized = extension?.toLowerCase() ?? '';
+
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(normalized)) return FileArchive;
+    if (['txt', 'md', 'pdf', 'doc', 'docx', 'rtf', 'csv'].includes(normalized)) return FileText;
+    if (['html', 'css', 'js', 'json', 'xml'].includes(normalized)) return FileCode2;
+    if (['emb', 'dst', 'pes', 'dhb', 'jef', 'exp', 'vp3'].includes(normalized)) return FileCog;
+
+    return File;
 }
 
 export default function AdminFolderShow({ folder }: Props) {
@@ -115,30 +141,7 @@ export default function AdminFolderShow({ folder }: Props) {
                     {folder.files.length ? (
                         <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-3">
                             {folder.files.map((file) => (
-                                <article
-                                    key={file.relativePath}
-                                    className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 transition-colors hover:border-indigo-200 hover:bg-indigo-50/40 dark:border-slate-700 dark:bg-slate-950/40 dark:hover:border-indigo-800"
-                                >
-                                    <div className="flex items-start gap-3">
-                                        <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-indigo-300 dark:ring-slate-700">
-                                            <File className="size-5" />
-                                        </span>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate text-sm font-bold text-slate-900 dark:text-white" title={file.name}>
-                                                {file.name}
-                                            </p>
-                                            <p className="mt-1 truncate text-xs text-slate-400" title={file.relativePath}>
-                                                {file.relativePath}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700">
-                                        <span className="min-w-0 truncate text-slate-500" title={file.mimeType}>
-                                            {file.extension ? `.${file.extension}` : file.mimeType}
-                                        </span>
-                                        <span className="shrink-0 font-semibold text-slate-700 dark:text-slate-200">{formatBytes(file.size)}</span>
-                                    </div>
-                                </article>
+                                <FileCard key={file.id} file={file} />
                             ))}
                         </div>
                     ) : (
@@ -147,5 +150,42 @@ export default function AdminFolderShow({ folder }: Props) {
                 </section>
             </div>
         </AppLayout>
+    );
+}
+
+function FileCard({ file }: { file: ExtractedFile }) {
+    const FileIcon = iconForFile(file.extension);
+
+    return (
+        <article className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60 transition-colors hover:border-indigo-200 hover:bg-indigo-50/40 dark:border-slate-700 dark:bg-slate-950/40 dark:hover:border-indigo-800">
+            {file.previewUrl ? (
+                <div className="flex h-44 items-center justify-center overflow-hidden border-b border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                    <img src={file.previewUrl} alt={file.name} loading="lazy" className="h-full w-full object-contain" />
+                </div>
+            ) : (
+                <div className="flex h-32 items-center justify-center border-b border-slate-200 bg-gradient-to-br from-white to-slate-100 dark:border-slate-700 dark:from-slate-900 dark:to-slate-950">
+                    <span className="flex size-16 items-center justify-center rounded-2xl bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-indigo-300 dark:ring-slate-700">
+                        <FileIcon className="size-8" />
+                    </span>
+                </div>
+            )}
+            <div className="p-4">
+                <p className="truncate text-sm font-bold text-slate-900 dark:text-white" title={file.name}>
+                    {file.name}
+                </p>
+                <p className="mt-1 truncate text-xs text-slate-400" title={file.relativePath}>
+                    {file.relativePath}
+                </p>
+                <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700">
+                    <span
+                        className="min-w-0 truncate rounded-md bg-slate-200/70 px-2 py-1 font-mono text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                        title={file.mimeType}
+                    >
+                        {file.extension ? `.${file.extension}` : 'FILE'}
+                    </span>
+                    <span className="shrink-0 font-semibold text-slate-700 dark:text-slate-200">{formatBytes(file.size)}</span>
+                </div>
+            </div>
+        </article>
     );
 }

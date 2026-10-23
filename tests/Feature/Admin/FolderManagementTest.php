@@ -26,7 +26,7 @@ class FolderManagementTest extends TestCase
             'name' => 'Bridal Pack',
             'priceRupees' => '299.50',
             'zipFile' => $this->zipUpload('bridal.zip', [
-                'front/design.emb' => 'embroidery-data',
+                'front/preview.svg' => '<svg xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" fill="red"/></svg>',
                 'notes.txt' => 'Read me',
             ]),
         ])->assertRedirect(route('admin.folders.index'));
@@ -34,7 +34,7 @@ class FolderManagementTest extends TestCase
         $folder = Folder::query()->where('name', 'Bridal Pack')->firstOrFail();
         $this->assertSame(29950, $folder->price_paise);
         $this->assertSame(2, $folder->file_count);
-        $this->assertSame(['front/design.emb', 'notes.txt'], $folder->files()->pluck('relative_path')->all());
+        $this->assertSame(['front/preview.svg', 'notes.txt'], $folder->files()->pluck('relative_path')->all());
         Storage::disk('local')->assertExists($folder->zip_path);
         Storage::disk('local')->assertExists($folder->files()->firstOrFail()->storage_path);
 
@@ -43,7 +43,14 @@ class FolderManagementTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('admin/folders/show')
                 ->where('folder.name', 'Bridal Pack')
-                ->has('folder.files', 2));
+                ->has('folder.files', 2)
+                ->where('folder.files.0.previewUrl', route('admin.folders.files.preview', [$folder->public_id, $folder->files()->first()->id])));
+
+        $previewFile = $folder->files()->where('extension', 'svg')->firstOrFail();
+        $this->actingAs($admin)
+            ->get(route('admin.folders.files.preview', [$folder->public_id, $previewFile->id]))
+            ->assertOk()
+            ->assertHeader('content-type', 'image/svg+xml');
 
         $oldZipPath = $folder->zip_path;
 

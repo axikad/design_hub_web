@@ -4,15 +4,18 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Folder;
+use App\Models\FolderFile;
 use App\Services\FolderArchiveService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class FolderAdminController extends Controller
 {
@@ -58,6 +61,27 @@ class FolderAdminController extends Controller
 
         return Inertia::render('admin/folders/show', [
             'folder' => $this->folderPayload($model),
+        ]);
+    }
+
+    public function preview(string $folder, int $file): BinaryFileResponse
+    {
+        $model = $this->find($folder);
+        $folderFile = $model->files()->whereKey($file)->firstOrFail();
+        $mimeType = $this->previewMimeType($folderFile);
+
+        abort_unless($mimeType !== null, 404);
+
+        $disk = Storage::disk('local');
+        abort_unless($disk->exists($folderFile->storage_path), 404);
+
+        $safeName = str_replace(['"', "\r", "\n"], '', $folderFile->name);
+
+        return response()->file($disk->path($folderFile->storage_path), [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline; filename="'.$safeName.'"',
+            'Content-Security-Policy' => "sandbox; default-src 'none'; style-src 'unsafe-inline'",
+            'X-Content-Type-Options' => 'nosniff',
         ]);
     }
 
@@ -179,13 +203,31 @@ class FolderAdminController extends Controller
             'createdAt' => $folder->created_at?->toIso8601String(),
             'updatedAt' => $folder->updated_at?->toIso8601String(),
             'files' => $folder->files()->get()->map(fn ($file) => [
+                'id' => $file->id,
                 'name' => $file->name,
                 'relativePath' => $file->relative_path,
                 'extension' => $file->extension,
                 'mimeType' => $file->mime_type,
                 'size' => $file->size,
+                'previewUrl' => $this->previewMimeType($file) !== null
+                    ? route('admin.folders.files.preview', [$folder->public_id, $file->id])
+                    : null,
             ])->all(),
         ];
+    }
+
+    private function previewMimeType(FolderFile $file): ?string
+    {
+        return match (strtolower((string) $file->extension)) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'gif' => 'image/gif',
+            'bmp' => 'image/bmp',
+            'avif' => 'image/avif',
+            'svg' => 'image/svg+xml',
+            default => null,
+        };
     }
 
     /** @return array{name: string, priceRupees: string} */

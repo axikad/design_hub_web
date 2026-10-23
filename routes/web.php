@@ -94,6 +94,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
         ->middlewareFor(['edit', 'update'], 'permission:designs.update')
         ->middlewareFor('destroy', 'permission:designs.delete');
 
+    Route::get('admin/folders/{folder}/files/{file}/preview', [FolderAdminController::class, 'preview'])
+        ->middleware('permission:folders.read')
+        ->name('admin.folders.files.preview');
+
     Route::resource('admin/folders', FolderAdminController::class)
         ->parameters(['folders' => 'folder'])
         ->names('admin.folders')
