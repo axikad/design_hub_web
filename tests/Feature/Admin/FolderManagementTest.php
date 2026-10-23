@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 use ZipArchive;
 
@@ -36,6 +37,13 @@ class FolderManagementTest extends TestCase
         $this->assertSame(['front/design.emb', 'notes.txt'], $folder->files()->pluck('relative_path')->all());
         Storage::disk('local')->assertExists($folder->zip_path);
         Storage::disk('local')->assertExists($folder->files()->firstOrFail()->storage_path);
+
+        $this->actingAs($admin)->get("/admin/folders/{$folder->public_id}")
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/folders/show')
+                ->where('folder.name', 'Bridal Pack')
+                ->has('folder.files', 2));
 
         $oldZipPath = $folder->zip_path;
 

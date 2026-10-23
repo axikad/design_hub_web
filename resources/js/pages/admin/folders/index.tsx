@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Archive, Pencil, RotateCcw, Search } from 'lucide-react';
+import { Archive, Eye, Pencil, RotateCcw, Search } from 'lucide-react';
 import { type FormEventHandler, useState } from 'react';
 
 type FolderRow = {
@@ -141,6 +141,11 @@ export default function AdminFoldersIndex({ folders, filters }: Props) {
                                         <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">{formatBytes(folder.totalSize)}</td>
                                         <td className="px-5 py-4">
                                             <div className="flex gap-2">
+                                                <Button variant="outline" size="sm" asChild className="rounded-lg">
+                                                    <Link href={route('admin.folders.show', folder.id)}>
+                                                        <Eye className="size-4" /> View
+                                                    </Link>
+                                                </Button>
                                                 {canUpdate ? (
                                                     <Button variant="outline" size="sm" asChild className="rounded-lg">
                                                         <Link href={route('admin.folders.edit', folder.id)}>

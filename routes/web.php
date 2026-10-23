@@ -97,8 +97,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('admin/folders', FolderAdminController::class)
         ->parameters(['folders' => 'folder'])
         ->names('admin.folders')
-        ->except(['show'])
-        ->middlewareFor('index', 'permission:folders.read')
+        ->middlewareFor(['index', 'show'], 'permission:folders.read')
         ->middlewareFor(['create', 'store'], 'permission:folders.create')
         ->middlewareFor(['edit', 'update'], 'permission:folders.update')
         ->middlewareFor('destroy', 'permission:folders.delete');

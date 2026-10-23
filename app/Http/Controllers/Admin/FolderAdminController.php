@@ -52,6 +52,15 @@ class FolderAdminController extends Controller
         return Inertia::render('admin/folders/form', ['folder' => null]);
     }
 
+    public function show(string $folder): Response
+    {
+        $model = $this->find($folder);
+
+        return Inertia::render('admin/folders/show', [
+            'folder' => $this->folderPayload($model),
+        ]);
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $validated = $this->validated($request, true);
@@ -90,21 +99,7 @@ class FolderAdminController extends Controller
         $model = $this->find($folder);
 
         return Inertia::render('admin/folders/form', [
-            'folder' => [
-                'id' => $model->public_id,
-                'name' => $model->name,
-                'priceRupees' => number_format($model->price_paise / 100, 2, '.', ''),
-                'zipName' => $model->zip_name,
-                'fileCount' => $model->file_count,
-                'totalSize' => $model->total_size,
-                'files' => $model->files()->get()->map(fn ($file) => [
-                    'name' => $file->name,
-                    'relativePath' => $file->relative_path,
-                    'extension' => $file->extension,
-                    'mimeType' => $file->mime_type,
-                    'size' => $file->size,
-                ])->all(),
-            ],
+            'folder' => $this->folderPayload($model),
         ]);
     }
 
@@ -169,6 +164,28 @@ class FolderAdminController extends Controller
     private function find(string $publicId): Folder
     {
         return Folder::query()->where('public_id', $publicId)->firstOrFail();
+    }
+
+    /** @return array<string, mixed> */
+    private function folderPayload(Folder $folder): array
+    {
+        return [
+            'id' => $folder->public_id,
+            'name' => $folder->name,
+            'priceRupees' => number_format($folder->price_paise / 100, 2, '.', ''),
+            'zipName' => $folder->zip_name,
+            'fileCount' => $folder->file_count,
+            'totalSize' => $folder->total_size,
+            'createdAt' => $folder->created_at?->toIso8601String(),
+            'updatedAt' => $folder->updated_at?->toIso8601String(),
+            'files' => $folder->files()->get()->map(fn ($file) => [
+                'name' => $file->name,
+                'relativePath' => $file->relative_path,
+                'extension' => $file->extension,
+                'mimeType' => $file->mime_type,
+                'size' => $file->size,
+            ])->all(),
+        ];
     }
 
     /** @return array{name: string, priceRupees: string} */
