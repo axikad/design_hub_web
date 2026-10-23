@@ -1,7 +1,7 @@
 {
     "info": {
         "name": "DesignHub Mobile API",
-        "description": "Complete API v1 collection for the DesignHub embroidery marketplace (Laravel + Sanctum).\n\nSetup:\n1. Import this collection.\n2. The collection uses the live API URL `https://app.designshub.org/api/v1`. Change `base_url` only when testing another environment.\n3. Run **Authentication \u2192 Request OTP (Register)**. Local development can use the configured static OTP.\n4. Run **Verify OTP (Register)**. Use the matching Login requests for an existing phone number. The test script saves `accessToken` automatically.\n5. All authenticated requests use Bearer `{{accessToken}}`.\n\nSuccess responses always contain `success`, `message`, and `data`. Paginated responses also contain `meta` and `links`. Errors contain `success: false`, `message`, and `code`; validation errors also contain field-level `errors`. List endpoints accept `page` and `per_page` (maximum 100).",
+        "description": "Complete API v1 collection for the DesignHub embroidery marketplace (Laravel + Sanctum).\n\nSetup:\n1. Import this collection.\n2. The collection uses the live API URL `https://app.designshub.org/api/v1`. Change `base_url` only when testing another environment.\n3. Run **Authentication → Request OTP (Register)**. Local development can use the configured static OTP.\n4. Run **Verify OTP (Register)**. Use the matching Login requests for an existing phone number. The test script saves `accessToken` automatically.\n5. All authenticated requests use Bearer `{{accessToken}}`.\n\nSuccess responses always contain `success`, `message`, and `data`. Paginated responses also contain `meta` and `links`. Errors contain `success: false`, `message`, and `code`; validation errors also contain field-level `errors`. List endpoints accept `page` and `per_page` (maximum 100).",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "variable": [
@@ -75,6 +75,10 @@
         },
         {
             "key": "folder_preview_url",
+            "value": ""
+        },
+        {
+            "key": "folder_download_url",
             "value": ""
         },
         {
@@ -2711,7 +2715,7 @@
                             }
                         ],
                         "url": "{{signed_download_url}}",
-                        "description": "Paste URL from Request Download URL. No Bearer token \u2014 signature is in query string."
+                        "description": "Paste URL from Request Download URL. No Bearer token — signature is in query string."
                     },
                     "response": [
                         {
@@ -2728,7 +2732,7 @@
                                     }
                                 ],
                                 "url": "{{signed_download_url}}",
-                                "description": "Paste URL from Request Download URL. No Bearer token \u2014 signature is in query string."
+                                "description": "Paste URL from Request Download URL. No Bearer token — signature is in query string."
                             },
                             "status": "OK",
                             "code": 200,
@@ -2757,7 +2761,7 @@
                                     }
                                 ],
                                 "url": "{{signed_download_url}}",
-                                "description": "Paste URL from Request Download URL. No Bearer token \u2014 signature is in query string."
+                                "description": "Paste URL from Request Download URL. No Bearer token — signature is in query string."
                             },
                             "status": "Unauthorized",
                             "code": 401,
@@ -2955,6 +2959,104 @@
                         ],
                         "url": "{{folder_preview_url}}",
                         "description": "Uses the temporary signed previewUri saved by Get Folder Details. No Bearer token is required because the URL contains its own short-lived signature."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Folder Download Link",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const json = pm.response.json();",
+                                    "if (json.data?.downloadUri) pm.collectionVariables.set('folder_download_url', json.data.downloadUri);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/folders/{{folder_id}}/download",
+                        "description": "Paid buyers only. Returns a temporary signed URL for the original folder ZIP."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - Folder Download Link Created",
+                            "originalRequest": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/folders/{{folder_id}}/download",
+                                "description": "Paid buyers only. Returns a temporary signed URL for the original folder ZIP."
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": true,\n    \"message\": \"Folder download link created successfully.\",\n    \"data\": {\n        \"folderId\": \"folder_example\",\n        \"downloadUri\": \"https://example.com/api/v1/files/folders/folder_example/download?expires=...&signature=...\",\n        \"expiresAt\": \"2026-10-23T10:15:00Z\"\n    }\n}"
+                        },
+                        {
+                            "name": "403 - Folder Purchase Required",
+                            "originalRequest": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/folders/{{folder_id}}/download",
+                                "description": "Paid buyers only. Returns a temporary signed URL for the original folder ZIP."
+                            },
+                            "status": "Forbidden",
+                            "code": 403,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Purchase this folder to download its ZIP file.\",\n    \"code\": \"folder_download_forbidden\"\n}"
+                        }
+                    ]
+                },
+                {
+                    "name": "Download Purchased Folder ZIP",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/zip"
+                            }
+                        ],
+                        "url": "{{folder_download_url}}",
+                        "description": "Opens the short-lived signed ZIP URL returned by Create Folder Download Link."
                     },
                     "response": []
                 }
@@ -3346,6 +3448,176 @@
                             ],
                             "cookie": [],
                             "body": "{\n    \"success\": false,\n    \"message\": \"The given data was invalid.\",\n    \"code\": \"validation_error\",\n    \"errors\": {\n        \"field\": [\n            \"The field is required.\"\n        ]\n    }\n}"
+                        }
+                    ]
+                },
+                {
+                    "name": "Folder Purchase Status",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/purchases/folders/{{folder_id}}",
+                        "description": "Reconciles the authenticated buyer's folder payment state with Razorpay."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - Folder Purchase Status Retrieved",
+                            "originalRequest": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/purchases/folders/{{folder_id}}",
+                                "description": "Reconciles the authenticated buyer's folder payment state with Razorpay."
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": true,\n    \"message\": \"Purchase status retrieved successfully.\",\n    \"data\": {\n        \"folderId\": \"folder_example\",\n        \"status\": \"unpaid\"\n    }\n}"
+                        }
+                    ]
+                },
+                {
+                    "name": "Create Folder Payment Order",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const json = pm.response.json();",
+                                    "if (json.data?.orderId) pm.collectionVariables.set('razorpay_order_id', json.data.orderId);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"folderId\": \"{{folder_id}}\"\n}"
+                        },
+                        "url": "{{base_url}}/payments/orders",
+                        "description": "Creates a Razorpay order using the folder price stored by the backend. Send folderId instead of designId."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - Folder Payment Order Created",
+                            "originalRequest": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"folderId\": \"{{folder_id}}\"\n}"
+                                },
+                                "url": "{{base_url}}/payments/orders",
+                                "description": "Creates a Razorpay order using the folder price stored by the backend. Send folderId instead of designId."
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": true,\n    \"message\": \"Payment order created successfully.\",\n    \"data\": {\n        \"folderId\": \"folder_example\",\n        \"orderId\": \"order_example\",\n        \"keyId\": \"rzp_test_example\",\n        \"amount\": 29900,\n        \"currency\": \"INR\"\n    }\n}"
+                        }
+                    ]
+                },
+                {
+                    "name": "Verify Folder Payment",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"folderId\": \"{{folder_id}}\",\n  \"razorpay_order_id\": \"{{razorpay_order_id}}\",\n  \"razorpay_payment_id\": \"{{razorpay_payment_id}}\",\n  \"razorpay_signature\": \"{{razorpay_signature}}\"\n}"
+                        },
+                        "url": "{{base_url}}/payments/verify",
+                        "description": "Validates the Razorpay signature and records the folder purchase as paid or pending."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - Folder Payment Verified",
+                            "originalRequest": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"folderId\": \"{{folder_id}}\",\n  \"razorpay_order_id\": \"{{razorpay_order_id}}\",\n  \"razorpay_payment_id\": \"{{razorpay_payment_id}}\",\n  \"razorpay_signature\": \"{{razorpay_signature}}\"\n}"
+                                },
+                                "url": "{{base_url}}/payments/verify",
+                                "description": "Validates the Razorpay signature and records the folder purchase as paid or pending."
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": true,\n    \"message\": \"Payment verified successfully.\",\n    \"data\": {\n        \"folderId\": \"folder_example\",\n        \"status\": \"paid\",\n        \"purchaseId\": \"folder_purchase_example\"\n    }\n}"
                         }
                     ]
                 }

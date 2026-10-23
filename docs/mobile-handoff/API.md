@@ -33,6 +33,10 @@ Design and user collection endpoints accept `page` and `per_page` (default 20, m
 | DELETE | `/designs/:id` | Bearer token | `{ message: "Design deleted successfully." }` |
 | GET | `/folders` | Bearer token; optional `search`, `page`, `per_page` | Paginated `Folder[]` |
 | GET | `/folders/:id` | Bearer token | Folder metadata and ordered extracted files |
+| POST | `/payments/orders` | `{ folderId: string }` | Razorpay order using the server-side folder price |
+| POST | `/payments/verify` | `{ folderId, razorpay_order_id, razorpay_payment_id, razorpay_signature }` | Folder payment status and purchase ID |
+| GET | `/purchases/folders/:id` | Bearer token | `{ folderId, status: "unpaid" or "pending" or "paid" }` |
+| POST | `/folders/:id/download` | Bearer token; paid buyer only | Temporary signed ZIP download URL |
 
 ```ts
 type User = {
@@ -99,7 +103,7 @@ type Folder = {
 };
 ```
 
-Folder image previews use temporary signed URLs and can be displayed directly without a Bearer header. Non-image files intentionally return `previewUri: null`. Folder purchase and ZIP download are not part of this read-only folder API phase.
+Folder image previews use temporary signed URLs and can be displayed directly without a Bearer header. Non-image files intentionally return `previewUri: null`. To buy a folder, send `folderId` instead of `designId` through the existing payment endpoints. The backend always takes `amount` from the folder's stored `pricePaise`; clients must not submit an amount. Once status is `paid`, `POST /folders/:id/download` returns a short-lived signed URL for the original ZIP. Unpaid users receive `403 folder_download_forbidden` and never receive a full-file URL.
 
 ## Home feed and View More
 

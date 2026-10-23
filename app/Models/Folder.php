@@ -47,4 +47,14 @@ class Folder extends Model
             ->whereIn('extension', ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'avif', 'svg'])
             ->orderBy('relative_path');
     }
+
+    public function paymentOrders(): HasMany
+    {
+        return $this->hasMany(FolderPaymentOrder::class);
+    }
+
+    public function purchases(): HasMany
+    {
+        return $this->hasMany(FolderPurchase::class);
+    }
 }

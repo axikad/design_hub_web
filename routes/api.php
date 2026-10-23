@@ -22,6 +22,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::get('files/folders/{folderId}/{fileId}/preview', [FolderController::class, 'streamPreview'])
         ->name('files.folders.preview')
         ->middleware('signed');
+    Route::get('files/folders/{folderId}/download', [FolderController::class, 'streamDownload'])
+        ->name('files.folders.download')
+        ->middleware('signed');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('home', [HomeController::class, 'index'])->name('home');
@@ -49,10 +52,12 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::get('folders', [FolderController::class, 'index'])->name('folders.index');
         Route::get('folders/{folderId}', [FolderController::class, 'show'])->name('folders.show');
+        Route::post('folders/{folderId}/download', [FolderController::class, 'download']);
 
         Route::post('uploads', [UploadController::class, 'store']);
 
         Route::get('purchases/designs/{designId}', [PaymentController::class, 'purchaseStatus']);
+        Route::get('purchases/folders/{folderId}', [PaymentController::class, 'folderPurchaseStatus']);
         Route::post('payments/orders', [PaymentController::class, 'createOrder']);
         Route::post('payments/verify', [PaymentController::class, 'verify']);
     });
