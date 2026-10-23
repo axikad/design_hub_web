@@ -1,6 +1,0 @@
-import{j as e,$ as d}from"./app-lT0Frj_b.js";import{c as n,B as x}from"./app-logo-icon-BUtbIOkm.js";/**
- * @license lucide-react v0.475.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */const o=[["path",{d:"M5 12h14",key:"1ays0h"}],["path",{d:"M12 5v14",key:"s699le"}]],r=n("Plus",o);function h({title:a,description:s,createHref:t,createLabel:i="Add new",actions:l}){return e.jsxs("div",{className:"flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between",children:[e.jsxs("div",{children:[e.jsx("p",{className:"mb-1 text-[10px] font-bold tracking-[0.16em] text-indigo-600 uppercase dark:text-indigo-400",children:"Administration"}),e.jsx("h1",{className:"text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl dark:text-white",children:a}),s?e.jsx("p",{className:"mt-1.5 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400",children:s}):null]}),e.jsxs("div",{className:"flex shrink-0 items-center gap-2",children:[l,t?e.jsx(x,{asChild:!0,className:"h-10 rounded-xl bg-indigo-600 px-4 font-semibold shadow-md shadow-indigo-500/20 hover:bg-indigo-700",children:e.jsxs(d,{href:t,children:[e.jsx(r,{className:"h-4 w-4"}),i]})}):null]})]})}export{h as A,r as P};

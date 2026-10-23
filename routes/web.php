@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\CategoryAdminController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DesignAdminController;
 use App\Http\Controllers\Admin\DesignFileTypeAdminController;
+use App\Http\Controllers\Admin\FolderAdminController;
 use App\Http\Controllers\Admin\MachineAdminController;
 use App\Http\Controllers\Admin\MachineTypeAdminController;
 use App\Http\Controllers\Admin\PurchaseAdminController;
@@ -92,6 +93,15 @@ Route::middleware(['auth', 'admin'])->group(function () {
         ->middlewareFor(['create', 'store'], 'permission:designs.create')
         ->middlewareFor(['edit', 'update'], 'permission:designs.update')
         ->middlewareFor('destroy', 'permission:designs.delete');
+
+    Route::resource('admin/folders', FolderAdminController::class)
+        ->parameters(['folders' => 'folder'])
+        ->names('admin.folders')
+        ->except(['show'])
+        ->middlewareFor('index', 'permission:folders.read')
+        ->middlewareFor(['create', 'store'], 'permission:folders.create')
+        ->middlewareFor(['edit', 'update'], 'permission:folders.update')
+        ->middlewareFor('destroy', 'permission:folders.delete');
 
     Route::resource('admin/users', UserAdminController::class)
         ->parameters(['users' => 'user'])

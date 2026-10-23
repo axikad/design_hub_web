@@ -3,7 +3,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { Cog, Cpu, FileType2, FolderTree, Layers, LayoutGrid, Palette, Settings, ShieldCheck, ShoppingBag, UsersRound } from 'lucide-react';
+import { Archive, Cog, Cpu, FileType2, FolderTree, Layers, LayoutGrid, Palette, Settings, ShieldCheck, ShoppingBag, UsersRound } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const workspaceNavItems: NavItem[] = [
@@ -18,6 +18,12 @@ const workspaceNavItems: NavItem[] = [
         url: '/admin/designs',
         icon: Palette,
         permission: 'designs.read',
+    },
+    {
+        title: 'Folders',
+        url: '/admin/folders',
+        icon: Archive,
+        permission: 'folders.read',
     },
     {
         title: 'Purchases',
