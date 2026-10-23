@@ -11,7 +11,8 @@ type Props = {
     recentDesigns: { id: string; title: string; owner: string | null; fileType: string | null; createdAt: string | null }[];
     recentPurchases: {
         id: string;
-        design: string | null;
+        itemType: 'design' | 'folder';
+        itemName: string | null;
         buyer: string | null;
         amountPaise: number;
         currency: string;
@@ -121,10 +122,11 @@ export default function AdminDashboard({ stats, recentDesigns, recentPurchases }
                                 >
                                     <div className="min-w-0">
                                         <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-                                            {purchase.design || 'Deleted design'}
+                                            {purchase.itemName || `Deleted ${purchase.itemType}`}
                                         </p>
                                         <p className="mt-1 text-xs text-slate-400">
-                                            {purchase.buyer || 'Unknown buyer'} · {formatMoney(purchase.amountPaise, purchase.currency)}
+                                            {purchase.itemType} · {purchase.buyer || 'Unknown buyer'} ·{' '}
+                                            {formatMoney(purchase.amountPaise, purchase.currency)}
                                         </p>
                                     </div>
                                     <AdminStatusBadge

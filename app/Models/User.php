@@ -82,6 +82,11 @@ class User extends Authenticatable
         return $this->hasMany(Purchase::class, 'buyer_id');
     }
 
+    public function folderPurchases(): HasMany
+    {
+        return $this->hasMany(FolderPurchase::class, 'buyer_id');
+    }
+
     public function isSuperAdmin(): bool
     {
         $this->loadMissing('role');

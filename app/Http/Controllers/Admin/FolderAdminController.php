@@ -26,6 +26,8 @@ class FolderAdminController extends Controller
         $search = trim((string) $request->string('search'));
 
         $folders = Folder::query()
+            ->withCount(['purchases as paid_purchase_count' => fn ($query) => $query->where('status', 'paid')])
+            ->withSum(['purchases as paid_revenue_paise' => fn ($query) => $query->where('status', 'paid')], 'amount_paise')
             ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search) {
                 $searchQuery
                     ->where('name', 'like', "%{$search}%")
@@ -41,6 +43,8 @@ class FolderAdminController extends Controller
                 'zipName' => $folder->zip_name,
                 'fileCount' => $folder->file_count,
                 'totalSize' => $folder->total_size,
+                'paidPurchaseCount' => $folder->paid_purchase_count,
+                'revenuePaise' => (int) ($folder->paid_revenue_paise ?? 0),
                 'updatedAt' => $folder->updated_at?->toIso8601String(),
             ]);
 
@@ -193,6 +197,10 @@ class FolderAdminController extends Controller
     /** @return array<string, mixed> */
     private function folderPayload(Folder $folder): array
     {
+        $folder->load(['purchases' => fn ($query) => $query
+            ->with(['buyer', 'paymentOrder'])
+            ->latest('purchased_at')]);
+
         return [
             'id' => $folder->public_id,
             'name' => $folder->name,
@@ -202,6 +210,22 @@ class FolderAdminController extends Controller
             'totalSize' => $folder->total_size,
             'createdAt' => $folder->created_at?->toIso8601String(),
             'updatedAt' => $folder->updated_at?->toIso8601String(),
+            'paidPurchaseCount' => $folder->purchases->where('status', 'paid')->count(),
+            'pendingPurchaseCount' => $folder->purchases->where('status', 'pending')->count(),
+            'revenuePaise' => (int) $folder->purchases->where('status', 'paid')->sum('amount_paise'),
+            'purchases' => $folder->purchases->take(20)->map(fn ($purchase) => [
+                'id' => $purchase->public_id,
+                'buyerName' => $purchase->buyer?->name,
+                'buyerPhone' => $purchase->buyer
+                    ? $purchase->buyer->country_code.$purchase->buyer->mobile_number
+                    : null,
+                'amountPaise' => $purchase->amount_paise,
+                'currency' => $purchase->currency,
+                'status' => $purchase->status,
+                'razorpayOrderId' => $purchase->paymentOrder?->razorpay_order_id,
+                'razorpayPaymentId' => $purchase->razorpay_payment_id,
+                'purchasedAt' => $purchase->purchased_at?->toIso8601String(),
+            ])->values()->all(),
             'files' => $folder->files()->get()->map(fn ($file) => [
                 'id' => $file->id,
                 'name' => $file->name,

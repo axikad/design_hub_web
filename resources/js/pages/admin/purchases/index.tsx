@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { CreditCard, Pencil, RotateCcw, Search } from 'lucide-react';
+import { CreditCard, FolderArchive, Palette, Pencil, RotateCcw, Search } from 'lucide-react';
 import { type FormEventHandler, useState } from 'react';
 
 type PurchaseRow = {
@@ -23,13 +23,14 @@ type PurchaseRow = {
     razorpayOrderId: string | null;
     razorpayPaymentId: string | null;
     purchasedAt: string | null;
-    designTitle: string | null;
-    designId: string | null;
+    itemType: 'design' | 'folder';
+    itemName: string | null;
+    itemId: string | null;
     buyer: { name: string | null; countryCode: string; mobileNumber: string } | null;
 };
 type Props = {
     purchases: { data: PurchaseRow[]; links: { url: string | null; label: string; active: boolean }[] };
-    filters: { search: string; status: string };
+    filters: { search: string; status: string; type: string };
     statusOptions: string[];
 };
 
@@ -56,18 +57,24 @@ export default function AdminPurchasesIndex({ purchases, filters, statusOptions 
     const canDelete = permissions.includes('purchases.delete');
     const [search, setSearch] = useState(filters.search);
     const [status, setStatus] = useState(filters.status || 'all');
+    const [type, setType] = useState(filters.type || 'all');
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
         router.get(
             route('admin.purchases.index'),
-            { search: search || undefined, status: status === 'all' ? undefined : status },
+            {
+                search: search || undefined,
+                status: status === 'all' ? undefined : status,
+                type: type === 'all' ? undefined : type,
+            },
             { preserveState: true, replace: true },
         );
     };
     const reset = () => {
         setSearch('');
         setStatus('all');
+        setType('all');
         router.get(route('admin.purchases.index'), {}, { preserveState: true, replace: true });
     };
 
@@ -75,7 +82,7 @@ export default function AdminPurchasesIndex({ purchases, filters, statusOptions 
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Purchases" />
             <div className="space-y-6 p-4 md:p-6">
-                <AdminPageHeader title="Purchases" description="Review purchase records and server-side Razorpay payment state." />
+                <AdminPageHeader title="Purchases" description="Review design and folder purchases with server-side Razorpay state." />
                 <form onSubmit={submit}>
                     <AdminFilterBar
                         actions={
@@ -93,8 +100,18 @@ export default function AdminPurchasesIndex({ purchases, filters, statusOptions 
                             value={search}
                             onChange={(event) => setSearch(event.target.value)}
                             onClear={() => setSearch('')}
-                            placeholder="Search purchase, design, buyer, order..."
+                            placeholder="Search purchase, item, buyer, order..."
                         />
+                        <Select value={type} onValueChange={setType}>
+                            <SelectTrigger className="h-10 rounded-xl border-slate-200 sm:w-44 dark:border-slate-700">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All item types</SelectItem>
+                                <SelectItem value="design">Designs</SelectItem>
+                                <SelectItem value="folder">Folders</SelectItem>
+                            </SelectContent>
+                        </Select>
                         <Select value={status} onValueChange={setStatus}>
                             <SelectTrigger className="h-10 rounded-xl border-slate-200 sm:w-44 dark:border-slate-700">
                                 <SelectValue />
@@ -118,7 +135,7 @@ export default function AdminPurchasesIndex({ purchases, filters, statusOptions 
                         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                             <thead className="bg-slate-50/80 dark:bg-slate-950/60">
                                 <tr>
-                                    {['Design', 'Buyer', 'Amount', 'Payment references', 'Status', 'Purchased', 'Actions'].map((heading) => (
+                                    {['Item', 'Buyer', 'Amount', 'Payment references', 'Status', 'Purchased', 'Actions'].map((heading) => (
                                         <th
                                             key={heading}
                                             className="px-5 py-3.5 text-left text-[11px] font-bold tracking-wider text-slate-500 uppercase"
@@ -132,10 +149,26 @@ export default function AdminPurchasesIndex({ purchases, filters, statusOptions 
                                 {purchases.data.map((purchase) => (
                                     <tr key={purchase.id} className="transition-colors hover:bg-indigo-50/40 dark:hover:bg-indigo-950/10">
                                         <td className="px-5 py-4">
-                                            <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                                                {purchase.designTitle || 'Deleted design'}
-                                            </p>
-                                            <p className="mt-1 text-xs text-slate-400">{purchase.designId || purchase.id}</p>
+                                            <div className="flex items-start gap-3">
+                                                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-300">
+                                                    {purchase.itemType === 'folder' ? (
+                                                        <FolderArchive className="size-4" />
+                                                    ) : (
+                                                        <Palette className="size-4" />
+                                                    )}
+                                                </span>
+                                                <div className="min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                                                            {purchase.itemName || `Deleted ${purchase.itemType}`}
+                                                        </p>
+                                                        <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-slate-500 uppercase dark:bg-slate-800">
+                                                            {purchase.itemType}
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-1 truncate text-xs text-slate-400">{purchase.itemId || purchase.id}</p>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">
                                             {purchase.buyer ? (

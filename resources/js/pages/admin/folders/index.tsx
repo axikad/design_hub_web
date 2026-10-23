@@ -19,6 +19,8 @@ type FolderRow = {
     zipName: string;
     fileCount: number;
     totalSize: number;
+    paidPurchaseCount: number;
+    revenuePaise: number;
     updatedAt: string | null;
 };
 
@@ -105,7 +107,7 @@ export default function AdminFoldersIndex({ folders, filters }: Props) {
                         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                             <thead className="bg-slate-50/80 dark:bg-slate-950/60">
                                 <tr>
-                                    {['Folder', 'Price', 'ZIP archive', 'Extracted files', 'Total size', 'Actions'].map((heading) => (
+                                    {['Folder', 'Price', 'Purchases', 'Revenue', 'ZIP archive', 'Files', 'Total size', 'Actions'].map((heading) => (
                                         <th
                                             key={heading}
                                             className="px-5 py-3.5 text-left text-[11px] font-bold tracking-wider text-slate-500 uppercase"
@@ -131,6 +133,12 @@ export default function AdminFoldersIndex({ folders, filters }: Props) {
                                         </td>
                                         <td className="px-5 py-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
                                             {money.format(Number(folder.priceRupees))}
+                                        </td>
+                                        <td className="px-5 py-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                            {folder.paidPurchaseCount}
+                                        </td>
+                                        <td className="px-5 py-4 text-sm font-semibold text-emerald-600 dark:text-emerald-300">
+                                            {money.format(folder.revenuePaise / 100)}
                                         </td>
                                         <td className="max-w-64 px-5 py-4 text-sm text-slate-600 dark:text-slate-300">
                                             <span className="block truncate" title={folder.zipName}>

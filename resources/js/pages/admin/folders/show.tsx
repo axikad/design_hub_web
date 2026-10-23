@@ -1,3 +1,4 @@
+import { AdminStatusBadge } from '@/components/admin/admin-status-badge';
 import { AdminPageHeader } from '@/components/admin/page-header';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
@@ -15,6 +16,8 @@ import {
     HardDrive,
     IndianRupee,
     Pencil,
+    ShoppingBag,
+    WalletCards,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -37,6 +40,20 @@ type FolderDetails = {
     totalSize: number;
     createdAt: string | null;
     updatedAt: string | null;
+    paidPurchaseCount: number;
+    pendingPurchaseCount: number;
+    revenuePaise: number;
+    purchases: {
+        id: string;
+        buyerName: string | null;
+        buyerPhone: string | null;
+        amountPaise: number;
+        currency: string;
+        status: string;
+        razorpayOrderId: string | null;
+        razorpayPaymentId: string | null;
+        purchasedAt: string | null;
+    }[];
     files: ExtractedFile[];
 };
 
@@ -72,6 +89,8 @@ function iconForFile(extension: string | null): LucideIcon {
 export default function AdminFolderShow({ folder }: Props) {
     const permissions = usePage<SharedData>().props.auth.permissions ?? [];
     const canUpdate = permissions.includes('folders.update');
+    const canReadPurchases = permissions.includes('purchases.read');
+    const canUpdatePurchases = permissions.includes('purchases.update');
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Overview', href: '/dashboard' },
         { title: 'Folders', href: '/admin/folders' },
@@ -81,6 +100,8 @@ export default function AdminFolderShow({ folder }: Props) {
         { label: 'Price', value: money.format(Number(folder.priceRupees)), icon: IndianRupee },
         { label: 'Extracted files', value: String(folder.fileCount), icon: Files },
         { label: 'Total size', value: formatBytes(folder.totalSize), icon: HardDrive },
+        { label: 'Paid purchases', value: String(folder.paidPurchaseCount), icon: ShoppingBag },
+        { label: 'Revenue', value: money.format(folder.revenuePaise / 100), icon: WalletCards },
     ];
 
     return (
@@ -108,7 +129,7 @@ export default function AdminFolderShow({ folder }: Props) {
                     }
                 />
 
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                     {summaries.map(({ label, value, icon: Icon }) => (
                         <div
                             key={label}
@@ -126,6 +147,83 @@ export default function AdminFolderShow({ folder }: Props) {
                         </div>
                     ))}
                 </div>
+
+                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                    <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+                        <div className="flex items-center gap-3">
+                            <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-300">
+                                <ShoppingBag className="size-5" />
+                            </span>
+                            <div>
+                                <h2 className="text-sm font-bold text-slate-900 dark:text-white">Folder purchases</h2>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    {folder.paidPurchaseCount} paid · {folder.pendingPurchaseCount} pending
+                                </p>
+                            </div>
+                        </div>
+                        {canReadPurchases ? (
+                            <Button variant="outline" size="sm" asChild className="rounded-lg">
+                                <Link href={`/admin/purchases?type=folder&search=${encodeURIComponent(folder.id)}`}>View all</Link>
+                            </Button>
+                        ) : null}
+                    </div>
+                    {folder.purchases.length ? (
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+                                <thead className="bg-slate-50/80 dark:bg-slate-950/50">
+                                    <tr>
+                                        {['Buyer', 'Amount', 'Payment reference', 'Status', 'Purchased', 'Action'].map((heading) => (
+                                            <th
+                                                key={heading}
+                                                className="px-5 py-3 text-left text-[11px] font-bold tracking-wide text-slate-500 uppercase"
+                                            >
+                                                {heading}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                    {folder.purchases.map((purchase) => (
+                                        <tr key={purchase.id}>
+                                            <td className="px-5 py-4">
+                                                <p className="text-sm font-semibold text-slate-900 dark:text-white">{purchase.buyerName || 'User'}</p>
+                                                <p className="mt-1 text-xs text-slate-400">{purchase.buyerPhone || 'No phone'}</p>
+                                            </td>
+                                            <td className="px-5 py-4 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                                {money.format(purchase.amountPaise / 100)}
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <p className="max-w-52 truncate font-mono text-xs text-slate-600 dark:text-slate-300">
+                                                    {purchase.razorpayOrderId || 'No order ID'}
+                                                </p>
+                                                <p className="mt-1 max-w-52 truncate font-mono text-xs text-slate-400">
+                                                    {purchase.razorpayPaymentId || 'No payment ID'}
+                                                </p>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <AdminStatusBadge tone={purchase.status === 'paid' ? 'success' : 'warning'}>
+                                                    {purchase.status}
+                                                </AdminStatusBadge>
+                                            </td>
+                                            <td className="px-5 py-4 text-sm text-slate-500">
+                                                {purchase.purchasedAt ? new Date(purchase.purchasedAt).toLocaleString() : 'Not completed'}
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                {canUpdatePurchases ? (
+                                                    <Button variant="outline" size="sm" asChild className="rounded-lg">
+                                                        <Link href={route('admin.purchases.edit', purchase.id)}>Review</Link>
+                                                    </Button>
+                                                ) : null}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="p-10 text-center text-sm text-slate-500">No folder purchases yet.</div>
+                    )}
+                </section>
 
                 <section className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
                     <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">

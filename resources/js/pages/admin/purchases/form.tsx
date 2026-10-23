@@ -23,7 +23,8 @@ type Props = {
         lastReconciledAt: string | null;
         purchasedAt: string | null;
         buyer: { name: string | null; countryCode: string; mobileNumber: string } | null;
-        design: { title: string; displayName?: string | null; imageUri: string | null } | null;
+        itemType: 'design' | 'folder';
+        item: { id: string; name: string; imageUri: string | null } | null;
     };
     statusOptions: string[];
 };
@@ -72,17 +73,18 @@ export default function AdminPurchaseForm({ purchase, statusOptions }: Props) {
                 <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
                     <AdminFormPanel title="Purchase details" description={purchase.id} icon={CreditCard}>
                         <div className="flex items-start gap-4">
-                            {purchase.design?.imageUri ? (
+                            {purchase.item?.imageUri ? (
                                 <img
-                                    src={purchase.design.imageUri}
+                                    src={purchase.item.imageUri}
                                     alt=""
                                     className="size-24 rounded-2xl object-cover ring-1 ring-slate-200 dark:ring-slate-700"
                                 />
                             ) : null}
                             <div>
                                 <p className="text-lg font-bold text-slate-900 dark:text-white">
-                                    {purchase.design?.displayName || purchase.design?.title || 'Deleted design'}
+                                    {purchase.item?.name || `Deleted ${purchase.itemType}`}
                                 </p>
+                                <p className="mt-1 text-xs font-bold tracking-wide text-slate-400 uppercase">{purchase.itemType}</p>
                                 <p className="mt-1 text-xl font-bold text-indigo-600 dark:text-indigo-300">
                                     {formatMoney(purchase.amountPaise, purchase.currency)}
                                 </p>
