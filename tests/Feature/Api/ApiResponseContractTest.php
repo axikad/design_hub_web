@@ -255,6 +255,7 @@ class ApiResponseContractTest extends TestCase
     public function test_design_options_are_backend_managed_ordered_and_non_paginated(): void
     {
         $this->seed(DesignFormOptionSeeder::class);
+        $this->seed(DesignFileTypeSeeder::class);
         Sanctum::actingAs(User::factory()->create());
 
         $this->getJson('/api/v1/catalog/design-options')
@@ -262,6 +263,7 @@ class ApiResponseContractTest extends TestCase
             ->assertJsonPath('message', 'Design options retrieved successfully.')
             ->assertJsonPath('data.machines.0.id', 'embroidery')
             ->assertJsonPath('data.machines.0.machineTypeIds.0', 'machine-embroidery')
+            ->assertJsonPath('data.machines.0.designFileTypeIds.0', 'emb')
             ->assertJsonFragment(['id' => 'machine-embroidery', 'name' => 'Multi Head'])
             ->assertJsonFragment(['id' => 'sequin', 'name' => 'Sequin'])
             ->assertJsonFragment(['id' => 'multi-sequin', 'name' => 'Multi Sequin'])
@@ -355,6 +357,7 @@ class ApiResponseContractTest extends TestCase
     {
         $this->seed(DesignFormOptionSeeder::class);
         $this->seed(DesignCatalogSeeder::class);
+        $this->seed(DesignFileTypeSeeder::class);
         Sanctum::actingAs(User::factory()->create());
 
         $this->getJson('/api/v1/catalog/machines')
@@ -370,6 +373,13 @@ class ApiResponseContractTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.id', 'dobby-air-jet')
             ->assertJsonPath('data.1.id', 'jacquard-air-jet');
+
+        $this->getJson('/api/v1/catalog/machines/embroidery/design-file-types')
+            ->assertOk()
+            ->assertJsonPath('message', 'Machine design file types retrieved successfully.')
+            ->assertJsonCount(3, 'data')
+            ->assertJsonPath('data.0.id', 'emb')
+            ->assertJsonPath('data.0.machineId', 'embroidery');
 
         $this->getJson('/api/v1/catalog/machine-types/machine-embroidery/categories')
             ->assertOk()
@@ -405,6 +415,7 @@ class ApiResponseContractTest extends TestCase
 
     public function test_design_file_types_are_active_ordered_and_non_paginated(): void
     {
+        $this->seed(DesignFormOptionSeeder::class);
         $this->seed(DesignFileTypeSeeder::class);
         Sanctum::actingAs(User::factory()->create());
 
@@ -420,6 +431,10 @@ class ApiResponseContractTest extends TestCase
             ->assertJsonPath('data.2.id', 'dhb')
             ->assertJsonMissingPath('meta')
             ->assertJsonMissingPath('links');
+
+        $this->getJson('/api/v1/catalog/design-file-types?machineId=embroidery')
+            ->assertOk()
+            ->assertJsonCount(3, 'data');
     }
 
     public function test_design_display_name_uses_selected_and_actual_file_extensions(): void

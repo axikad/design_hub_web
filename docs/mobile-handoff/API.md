@@ -12,94 +12,95 @@ Design and user collection endpoints accept `page` and `per_page` (default 20, m
 
 ## Endpoints
 
-| Method | Path | Request | Response data |
-| --- | --- | --- | --- |
-| POST | `/auth/request-otp` | `{ flow: "login" or "register", name: string or null, countryCode: "+91", mobileNumber: "9876543210" }` | `{ message: "OTP sent successfully." }` |
-| POST | `/auth/verify-otp` | Same fields plus `{ code: "1234" }` | `{ user: User, accessToken: string }` |
-| GET | `/users/me` | Bearer token | `User` |
-| GET | `/catalog/design-options` | Bearer token | Combined machines, machine types, and compatible categories (backward-compatible) |
-| GET | `/catalog/design-file-types` | Bearer token | Active design file types ordered by `sort_order` |
-| GET | `/catalog/machines` | Bearer token | Active machines |
-| GET | `/catalog/machines/:machineId/machine-types` | Bearer token | Active machine types for the selected machine |
-| GET | `/catalog/machine-types/:machineTypeId/categories` | Bearer token | Compatible categories for the selected machine type |
-| GET | `/catalog/categories/:categoryId/types` | Bearer token | Active design types for the selected category |
-| GET | `/home` | Bearer token | Latest, today, tomorrow and category home sections |
-| GET | `/designs` | Bearer token | `Design[]`, all community designs, newest first |
-| GET | `/users/me/designs` | Bearer token | `Design[]`, only authenticated user's designs |
-| GET | `/designs/:id` | Bearer token | `Design` (404 if missing) |
-| POST | `/uploads` | Multipart form with one `file` field | `{ url: "https://..." }` |
-| POST | `/designs` | `DesignRequest` below | Created `Design` |
-| PATCH | `/designs/:id` | `DesignRequest` below | Updated `Design` |
-| DELETE | `/designs/:id` | Bearer token | `{ message: "Design deleted successfully." }` |
-| GET | `/folders` | Bearer token; optional `search`, `page`, `per_page` | Paginated `Folder[]` |
-| GET | `/folders/:id` | Bearer token | Folder metadata and ordered extracted files |
-| POST | `/payments/orders` | `{ folderId: string }` | Razorpay order using the server-side folder price |
-| POST | `/payments/verify` | `{ folderId, razorpay_order_id, razorpay_payment_id, razorpay_signature }` | Folder payment status and purchase ID |
-| GET | `/purchases/folders/:id` | Bearer token | `{ folderId, status: "unpaid" or "pending" or "paid" }` |
-| POST | `/folders/:id/download` | Bearer token; paid buyer only | Temporary signed ZIP download URL |
+| Method | Path                                               | Request                                                                                                 | Response data                                                                     |
+| ------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| POST   | `/auth/request-otp`                                | `{ flow: "login" or "register", name: string or null, countryCode: "+91", mobileNumber: "9876543210" }` | `{ message: "OTP sent successfully." }`                                           |
+| POST   | `/auth/verify-otp`                                 | Same fields plus `{ code: "1234" }`                                                                     | `{ user: User, accessToken: string }`                                             |
+| GET    | `/users/me`                                        | Bearer token                                                                                            | `User`                                                                            |
+| GET    | `/catalog/design-options`                          | Bearer token                                                                                            | Combined machines, machine types, and compatible categories (backward-compatible) |
+| GET    | `/catalog/design-file-types`                       | Bearer token; optional `machineId`                                                                      | Active compatible design file types ordered by `sort_order`                       |
+| GET    | `/catalog/machines`                                | Bearer token                                                                                            | Active machines                                                                   |
+| GET    | `/catalog/machines/:machineId/machine-types`       | Bearer token                                                                                            | Active machine types for the selected machine                                     |
+| GET    | `/catalog/machines/:machineId/design-file-types`   | Bearer token                                                                                            | Active file types compatible with the selected machine                            |
+| GET    | `/catalog/machine-types/:machineTypeId/categories` | Bearer token                                                                                            | Compatible categories for the selected machine type                               |
+| GET    | `/catalog/categories/:categoryId/types`            | Bearer token                                                                                            | Active design types for the selected category                                     |
+| GET    | `/home`                                            | Bearer token                                                                                            | Latest, today, tomorrow and category home sections                                |
+| GET    | `/designs`                                         | Bearer token                                                                                            | `Design[]`, all community designs, newest first                                   |
+| GET    | `/users/me/designs`                                | Bearer token                                                                                            | `Design[]`, only authenticated user's designs                                     |
+| GET    | `/designs/:id`                                     | Bearer token                                                                                            | `Design` (404 if missing)                                                         |
+| POST   | `/uploads`                                         | Multipart form with one `file` field                                                                    | `{ url: "https://..." }`                                                          |
+| POST   | `/designs`                                         | `DesignRequest` below                                                                                   | Created `Design`                                                                  |
+| PATCH  | `/designs/:id`                                     | `DesignRequest` below                                                                                   | Updated `Design`                                                                  |
+| DELETE | `/designs/:id`                                     | Bearer token                                                                                            | `{ message: "Design deleted successfully." }`                                     |
+| GET    | `/folders`                                         | Bearer token; optional `search`, `page`, `per_page`                                                     | Paginated `Folder[]`                                                              |
+| GET    | `/folders/:id`                                     | Bearer token                                                                                            | Folder metadata and ordered extracted files                                       |
+| POST   | `/payments/orders`                                 | `{ folderId: string }`                                                                                  | Razorpay order using the server-side folder price                                 |
+| POST   | `/payments/verify`                                 | `{ folderId, razorpay_order_id, razorpay_payment_id, razorpay_signature }`                              | Folder payment status and purchase ID                                             |
+| GET    | `/purchases/folders/:id`                           | Bearer token                                                                                            | `{ folderId, status: "unpaid" or "pending" or "paid" }`                           |
+| POST   | `/folders/:id/download`                            | Bearer token; paid buyer only                                                                           | Temporary signed ZIP download URL                                                 |
 
 ```ts
 type User = {
-  id: string;
-  name: string | null;
-  countryCode: string;
-  mobileNumber: string;
+    id: string;
+    name: string | null;
+    countryCode: string;
+    mobileNumber: string;
 };
 type DesignRequest = {
-  machineTypeId: string;
-  categoryId: string;
-  designTypes: Array<{
-    typeId: string;
-    details: {
-      nameOrNumber: string;
-      stitchCount: number;
-      needle: number;
-      area: number;
-      height: number;
-      width: number;
-    };
-  }>;
-  designFileTypeId: string; // ID returned by /catalog/design-file-types
-  showPrice: boolean;
-  publishDate?: string; // YYYY-MM-DD; defaults to today in marketplace timezone
-  pricePaise: number; // INR integer paise; 100..100000000
-  images: Array<{ name: string; uri: string }>;
-  files: Array<{ name: string; uri: string; displayName?: string }>;
+    machineTypeId: string;
+    categoryId: string;
+    designTypes: Array<{
+        typeId: string;
+        details: {
+            nameOrNumber: string;
+            stitchCount: number;
+            needle: number;
+            area: number;
+            height: number;
+            width: number;
+        };
+    }>;
+    designFileTypeId: string; // Compatible ID returned for the selected machine
+    showPrice: boolean;
+    publishDate?: string; // YYYY-MM-DD; defaults to today in marketplace timezone
+    pricePaise: number; // INR integer paise; 100..100000000
+    images: Array<{ name: string; uri: string }>;
+    files: Array<{ name: string; uri: string; displayName?: string }>;
 };
 type Design = DesignRequest & {
-  id: string;
-  typeId: string; // First selected type; legacy compatibility
-  title: string; // First selected type's nameOrNumber
-  details: Array<object>; // Legacy compatibility
-  designFileTypeName: string | null;
-  designFileExtension: string | null;
-  displayName: string; // Example: "Abcd.dst (.emb)"
-  machineId: string | null; // Derived by the backend from machineTypeId
-  createdAt: string; // ISO 8601
-  ownerKey: string | null; // countryCode + mobileNumber, e.g. +919876543210
+    id: string;
+    typeId: string; // First selected type; legacy compatibility
+    title: string; // First selected type's nameOrNumber
+    details: Array<object>; // Legacy compatibility
+    designFileTypeName: string | null;
+    designFileExtension: string | null;
+    displayName: string; // Example: "Abcd.dst (.emb)"
+    machineId: string | null; // Derived by the backend from machineTypeId
+    createdAt: string; // ISO 8601
+    ownerKey: string | null; // countryCode + mobileNumber, e.g. +919876543210
 };
 
 type FolderFile = {
-  id: string;
-  name: string;
-  relativePath: string;
-  extension: string | null;
-  mimeType: string;
-  size: number;
-  previewUri: string | null; // Temporary signed URL for images only
+    id: string;
+    name: string;
+    relativePath: string;
+    extension: string | null;
+    mimeType: string;
+    size: number;
+    previewUri: string | null; // Temporary signed URL for images only
 };
 type Folder = {
-  id: string;
-  name: string;
-  pricePaise: number;
-  currency: "INR";
-  fileCount: number;
-  totalSize: number;
-  coverImageUri: string | null;
-  zipName?: string; // Detail response only
-  files?: FolderFile[]; // Detail response only, in ZIP path order
-  createdAt: string;
-  updatedAt: string;
+    id: string;
+    name: string;
+    pricePaise: number;
+    currency: 'INR';
+    fileCount: number;
+    totalSize: number;
+    coverImageUri: string | null;
+    zipName?: string; // Detail response only
+    files?: FolderFile[]; // Detail response only, in ZIP path order
+    createdAt: string;
+    updatedAt: string;
 };
 ```
 
@@ -111,17 +112,17 @@ Folder image previews use temporary signed URLs and can be displayed directly wi
 
 ```ts
 type HomeSection = {
-  total: number;
-  items: Design[];
-  hasMore: boolean;
-  viewMoreUrl: string;
+    total: number;
+    items: Design[];
+    hasMore: boolean;
+    viewMoreUrl: string;
 };
 
 type HomeFeed = {
-  latest: HomeSection;
-  today: HomeSection;
-  tomorrow: HomeSection;
-  categories: Array<HomeSection & { id: string; name: string }>;
+    latest: HomeSection;
+    today: HomeSection;
+    tomorrow: HomeSection;
+    categories: Array<HomeSection & { id: string; name: string }>;
 };
 ```
 
@@ -136,7 +137,7 @@ Optional home parameters are `sliderLimit` (maximum 10), `sectionLimit` (maximum
 
 Tomorrow designs use `publishDate` and are excluded from latest and category listings until their publish date.
 
-Clients send only `machineTypeId` when creating or updating a design. The backend derives and returns `machineId`, so clients do not need to submit duplicate machine data.
+Clients send only `machineTypeId` when creating or updating a design. The backend derives and returns `machineId`, so clients do not need to submit duplicate machine data. After selecting a machine, load its compatible formats from `/catalog/machines/:machineId/design-file-types` (or `/catalog/design-file-types?machineId=...`). The backend rejects a `designFileTypeId` that is not connected to the selected machine.
 
 Catalog selection uses two levels. `categoryId` is the main product group and every `designTypes[].typeId` is a selected placement/type with its own specifications:
 

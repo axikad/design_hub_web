@@ -234,6 +234,7 @@ class DesignManagementTest extends TestCase
             'name' => 'DST',
             'extension' => 'dst',
         ]);
+        $fileType->machines()->attach($machine);
 
         return [$machine, $machineType, $category, $type, $fileType];
     }

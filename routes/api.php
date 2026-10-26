@@ -33,6 +33,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('catalog/design-file-types', [CatalogController::class, 'designFileTypes']);
         Route::get('catalog/machines', [CatalogController::class, 'machines']);
         Route::get('catalog/machines/{machineId}/machine-types', [CatalogController::class, 'machineTypes']);
+        Route::get('catalog/machines/{machineId}/design-file-types', [CatalogController::class, 'machineDesignFileTypes']);
         Route::get('catalog/machine-types/{machineTypeId}/categories', [CatalogController::class, 'machineTypeCategories']);
         Route::get('catalog/categories/{categoryId}/types', [CatalogController::class, 'categoryTypes']);
 

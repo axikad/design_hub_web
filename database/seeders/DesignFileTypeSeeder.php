@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\DesignFileType;
+use App\Models\Machine;
 use Illuminate\Database\Seeder;
 
 class DesignFileTypeSeeder extends Seeder
@@ -15,8 +16,8 @@ class DesignFileTypeSeeder extends Seeder
             ['public_id' => 'dhb', 'name' => 'DHB', 'extension' => 'dhb'],
         ];
 
-        foreach ($fileTypes as $index => $fileType) {
-            DesignFileType::query()->updateOrCreate(
+        $models = collect($fileTypes)->map(function (array $fileType, int $index) {
+            return DesignFileType::query()->updateOrCreate(
                 ['public_id' => $fileType['public_id']],
                 [
                     'name' => $fileType['name'],
@@ -25,6 +26,9 @@ class DesignFileTypeSeeder extends Seeder
                     'sort_order' => $index + 1,
                 ],
             );
-        }
+        });
+
+        $fileTypeIds = $models->pluck('id')->all();
+        Machine::query()->each(fn (Machine $machine) => $machine->designFileTypes()->syncWithoutDetaching($fileTypeIds));
     }
 }

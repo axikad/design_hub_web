@@ -12,10 +12,17 @@ use Illuminate\Http\Request;
 
 class CatalogController extends Controller
 {
-    public function designFileTypes()
+    public function designFileTypes(Request $request)
     {
+        $machineId = trim((string) $request->string('machineId'));
         $fileTypes = DesignFileType::query()
             ->where('is_active', true)
+            ->when($machineId !== '', fn ($query) => $query->whereHas(
+                'machines',
+                fn ($machineQuery) => $machineQuery
+                    ->where('machines.public_id', $machineId)
+                    ->where('machines.is_active', true),
+            ))
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get()
@@ -26,6 +33,28 @@ class CatalogController extends Controller
             ]);
 
         return ApiResponse::data($fileTypes->values(), message: 'Design file types retrieved successfully.');
+    }
+
+    public function machineDesignFileTypes(string $machineId)
+    {
+        $machine = Machine::query()
+            ->where('public_id', $machineId)
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        $fileTypes = $machine->designFileTypes()
+            ->where('design_file_types.is_active', true)
+            ->orderBy('design_file_types.sort_order')
+            ->orderBy('design_file_types.name')
+            ->get()
+            ->map(fn (DesignFileType $fileType) => [
+                'id' => $fileType->public_id,
+                'name' => $fileType->name,
+                'extension' => $fileType->extension,
+                'machineId' => $machine->public_id,
+            ]);
+
+        return ApiResponse::data($fileTypes->values(), message: 'Machine design file types retrieved successfully.');
     }
 
     public function machines()
@@ -107,10 +136,16 @@ class CatalogController extends Controller
     {
         $machines = Machine::query()
             ->where('is_active', true)
-            ->with(['machineTypes' => fn ($query) => $query
-                ->where('is_active', true)
-                ->orderBy('sort_order')
-                ->orderBy('name')])
+            ->with([
+                'machineTypes' => fn ($query) => $query
+                    ->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->orderBy('name'),
+                'designFileTypes' => fn ($query) => $query
+                    ->where('design_file_types.is_active', true)
+                    ->orderBy('design_file_types.sort_order')
+                    ->orderBy('design_file_types.name'),
+            ])
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
@@ -136,6 +171,7 @@ class CatalogController extends Controller
                 'id' => $machine->public_id,
                 'name' => $machine->name,
                 'machineTypeIds' => $machine->machineTypes->pluck('public_id')->values(),
+                'designFileTypeIds' => $machine->designFileTypes->pluck('public_id')->values(),
             ])->values(),
             'machineTypes' => $machineTypes->map(fn (MachineType $machine) => [
                 'id' => $machine->public_id,

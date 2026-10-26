@@ -1341,7 +1341,7 @@
                             }
                         ],
                         "url": "{{base_url}}/catalog/design-file-types",
-                        "description": "Returns active design file types ordered by sort_order. The selected ID will be used when creating or updating a design."
+                        "description": "Returns all active design file types. To filter formats for a selected machine, add ?machineId={{machine_id}} or use List Machine Design File Types."
                     },
                     "response": [
                         {
@@ -1555,6 +1555,87 @@
                             ],
                             "cookie": [],
                             "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                        }
+                    ]
+                },
+                {
+                    "name": "List Machine Design File Types",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const json = pm.response.json();",
+                                    "pm.test('Machine design file types retrieved', () => pm.expect(json.success).to.eql(true));",
+                                    "pm.test('Each file type belongs to the selected machine', () => (json.data || []).forEach(item => pm.expect(item.machineId).to.eql(pm.collectionVariables.get('machine_id'))));",
+                                    "const first = json.data?.[0];",
+                                    "if (first) pm.collectionVariables.set('design_file_type_id', first.id);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/catalog/machines/{{machine_id}}/design-file-types",
+                        "description": "Returns active design file types compatible with the selected machine. Run List Machines first; the first compatible design_file_type_id is saved automatically."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - Machine Design File Types Retrieved",
+                            "originalRequest": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/catalog/machines/{{machine_id}}/design-file-types"
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": true,\n    \"message\": \"Machine design file types retrieved successfully.\",\n    \"data\": [\n        {\n            \"id\": \"emb\",\n            \"name\": \"EMB\",\n            \"extension\": \"emb\",\n            \"machineId\": \"embroidery\"\n        },\n        {\n            \"id\": \"dst\",\n            \"name\": \"DST\",\n            \"extension\": \"dst\",\n            \"machineId\": \"embroidery\"\n        },\n        {\n            \"id\": \"dhb\",\n            \"name\": \"DHB\",\n            \"extension\": \"dhb\",\n            \"machineId\": \"embroidery\"\n        }\n    ]\n}"
+                        },
+                        {
+                            "name": "404 - Machine Not Found",
+                            "originalRequest": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/catalog/machines/unknown/design-file-types"
+                            },
+                            "status": "Not Found",
+                            "code": 404,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Resource not found.\",\n    \"code\": \"not_found\"\n}"
                         }
                     ]
                 },

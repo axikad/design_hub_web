@@ -7,6 +7,7 @@ use App\Http\Resources\DesignResource;
 use App\Models\Design;
 use App\Models\DesignFileType;
 use App\Models\DesignType;
+use App\Models\MachineType;
 use App\Services\PurchaseAccessService;
 use App\Services\UploadService;
 use App\Support\ApiResponse;
@@ -297,6 +298,17 @@ class DesignController extends Controller
             ->where('public_id', $validated['designFileTypeId'])
             ->where('is_active', true)
             ->firstOrFail();
+
+        $machineType = MachineType::query()
+            ->where('public_id', $selection['machine_type_id'])
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        if (! $designFileType->machines()->where('machines.id', $machineType->machine_id)->exists()) {
+            throw ValidationException::withMessages([
+                'designFileTypeId' => 'The selected file type is not available for this machine.',
+            ]);
+        }
 
         try {
             $images = $this->resolveAttachments(

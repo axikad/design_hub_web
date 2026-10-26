@@ -313,10 +313,16 @@ class DesignAdminController extends Controller
             ]);
         }
 
-        $fileTypeId = DesignFileType::query()
+        $fileType = DesignFileType::query()
             ->where('public_id', $validated['designFileTypeId'])
             ->where('is_active', true)
-            ->value('id');
+            ->firstOrFail();
+
+        if (! $fileType->machines()->where('machines.id', $machineType->machine_id)->exists()) {
+            throw ValidationException::withMessages([
+                'designFileTypeId' => 'The selected file type is not available for this machine.',
+            ]);
+        }
 
         $variants = collect($validated['variants'])->map(function (array $variant, int $index) use ($types) {
             return [
@@ -335,7 +341,7 @@ class DesignAdminController extends Controller
         return [
             'ownerId' => $validated['ownerId'],
             'designTypeId' => $selection['design_type_id'],
-            'designFileTypeId' => $fileTypeId,
+            'designFileTypeId' => $fileType->id,
             'machineTypeId' => $selection['machine_type_id'],
             'categoryId' => $selection['category_id'],
             'title' => $firstVariant['name_or_number'],
@@ -484,7 +490,7 @@ class DesignAdminController extends Controller
             ->all();
     }
 
-    /** @return list<array{id: string, name: string, extension: string}> */
+    /** @return list<array{id: string, name: string, extension: string, machineIds: list<string>}> */
     private function fileTypeOptions(?int $includeId = null): array
     {
         return DesignFileType::query()
@@ -493,11 +499,13 @@ class DesignAdminController extends Controller
                 ->when($includeId !== null, fn ($query) => $query->orWhere('id', $includeId)))
             ->orderBy('sort_order')
             ->orderBy('name')
+            ->with('machines:id,public_id')
             ->get()
             ->map(fn (DesignFileType $fileType) => [
                 'id' => $fileType->public_id,
                 'name' => $fileType->name,
                 'extension' => $fileType->extension,
+                'machineIds' => $fileType->machines->pluck('public_id')->values()->all(),
             ])
             ->values()
             ->all();

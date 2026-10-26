@@ -21,6 +21,7 @@ type Row = {
     designsCount: number;
     isActive: boolean;
     sortOrder: number;
+    machineNames: string[];
 };
 type Props = {
     fileTypes: { data: Row[]; links: { url: string | null; label: string; active: boolean }[] };
@@ -109,7 +110,7 @@ export default function AdminDesignFileTypesIndex({ fileTypes, filters }: Props)
                         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                             <thead className="bg-slate-50/80 dark:bg-slate-950/60">
                                 <tr>
-                                    {['File type', 'Extension', 'Designs', 'Sort order', 'Status', 'Actions'].map((heading) => (
+                                    {['File type', 'Extension', 'Machines', 'Designs', 'Sort order', 'Status', 'Actions'].map((heading) => (
                                         <th
                                             key={heading}
                                             className="px-5 py-3.5 text-left text-[11px] font-bold tracking-wider text-slate-500 uppercase"
@@ -137,6 +138,18 @@ export default function AdminDesignFileTypesIndex({ fileTypes, filters }: Props)
                                             <span className="inline-flex rounded-lg bg-slate-100 px-2.5 py-1 font-mono text-sm font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                                                 .{fileType.extension}
                                             </span>
+                                        </td>
+                                        <td className="px-5 py-4">
+                                            <div className="flex max-w-64 flex-wrap gap-1.5">
+                                                {fileType.machineNames.map((name) => (
+                                                    <span
+                                                        key={name}
+                                                        className="rounded-full bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300"
+                                                    >
+                                                        {name}
+                                                    </span>
+                                                ))}
+                                            </div>
                                         </td>
                                         <td className="px-5 py-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
                                             {fileType.designsCount}

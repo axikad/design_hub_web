@@ -16,7 +16,7 @@ type TypeOption = { id: string; name: string };
 type CategoryOption = { id: string; name: string; types: TypeOption[] };
 type MachineTypeOption = { id: string; name: string; categories: CategoryOption[] };
 type MachineOption = { id: string; name: string; machineTypes: MachineTypeOption[] };
-type FileTypeOption = { id: string; name: string; extension: string };
+type FileTypeOption = { id: string; name: string; extension: string; machineIds: string[] };
 type VariantInput = {
     typeId: string;
     nameOrNumber: string;
@@ -66,6 +66,8 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
     const initialCategory =
         initialMachineType?.categories.find((category) => category.id === design?.categoryId) ?? initialMachineType?.categories[0];
     const initialType = initialCategory?.types[0];
+    const initialFileTypes = fileTypes.filter((fileType) => fileType.machineIds.includes(initialMachine?.id ?? ''));
+    const initialFileType = initialFileTypes.find((fileType) => fileType.id === design?.designFileTypeId) ?? initialFileTypes[0];
     const editing = Boolean(design?.id);
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Overview', href: '/dashboard' },
@@ -77,21 +79,20 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
         machineId: initialMachine?.id ?? '',
         machineTypeId: initialMachineType?.id ?? '',
         categoryId: initialCategory?.id ?? '',
-        designFileTypeId: design?.designFileTypeId ?? fileTypes[0]?.id ?? '',
+        designFileTypeId: initialFileType?.id ?? '',
         priceRupees: design?.priceRupees ?? '',
-        variants:
-            design?.variants?.length
-                ? design.variants.map((variant) => ({
-                      ...variant,
-                      stitchCount: variant.stitchCount.toString(),
-                      needle: variant.needle.toString(),
-                      area: variant.area.toString(),
-                      height: variant.height.toString(),
-                      width: variant.width.toString(),
-                  }))
-                : initialType
-                  ? [emptyVariant(initialType.id)]
-                  : [],
+        variants: design?.variants?.length
+            ? design.variants.map((variant) => ({
+                  ...variant,
+                  stitchCount: variant.stitchCount.toString(),
+                  needle: variant.needle.toString(),
+                  area: variant.area.toString(),
+                  height: variant.height.toString(),
+                  width: variant.width.toString(),
+              }))
+            : initialType
+              ? [emptyVariant(initialType.id)]
+              : [],
         previewImages: [] as File[],
         stitchFiles: [] as File[],
     });
@@ -99,17 +100,20 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
     const machineTypes = catalog.find((machine) => machine.id === data.machineId)?.machineTypes ?? [];
     const categories = machineTypes.find((type) => type.id === data.machineTypeId)?.categories ?? [];
     const types = categories.find((category) => category.id === data.categoryId)?.types ?? [];
+    const availableFileTypes = fileTypes.filter((fileType) => fileType.machineIds.includes(data.machineId));
 
     const selectMachine = (machineId: string) => {
         const machineType = catalog.find((machine) => machine.id === machineId)?.machineTypes[0];
         const category = machineType?.categories[0];
         const typeId = category?.types[0]?.id;
+        const fileTypeId = fileTypes.find((fileType) => fileType.machineIds.includes(machineId))?.id ?? '';
         setData((current) => ({
             ...current,
             machineId,
             machineTypeId: machineType?.id ?? '',
             categoryId: category?.id ?? '',
             variants: typeId ? [emptyVariant(typeId)] : [],
+            designFileTypeId: fileTypeId,
         }));
     };
     const selectMachineType = (machineTypeId: string) => {
@@ -153,7 +157,7 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
         !categories.length ||
         !types.length ||
         !data.variants.length ||
-        !fileTypes.length;
+        !availableFileTypes.length;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -252,8 +256,7 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                         <div className="space-y-4">
                             {data.variants.map((variant, index) => {
                                 const type = types.find((option) => option.id === variant.typeId);
-                                const fieldError = (field: keyof VariantInput) =>
-                                    (errors as Record<string, string>)[`variants.${index}.${field}`];
+                                const fieldError = (field: keyof VariantInput) => (errors as Record<string, string>)[`variants.${index}.${field}`];
 
                                 return (
                                     <div key={variant.typeId} className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
@@ -335,9 +338,13 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                                 label="File type"
                                 value={data.designFileTypeId}
                                 onChange={(value) => setData('designFileTypeId', value)}
-                                options={fileTypes.map((item) => ({ ...item, name: `${item.name} (.${item.extension})` }))}
+                                options={availableFileTypes.map((item) => ({ ...item, name: `${item.name} (.${item.extension})` }))}
                                 error={errors.designFileTypeId}
+                                disabled={!availableFileTypes.length}
                             />
+                            {!availableFileTypes.length ? (
+                                <p className="text-sm text-amber-700">No active file type is connected to this machine.</p>
+                            ) : null}
                         </div>
                     </AdminFormPanel>
 
@@ -389,7 +396,11 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                         </AdminFormPanel>
                         <AdminFormPanel
                             title="Stitch files"
-                            description={editing ? 'Select new files only when you want to replace all current stitch files.' : 'Upload up to 20 downloadable stitch files.'}
+                            description={
+                                editing
+                                    ? 'Select new files only when you want to replace all current stitch files.'
+                                    : 'Upload up to 20 downloadable stitch files.'
+                            }
                             icon={FileArchive}
                         >
                             {editing && design?.files?.length ? (

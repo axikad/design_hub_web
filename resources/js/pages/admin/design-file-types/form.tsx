@@ -11,10 +11,11 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, FileCode2, LoaderCircle, Save } from 'lucide-react';
 import { type FormEventHandler } from 'react';
 
-type FileTypeForm = { id: string; name: string; extension: string; isActive: boolean; sortOrder: number };
-type Props = { fileType: FileTypeForm | null };
+type MachineOption = { id: string; name: string };
+type FileTypeForm = { id: string; name: string; extension: string; isActive: boolean; sortOrder: number; machineIds: string[] };
+type Props = { fileType: FileTypeForm | null; machines: MachineOption[] };
 
-export default function AdminDesignFileTypeForm({ fileType }: Props) {
+export default function AdminDesignFileTypeForm({ fileType, machines }: Props) {
     const editing = Boolean(fileType?.id);
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Overview', href: '/dashboard' },
@@ -26,7 +27,15 @@ export default function AdminDesignFileTypeForm({ fileType }: Props) {
         extension: fileType?.extension ?? '',
         isActive: fileType?.isActive ?? true,
         sortOrder: fileType?.sortOrder ?? 0,
+        machineIds: fileType?.machineIds ?? machines.map((machine) => machine.id),
     });
+
+    const toggleMachine = (machineId: string) => {
+        setData(
+            'machineIds',
+            data.machineIds.includes(machineId) ? data.machineIds.filter((id) => id !== machineId) : [...data.machineIds, machineId],
+        );
+    };
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
@@ -120,11 +129,38 @@ export default function AdminDesignFileTypeForm({ fileType }: Props) {
                         <InputError message={errors.isActive} className="mt-2" />
                     </AdminFormPanel>
 
+                    <AdminFormPanel
+                        title="Compatible machines"
+                        description="Choose every machine that supports this design file format."
+                        icon={FileCode2}
+                    >
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            {machines.map((machine) => (
+                                <label
+                                    key={machine.id}
+                                    className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700"
+                                >
+                                    <Checkbox checked={data.machineIds.includes(machine.id)} onCheckedChange={() => toggleMachine(machine.id)} />
+                                    <span>
+                                        <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">{machine.name}</span>
+                                        <span className="mt-0.5 block text-xs text-slate-400">{machine.id}</span>
+                                    </span>
+                                </label>
+                            ))}
+                        </div>
+                        {!machines.length ? <p className="text-sm text-amber-700">Create an active machine first.</p> : null}
+                        <InputError message={errors.machineIds} className="mt-2" />
+                    </AdminFormPanel>
+
                     <div className="flex justify-end gap-3">
                         <Button variant="outline" asChild className="rounded-xl">
                             <Link href={route('admin.design-file-types.index')}>Cancel</Link>
                         </Button>
-                        <Button type="submit" disabled={processing} className="rounded-xl bg-indigo-600 px-5 font-semibold hover:bg-indigo-700">
+                        <Button
+                            type="submit"
+                            disabled={processing || !data.machineIds.length}
+                            className="rounded-xl bg-indigo-600 px-5 font-semibold hover:bg-indigo-700"
+                        >
                             {processing ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}
                             {processing ? 'Saving...' : editing ? 'Save changes' : 'Create file type'}
                         </Button>

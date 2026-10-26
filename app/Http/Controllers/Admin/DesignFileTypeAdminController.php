@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\DesignFileType;
+use App\Models\Machine;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -18,6 +20,7 @@ class DesignFileTypeAdminController extends Controller
         $status = (string) $request->string('status');
 
         $fileTypes = DesignFileType::query()
+            ->with(['machines' => fn ($query) => $query->orderBy('name')])
             ->withCount('designs')
             ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search) {
                 $searchQuery
@@ -36,6 +39,7 @@ class DesignFileTypeAdminController extends Controller
                 'isActive' => $fileType->is_active,
                 'sortOrder' => $fileType->sort_order,
                 'designsCount' => $fileType->designs_count,
+                'machineNames' => $fileType->machines->pluck('name')->values(),
             ]);
 
         return Inertia::render('admin/design-file-types/index', [
@@ -51,19 +55,24 @@ class DesignFileTypeAdminController extends Controller
     {
         return Inertia::render('admin/design-file-types/form', [
             'fileType' => null,
+            'machines' => $this->machineOptions(),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        DesignFileType::query()->create($this->validated($request));
+        $validated = $this->validated($request);
+        DB::transaction(function () use ($validated): void {
+            $fileType = DesignFileType::query()->create($validated['attributes']);
+            $fileType->machines()->sync($validated['machineIds']);
+        });
 
         return redirect()->route('admin.design-file-types.index')->with('success', 'Design file type created.');
     }
 
     public function edit(string $designFileType): Response
     {
-        $fileType = $this->find($designFileType);
+        $fileType = $this->find($designFileType)->load('machines');
 
         return Inertia::render('admin/design-file-types/form', [
             'fileType' => [
@@ -72,14 +81,20 @@ class DesignFileTypeAdminController extends Controller
                 'extension' => $fileType->extension,
                 'isActive' => $fileType->is_active,
                 'sortOrder' => $fileType->sort_order,
+                'machineIds' => $fileType->machines->pluck('public_id')->values(),
             ],
+            'machines' => $this->machineOptions(),
         ]);
     }
 
     public function update(Request $request, string $designFileType): RedirectResponse
     {
         $fileType = $this->find($designFileType);
-        $fileType->update($this->validated($request, $fileType));
+        $validated = $this->validated($request, $fileType);
+        DB::transaction(function () use ($fileType, $validated): void {
+            $fileType->update($validated['attributes']);
+            $fileType->machines()->sync($validated['machineIds']);
+        });
 
         return redirect()->route('admin.design-file-types.index')->with('success', 'Design file type updated.');
     }
@@ -104,7 +119,7 @@ class DesignFileTypeAdminController extends Controller
         return DesignFileType::query()->where('public_id', $publicId)->firstOrFail();
     }
 
-    /** @return array{name: string, extension: string, is_active: bool, sort_order: int} */
+    /** @return array{attributes: array{name: string, extension: string, is_active: bool, sort_order: int}, machineIds: list<int>} */
     private function validated(Request $request, ?DesignFileType $fileType = null): array
     {
         $request->merge([
@@ -128,13 +143,42 @@ class DesignFileTypeAdminController extends Controller
             ],
             'isActive' => ['boolean'],
             'sortOrder' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'machineIds' => ['required', 'array', 'min:1'],
+            'machineIds.*' => [
+                'required',
+                'string',
+                'distinct',
+                Rule::exists('machines', 'public_id')->where('is_active', true),
+            ],
         ]);
 
         return [
-            'name' => trim($validated['name']),
-            'extension' => strtolower(ltrim($validated['extension'], '.')),
-            'is_active' => $request->boolean('isActive', true),
-            'sort_order' => (int) ($validated['sortOrder'] ?? 0),
+            'attributes' => [
+                'name' => trim($validated['name']),
+                'extension' => strtolower(ltrim($validated['extension'], '.')),
+                'is_active' => $request->boolean('isActive', true),
+                'sort_order' => (int) ($validated['sortOrder'] ?? 0),
+            ],
+            'machineIds' => Machine::query()
+                ->whereIn('public_id', $validated['machineIds'])
+                ->pluck('id')
+                ->all(),
         ];
+    }
+
+    /** @return list<array{id: string, name: string}> */
+    private function machineOptions(): array
+    {
+        return Machine::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Machine $machine) => [
+                'id' => $machine->public_id,
+                'name' => $machine->name,
+            ])
+            ->values()
+            ->all();
     }
 }

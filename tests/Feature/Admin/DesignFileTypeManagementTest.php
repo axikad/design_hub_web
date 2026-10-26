@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Design;
 use App\Models\DesignFileType;
+use App\Models\Machine;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -15,12 +16,14 @@ class DesignFileTypeManagementTest extends TestCase
     public function test_admin_can_create_and_update_a_design_file_type(): void
     {
         $admin = User::factory()->superAdmin()->create();
+        $machine = Machine::query()->create(['name' => 'Embroidery']);
 
         $this->actingAs($admin)->post('/admin/design-file-types', [
             'name' => 'PES',
             'extension' => '.PES',
             'isActive' => true,
             'sortOrder' => 4,
+            'machineIds' => [$machine->public_id],
         ])->assertRedirect(route('admin.design-file-types.index'));
 
         $fileType = DesignFileType::query()->where('extension', 'pes')->firstOrFail();
@@ -30,6 +33,7 @@ class DesignFileTypeManagementTest extends TestCase
             'extension' => 'pes',
             'isActive' => false,
             'sortOrder' => 5,
+            'machineIds' => [$machine->public_id],
         ])->assertRedirect(route('admin.design-file-types.index'));
 
         $this->assertDatabaseHas('design_file_types', [
@@ -38,6 +42,10 @@ class DesignFileTypeManagementTest extends TestCase
             'extension' => 'pes',
             'is_active' => false,
             'sort_order' => 5,
+        ]);
+        $this->assertDatabaseHas('machine_design_file_type', [
+            'machine_id' => $machine->id,
+            'design_file_type_id' => $fileType->id,
         ]);
     }
 

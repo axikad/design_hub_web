@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -27,5 +28,10 @@ class Machine extends Model
     public function machineTypes(): HasMany
     {
         return $this->hasMany(MachineType::class);
+    }
+
+    public function designFileTypes(): BelongsToMany
+    {
+        return $this->belongsToMany(DesignFileType::class, 'machine_design_file_type');
     }
 }
