@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\DesignResource;
 use App\Models\Design;
+use App\Models\DesignCategory;
 use App\Models\DesignFileType;
 use App\Models\DesignType;
 use App\Models\MachineType;
@@ -386,7 +387,7 @@ class DesignController extends Controller
     private function resolveDesignTypeVariants(array $designTypes, string $categoryId): array
     {
         $types = DesignType::query()
-            ->with('category')
+            ->with('categories')
             ->whereIn('public_id', collect($designTypes)->pluck('typeId'))
             ->where('is_active', true)
             ->get()
@@ -395,13 +396,17 @@ class DesignController extends Controller
         $variants = collect($designTypes)->map(function (array $item, int $index) use ($types, $categoryId) {
             $type = $types->get($item['typeId']);
 
-            if ($type === null || $type->category === null || ! $type->category->is_active) {
+            if ($type === null) {
                 throw ValidationException::withMessages([
                     'designTypes.'.$index.'.typeId' => 'Selected type is invalid or inactive.',
                 ]);
             }
 
-            if ($type->category->public_id !== $categoryId) {
+            $belongsToCategory = $type->categories->contains(
+                fn (DesignCategory $category) => $category->public_id === $categoryId && $category->is_active,
+            );
+
+            if (! $belongsToCategory) {
                 throw ValidationException::withMessages([
                     'designTypes.'.$index.'.typeId' => 'The selected type does not belong to this category.',
                 ]);

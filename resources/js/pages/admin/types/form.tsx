@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
@@ -13,7 +12,7 @@ import { ArrowLeft, LoaderCircle, Save, Shapes } from 'lucide-react';
 import { type FormEventHandler } from 'react';
 
 type Category = { id: string; name: string };
-type TypeForm = { id: string; categoryId: string | null; name: string; description: string; isActive: boolean; sortOrder: number };
+type TypeForm = { id: string; categoryIds: string[]; name: string; description: string; isActive: boolean; sortOrder: number };
 type Props = { type: TypeForm | null; categories: Category[] };
 
 export default function AdminTypeForm({ type, categories }: Props) {
@@ -24,12 +23,19 @@ export default function AdminTypeForm({ type, categories }: Props) {
         { title: editing ? 'Edit design type' : 'Add design type', href: '#' },
     ];
     const { data, setData, post, put, processing, errors } = useForm({
-        categoryId: type?.categoryId ?? categories[0]?.id ?? '',
+        categoryIds: type?.categoryIds ?? [],
         name: type?.name ?? '',
         description: type?.description ?? '',
         isActive: type?.isActive ?? true,
         sortOrder: type?.sortOrder ?? 0,
     });
+
+    const toggleCategory = (categoryId: string) => {
+        setData(
+            'categoryIds',
+            data.categoryIds.includes(categoryId) ? data.categoryIds.filter((id) => id !== categoryId) : [...data.categoryIds, categoryId],
+        );
+    };
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
@@ -42,7 +48,7 @@ export default function AdminTypeForm({ type, categories }: Props) {
             <div className="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
                 <AdminPageHeader
                     title={editing ? 'Edit design type' : 'Add design type'}
-                    description="Each design type belongs to one category and is selectable when creating a design."
+                    description="Connect each design type to one or more categories."
                     actions={
                         <Button variant="outline" asChild className="rounded-xl">
                             <Link href={route('admin.types.index')}>
@@ -53,24 +59,8 @@ export default function AdminTypeForm({ type, categories }: Props) {
                 />
 
                 <form onSubmit={submit} className="space-y-5">
-                    <AdminFormPanel title="Design type details" description="Set its parent category, catalog name and display order." icon={Shapes}>
+                    <AdminFormPanel title="Design type details" description="Set its catalog name, description and display order." icon={Shapes}>
                         <div className="grid gap-5 sm:grid-cols-2">
-                            <div className="grid gap-2">
-                                <Label>Category</Label>
-                                <Select value={data.categoryId} onValueChange={(value) => setData('categoryId', value)}>
-                                    <SelectTrigger className="h-11 rounded-xl border-slate-200 dark:border-slate-700">
-                                        <SelectValue placeholder="Select category" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {categories.map((category) => (
-                                            <SelectItem key={category.id} value={category.id}>
-                                                {category.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <InputError message={errors.categoryId} />
-                            </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="name">Design type name</Label>
                                 <Input
@@ -119,13 +109,29 @@ export default function AdminTypeForm({ type, categories }: Props) {
                         </label>
                     </AdminFormPanel>
 
+                    <AdminFormPanel title="Categories" description="Select every category where this design type should be available." icon={Shapes}>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            {categories.map((category) => (
+                                <label
+                                    key={category.id}
+                                    className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700"
+                                >
+                                    <Checkbox checked={data.categoryIds.includes(category.id)} onCheckedChange={() => toggleCategory(category.id)} />
+                                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{category.name}</span>
+                                </label>
+                            ))}
+                            {!categories.length ? <p className="text-sm text-amber-700">Create an active category first.</p> : null}
+                        </div>
+                        <InputError message={errors.categoryIds} className="mt-3" />
+                    </AdminFormPanel>
+
                     <div className="flex justify-end gap-3">
                         <Button variant="outline" asChild className="rounded-xl">
                             <Link href={route('admin.types.index')}>Cancel</Link>
                         </Button>
                         <Button
                             type="submit"
-                            disabled={processing || !categories.length}
+                            disabled={processing || !categories.length || !data.categoryIds.length}
                             className="rounded-xl bg-indigo-600 px-5 font-semibold hover:bg-indigo-700"
                         >
                             {processing ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}

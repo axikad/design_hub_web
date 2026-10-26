@@ -289,13 +289,18 @@ class DesignAdminController extends Controller
         $types = DesignType::query()
             ->whereIn('public_id', collect($validated['variants'])->pluck('typeId'))
             ->where('is_active', true)
+            ->with('categories:id,public_id,is_active')
             ->get()
             ->keyBy('public_id');
 
         foreach ($validated['variants'] as $index => $variant) {
             $type = $types->get($variant['typeId']);
 
-            if ($type === null || $type->design_category_id !== $types->get($validated['variants'][0]['typeId'])?->design_category_id) {
+            $belongsToCategory = $type?->categories->contains(
+                fn (DesignCategory $category) => $category->public_id === $validated['categoryId'] && $category->is_active,
+            );
+
+            if ($type === null || ! $belongsToCategory) {
                 throw ValidationException::withMessages([
                     "variants.{$index}.typeId" => 'Every selected design type must belong to the selected category.',
                 ]);

@@ -437,6 +437,26 @@ class ApiResponseContractTest extends TestCase
             ->assertJsonCount(3, 'data');
     }
 
+    public function test_one_design_type_can_be_returned_for_multiple_categories(): void
+    {
+        $firstCategory = DesignCategory::query()->create(['name' => 'Saree']);
+        $secondCategory = DesignCategory::query()->create(['name' => 'Blouse']);
+        $type = DesignType::query()->create([
+            'design_category_id' => $firstCategory->id,
+            'name' => 'Shared Border',
+        ]);
+        $type->categories()->sync([$firstCategory->id, $secondCategory->id]);
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->getJson('/api/v1/catalog/categories/'.$firstCategory->public_id.'/types')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $type->public_id);
+
+        $this->getJson('/api/v1/catalog/categories/'.$secondCategory->public_id.'/types')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $type->public_id);
+    }
+
     public function test_design_display_name_uses_selected_and_actual_file_extensions(): void
     {
         $this->seed(DesignFileTypeSeeder::class);

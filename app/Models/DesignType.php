@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -33,11 +34,22 @@ class DesignType extends Model
                 $type->public_id = 'type_'.Str::lower(Str::random(10));
             }
         });
+
+        static::saved(function (DesignType $type) {
+            if ($type->design_category_id) {
+                $type->categories()->syncWithoutDetaching([$type->design_category_id]);
+            }
+        });
     }
 
     public function category(): BelongsTo
     {
         return $this->belongsTo(DesignCategory::class, 'design_category_id');
+    }
+
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(DesignCategory::class, 'category_design_type');
     }
 
     public function designs(): HasMany

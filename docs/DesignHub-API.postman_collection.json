@@ -1744,7 +1744,7 @@
                             }
                         ],
                         "url": "{{base_url}}/catalog/categories/{{category_id}}/types",
-                        "description": "Read-only catalog endpoint. Run the preceding catalog request first so its selected ID is saved automatically."
+                        "description": "Returns active design types connected to the selected category. A design type may be connected to multiple categories; the mobile request and response format remains unchanged."
                     },
                     "response": [
                         {

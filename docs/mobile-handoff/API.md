@@ -147,6 +147,8 @@ Catalog selection uses two levels. `categoryId` is the main product group and ev
 
 Load compatible categories after selecting a machine type, then load types for the selected category. All selected types must belong to that category. The first selected type supplies the legacy `typeId`, `title`, and `size` response fields. Old single-type requests using `typeId`, `details`, and flat summary/upload fields remain temporarily supported.
 
+A design type may be shared by multiple categories. Mobile clients do not need a contract change: continue loading `/catalog/categories/:categoryId/types` after category selection and submit the same `categoryId` plus selected `typeId` values.
+
 Seeded compatibility examples:
 
 - Multi Head: Saree, Blouse / Top, General

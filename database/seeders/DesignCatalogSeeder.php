@@ -55,7 +55,7 @@ class DesignCatalogSeeder extends Seeder
             );
 
             foreach ($categoryData['types'] as $typeIndex => $typeData) {
-                DesignType::query()->updateOrCreate(
+                $type = DesignType::query()->updateOrCreate(
                     ['public_id' => $typeData['public_id']],
                     [
                         'design_category_id' => $category->id,
@@ -64,6 +64,7 @@ class DesignCatalogSeeder extends Seeder
                         'sort_order' => $typeIndex + 1,
                     ],
                 );
+                $type->categories()->syncWithoutDetaching([$category->id]);
             }
         }
 

@@ -34,14 +34,16 @@ class DesignCategory extends Model
         });
     }
 
-    public function types(): HasMany
+    public function types(): BelongsToMany
     {
-        return $this->hasMany(DesignType::class)->orderBy('sort_order')->orderBy('name');
+        return $this->belongsToMany(DesignType::class, 'category_design_type')
+            ->orderBy('design_types.sort_order')
+            ->orderBy('design_types.name');
     }
 
-    public function activeTypes(): HasMany
+    public function activeTypes(): BelongsToMany
     {
-        return $this->types()->where('is_active', true);
+        return $this->types()->where('design_types.is_active', true);
     }
 
     public function designs(): HasMany

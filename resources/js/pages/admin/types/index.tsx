@@ -18,7 +18,7 @@ type Row = {
     id: string;
     name: string;
     description: string | null;
-    categoryName: string | null;
+    categoryNames: string[];
     designsCount: number;
     isActive: boolean;
     sortOrder: number;
@@ -156,9 +156,17 @@ export default function AdminTypesIndex({ types, categories, filters }: Props) {
                                             </div>
                                         </td>
                                         <td className="px-5 py-4">
-                                            <AdminStatusBadge tone="info" dot={false}>
-                                                {designType.categoryName ?? 'Not assigned'}
-                                            </AdminStatusBadge>
+                                            <div className="flex max-w-64 flex-wrap gap-1.5">
+                                                {designType.categoryNames.length ? (
+                                                    designType.categoryNames.map((name) => (
+                                                        <AdminStatusBadge key={name} tone="info" dot={false}>
+                                                            {name}
+                                                        </AdminStatusBadge>
+                                                    ))
+                                                ) : (
+                                                    <span className="text-sm text-slate-400">Not assigned</span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="max-w-xs px-5 py-4 text-sm text-slate-600 dark:text-slate-300">
                                             {designType.description || 'No description'}

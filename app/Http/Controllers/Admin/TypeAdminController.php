@@ -7,6 +7,7 @@ use App\Models\DesignCategory;
 use App\Models\DesignType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -20,7 +21,10 @@ class TypeAdminController extends Controller
         $categoryId = (string) $request->string('category');
 
         $types = DesignType::query()
-            ->with('category')
+            ->with(['categories' => fn ($query) => $query
+                ->where('design_categories.is_active', true)
+                ->orderBy('design_categories.sort_order')
+                ->orderBy('design_categories.name')])
             ->withCount('designs')
             ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search) {
                 $searchQuery
@@ -29,8 +33,8 @@ class TypeAdminController extends Controller
             }))
             ->when(in_array($status, ['active', 'inactive'], true), fn ($query) => $query->where('is_active', $status === 'active'))
             ->when($categoryId !== '', fn ($query) => $query->whereHas(
-                'category',
-                fn ($categoryQuery) => $categoryQuery->where('public_id', $categoryId),
+                'categories',
+                fn ($categoryQuery) => $categoryQuery->where('design_categories.public_id', $categoryId),
             ))
             ->orderBy('sort_order')
             ->orderBy('name')
@@ -42,8 +46,7 @@ class TypeAdminController extends Controller
                 'description' => $type->description,
                 'isActive' => $type->is_active,
                 'sortOrder' => $type->sort_order,
-                'categoryId' => $type->category?->public_id,
-                'categoryName' => $type->category?->name,
+                'categoryNames' => $type->categories->pluck('name')->values(),
                 'designsCount' => $type->designs_count,
             ]);
 
@@ -70,25 +73,31 @@ class TypeAdminController extends Controller
     {
         $validated = $this->validated($request);
 
-        DesignType::query()->create([
-            'design_category_id' => $validated['categoryId'],
-            'name' => $validated['name'],
-            'description' => $validated['description'],
-            'is_active' => $validated['isActive'],
-            'sort_order' => $validated['sortOrder'],
-        ]);
+        DB::transaction(function () use ($validated): void {
+            $type = DesignType::query()->create([
+                'design_category_id' => $validated['categoryIds'][0],
+                'name' => $validated['name'],
+                'description' => $validated['description'],
+                'is_active' => $validated['isActive'],
+                'sort_order' => $validated['sortOrder'],
+            ]);
+            $type->categories()->sync($validated['categoryIds']);
+        });
 
         return redirect()->route('admin.types.index')->with('success', 'Type created.');
     }
 
     public function edit(string $type): Response
     {
-        $model = DesignType::query()->with('category')->where('public_id', $type)->firstOrFail();
+        $model = DesignType::query()
+            ->with(['categories' => fn ($query) => $query->where('design_categories.is_active', true)])
+            ->where('public_id', $type)
+            ->firstOrFail();
 
         return Inertia::render('admin/types/form', [
             'type' => [
                 'id' => $model->public_id,
-                'categoryId' => $model->category?->public_id,
+                'categoryIds' => $model->categories->pluck('public_id')->values(),
                 'name' => $model->name,
                 'description' => $model->description ?? '',
                 'isActive' => $model->is_active,
@@ -103,13 +112,16 @@ class TypeAdminController extends Controller
         $model = DesignType::query()->where('public_id', $type)->firstOrFail();
         $validated = $this->validated($request);
 
-        $model->update([
-            'design_category_id' => $validated['categoryId'],
-            'name' => $validated['name'],
-            'description' => $validated['description'],
-            'is_active' => $validated['isActive'],
-            'sort_order' => $validated['sortOrder'],
-        ]);
+        DB::transaction(function () use ($model, $validated): void {
+            $model->update([
+                'design_category_id' => $validated['categoryIds'][0],
+                'name' => $validated['name'],
+                'description' => $validated['description'],
+                'is_active' => $validated['isActive'],
+                'sort_order' => $validated['sortOrder'],
+            ]);
+            $model->categories()->sync($validated['categoryIds']);
+        });
 
         return redirect()->route('admin.types.index')->with('success', 'Type updated.');
     }
@@ -131,6 +143,7 @@ class TypeAdminController extends Controller
     private function categoryOptions(): array
     {
         return DesignCategory::query()
+            ->where('is_active', true)
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get(['public_id', 'name'])
@@ -142,21 +155,33 @@ class TypeAdminController extends Controller
             ->all();
     }
 
-    /** @return array{categoryId: int, name: string, description: ?string, isActive: bool, sortOrder: int} */
+    /** @return array{categoryIds: list<int>, name: string, description: ?string, isActive: bool, sortOrder: int} */
     private function validated(Request $request): array
     {
         $validated = $request->validate([
-            'categoryId' => ['required', 'string', Rule::exists('design_categories', 'public_id')],
+            'categoryIds' => ['required', 'array', 'min:1'],
+            'categoryIds.*' => [
+                'required',
+                'string',
+                'distinct',
+                Rule::exists('design_categories', 'public_id')->where('is_active', true),
+            ],
             'name' => ['required', 'string', 'max:80'],
             'description' => ['nullable', 'string', 'max:255'],
             'isActive' => ['boolean'],
             'sortOrder' => ['nullable', 'integer', 'min:0', 'max:9999'],
         ]);
 
-        $category = DesignCategory::query()->where('public_id', $validated['categoryId'])->firstOrFail();
+        $categories = DesignCategory::query()
+            ->where('is_active', true)
+            ->whereIn('public_id', $validated['categoryIds'])
+            ->get(['id', 'public_id'])
+            ->keyBy('public_id');
 
         return [
-            'categoryId' => $category->id,
+            'categoryIds' => collect($validated['categoryIds'])
+                ->map(fn (string $publicId) => $categories->get($publicId)->id)
+                ->all(),
             'name' => trim($validated['name']),
             'description' => isset($validated['description']) ? trim($validated['description']) : null,
             'isActive' => $request->boolean('isActive', true),

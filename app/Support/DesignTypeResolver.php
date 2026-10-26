@@ -55,16 +55,18 @@ final class DesignTypeResolver
         }
 
         $type = DesignType::query()
-            ->with('category')
+            ->with('categories')
             ->where('public_id', $typeId)
             ->where('is_active', true)
             ->first();
 
-        if ($type === null || $type->category === null || ! $type->category->is_active) {
+        if ($type === null) {
             throw new \InvalidArgumentException('Selected type is invalid or inactive.');
         }
 
-        if ($categoryId !== $type->category->public_id) {
+        $category = $type->categories->first(fn (DesignCategory $category) => $category->public_id === $categoryId && $category->is_active);
+
+        if ($category === null) {
             throw new \InvalidArgumentException('The selected type does not belong to this category.');
         }
 
@@ -73,13 +75,13 @@ final class DesignTypeResolver
             ->where('is_active', true)
             ->first();
 
-        if ($machine === null || ! $type->category->machineTypes()->whereKey($machine->id)->exists()) {
+        if ($machine === null || ! $category->machineTypes()->whereKey($machine->id)->exists()) {
             throw new \InvalidArgumentException('The selected category is not available for this machine type.');
         }
 
         return [
             'design_type_id' => $type->id,
-            'category_id' => $type->category->public_id,
+            'category_id' => $category->public_id,
             'machine_type_id' => $machine->public_id,
         ];
     }
