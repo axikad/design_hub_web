@@ -7,6 +7,7 @@ use App\Models\Machine;
 use App\Models\MachineType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class MachineManagementTest extends TestCase
@@ -61,5 +62,32 @@ class MachineManagementTest extends TestCase
             ->assertSessionHasErrors('machine');
 
         $this->assertDatabaseHas('machines', ['id' => $machine->id]);
+    }
+
+    public function test_inactive_categories_are_hidden_from_machine_type_screens(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+        $machine = Machine::query()->create(['name' => 'Embroidery']);
+        $machineType = MachineType::query()->create([
+            'machine_id' => $machine->id,
+            'name' => 'Multi-head',
+        ]);
+        $activeCategory = DesignCategory::query()->create(['name' => 'Saree', 'is_active' => true]);
+        $inactiveCategory = DesignCategory::query()->create(['name' => 'Hidden category', 'is_active' => false]);
+        $machineType->categories()->attach([$activeCategory->id, $inactiveCategory->id]);
+
+        $this->actingAs($admin)
+            ->get('/admin/machine-types')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('machineTypes.data.0.categoryNames', ['Saree']));
+
+        $this->actingAs($admin)
+            ->get('/admin/machine-types/'.$machineType->public_id.'/edit')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('machineType.categoryIds', [$activeCategory->public_id])
+                ->has('categories', 1)
+                ->where('categories.0.id', $activeCategory->public_id));
     }
 }

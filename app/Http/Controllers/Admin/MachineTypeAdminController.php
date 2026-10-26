@@ -22,7 +22,13 @@ class MachineTypeAdminController extends Controller
         $machineId = (string) $request->string('machine');
 
         $machineTypes = MachineType::query()
-            ->with(['machine', 'categories'])
+            ->with([
+                'machine',
+                'categories' => fn ($query) => $query
+                    ->where('design_categories.is_active', true)
+                    ->orderBy('design_categories.sort_order')
+                    ->orderBy('design_categories.name'),
+            ])
             ->when($search !== '', fn ($query) => $query->where('name', 'like', "%{$search}%"))
             ->when(in_array($status, ['active', 'inactive'], true), fn ($query) => $query->where('is_active', $status === 'active'))
             ->when($machineId !== '', fn ($query) => $query->whereHas(
@@ -72,7 +78,13 @@ class MachineTypeAdminController extends Controller
 
     public function edit(string $machineType): Response
     {
-        $model = MachineType::query()->with(['machine', 'categories'])->where('public_id', $machineType)->firstOrFail();
+        $model = MachineType::query()
+            ->with([
+                'machine',
+                'categories' => fn ($query) => $query->where('design_categories.is_active', true),
+            ])
+            ->where('public_id', $machineType)
+            ->firstOrFail();
 
         return Inertia::render('admin/machine-types/form', [
             'machineType' => [
@@ -117,7 +129,7 @@ class MachineTypeAdminController extends Controller
                 'id' => $machine->public_id,
                 'name' => $machine->name,
             ])->values(),
-            'categories' => DesignCategory::query()->orderBy('sort_order')->orderBy('name')->get()->map(fn (DesignCategory $category) => [
+            'categories' => DesignCategory::query()->where('is_active', true)->orderBy('sort_order')->orderBy('name')->get()->map(fn (DesignCategory $category) => [
                 'id' => $category->public_id,
                 'name' => $category->name,
             ])->values(),
@@ -130,13 +142,20 @@ class MachineTypeAdminController extends Controller
             'machineId' => ['required', 'string', Rule::exists('machines', 'public_id')],
             'name' => ['required', 'string', 'max:80'],
             'categoryIds' => ['array'],
-            'categoryIds.*' => ['string', Rule::exists('design_categories', 'public_id')],
+            'categoryIds.*' => [
+                'string',
+                Rule::exists('design_categories', 'public_id')->where('is_active', true),
+            ],
             'isActive' => ['boolean'],
             'sortOrder' => ['nullable', 'integer', 'min:0', 'max:9999'],
         ]);
 
         $machine = Machine::query()->where('public_id', $validated['machineId'])->firstOrFail();
-        $categoryIds = DesignCategory::query()->whereIn('public_id', $validated['categoryIds'] ?? [])->pluck('id')->all();
+        $categoryIds = DesignCategory::query()
+            ->where('is_active', true)
+            ->whereIn('public_id', $validated['categoryIds'] ?? [])
+            ->pluck('id')
+            ->all();
 
         return [
             'attributes' => [
