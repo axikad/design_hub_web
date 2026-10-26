@@ -44,4 +44,21 @@ class CategoryManagementTest extends TestCase
 
         $this->assertSame([$secondType->id], $category->machineTypes()->pluck('machine_types.id')->all());
     }
+
+    public function test_admin_can_delete_category_connected_to_multiple_machine_types(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+        $machine = Machine::query()->create(['name' => 'Embroidery']);
+        $firstType = MachineType::query()->create(['machine_id' => $machine->id, 'name' => 'Multi Head']);
+        $secondType = MachineType::query()->create(['machine_id' => $machine->id, 'name' => 'Sequin']);
+        $category = DesignCategory::query()->create(['name' => 'Temporary category']);
+        $category->machineTypes()->attach([$firstType->id, $secondType->id]);
+
+        $this->actingAs($admin)
+            ->delete('/admin/categories/'.$category->public_id)
+            ->assertRedirect(route('admin.categories.index'));
+
+        $this->assertDatabaseMissing('design_categories', ['id' => $category->id]);
+        $this->assertDatabaseMissing('category_machine_type', ['design_category_id' => $category->id]);
+    }
 }

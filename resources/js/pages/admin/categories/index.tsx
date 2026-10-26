@@ -160,8 +160,8 @@ export default function AdminCategoriesIndex({ categories, filters }: Props) {
                                                 ) : null}
                                                 {canDelete ? (
                                                     <ConfirmDelete
-                                                        title="Delete category?"
-                                                        description="Remove its machine type, design type, and design relationships first."
+                                                        title={`Delete ${category.name}?`}
+                                                        description={`This category is connected to ${category.machineTypesCount} machine ${category.machineTypesCount === 1 ? 'type' : 'types'}. Deleting it will also remove ${category.machineTypesCount === 1 ? 'this connection' : 'these connections'}. Related design types and designs must be reassigned first.`}
                                                         onConfirm={() => router.delete(route('admin.categories.destroy', category.id))}
                                                     />
                                                 ) : null}

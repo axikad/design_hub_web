@@ -106,11 +106,14 @@ class CategoryAdminController extends Controller
     {
         $model = DesignCategory::query()->where('public_id', $category)->firstOrFail();
 
-        if ($model->types()->exists() || $model->machineTypes()->exists() || Design::query()->where('category_id', $model->public_id)->exists()) {
-            return back()->withErrors(['category' => 'Remove or reassign related machine types, design types, and designs before deleting this category.']);
+        if ($model->types()->exists() || Design::query()->where('category_id', $model->public_id)->exists()) {
+            return back()->withErrors(['category' => 'Remove or reassign related design types and designs before deleting this category.']);
         }
 
-        $model->delete();
+        DB::transaction(function () use ($model): void {
+            $model->machineTypes()->detach();
+            $model->delete();
+        });
 
         return redirect()->route('admin.categories.index')->with('success', 'Category deleted.');
     }
