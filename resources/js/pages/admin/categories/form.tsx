@@ -8,13 +8,14 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, FolderTree, LoaderCircle, Save } from 'lucide-react';
+import { ArrowLeft, Cog, FolderTree, LoaderCircle, Save } from 'lucide-react';
 import { type FormEventHandler } from 'react';
 
-type CategoryForm = { id: string; name: string; description: string; isActive: boolean; sortOrder: number };
-type Props = { category: CategoryForm | null };
+type MachineTypeOption = { id: string; name: string; machineName: string };
+type CategoryForm = { id: string; name: string; description: string; isActive: boolean; sortOrder: number; machineTypeIds: string[] };
+type Props = { category: CategoryForm | null; machineTypes: MachineTypeOption[] };
 
-export default function AdminCategoryForm({ category }: Props) {
+export default function AdminCategoryForm({ category, machineTypes }: Props) {
     const editing = Boolean(category?.id);
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Overview', href: '/dashboard' },
@@ -26,7 +27,17 @@ export default function AdminCategoryForm({ category }: Props) {
         description: category?.description ?? '',
         isActive: category?.isActive ?? true,
         sortOrder: category?.sortOrder ?? 0,
+        machineTypeIds: category?.machineTypeIds ?? [],
     });
+
+    const toggleMachineType = (machineTypeId: string) => {
+        setData(
+            'machineTypeIds',
+            data.machineTypeIds.includes(machineTypeId)
+                ? data.machineTypeIds.filter((id) => id !== machineTypeId)
+                : [...data.machineTypeIds, machineTypeId],
+        );
+    };
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
@@ -96,6 +107,32 @@ export default function AdminCategoryForm({ category }: Props) {
                                 <span className="mt-1 block text-xs text-slate-500">Show this category in admin and mobile catalog selections.</span>
                             </span>
                         </label>
+                    </AdminFormPanel>
+
+                    <AdminFormPanel
+                        title="Compatible machine types"
+                        description="Select every machine type where this category should be available."
+                        icon={Cog}
+                    >
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            {machineTypes.map((machineType) => (
+                                <label
+                                    key={machineType.id}
+                                    className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700"
+                                >
+                                    <Checkbox
+                                        checked={data.machineTypeIds.includes(machineType.id)}
+                                        onCheckedChange={() => toggleMachineType(machineType.id)}
+                                    />
+                                    <span>
+                                        <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">{machineType.name}</span>
+                                        <span className="mt-0.5 block text-xs text-slate-400">{machineType.machineName}</span>
+                                    </span>
+                                </label>
+                            ))}
+                            {!machineTypes.length ? <p className="text-sm text-amber-700">Create an active machine type first.</p> : null}
+                        </div>
+                        <InputError message={errors.machineTypeIds} className="mt-3" />
                     </AdminFormPanel>
 
                     <div className="flex justify-end gap-3">
