@@ -8,10 +8,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
-import { Globe2, ImageIcon, LoaderCircle, Save, UserRoundCog } from 'lucide-react';
+import { Globe2, ImageIcon, LoaderCircle, Save, ScanSearch, UserRoundCog } from 'lucide-react';
 import { type FormEventHandler } from 'react';
 
-type SiteSettings = { name: string; logoUrl: string | null; faviconUrl: string | null; defaultRegistrationRoleId: number | null };
+type SiteSettings = {
+    name: string;
+    logoUrl: string | null;
+    faviconUrl: string | null;
+    defaultRegistrationRoleId: number | null;
+    imageSearchSimilarity: number;
+};
 type RegistrationRole = { id: number; name: string; slug: string };
 type Props = { settings: SiteSettings; registrationRoles: RegistrationRole[] };
 const breadcrumbs: BreadcrumbItem[] = [
@@ -26,6 +32,7 @@ export default function AdminSiteSettings({ settings, registrationRoles }: Props
         logo: null as File | null,
         favicon: null as File | null,
         defaultRegistrationRoleId: settings.defaultRegistrationRoleId?.toString() ?? '',
+        imageSearchSimilarity: settings.imageSearchSimilarity.toString(),
     });
     const { data, setData, post, processing, errors } = form;
     const submit: FormEventHandler = (event) => {
@@ -61,10 +68,7 @@ export default function AdminSiteSettings({ settings, registrationRoles }: Props
                     >
                         <div className="grid gap-2">
                             <Label htmlFor="defaultRegistrationRoleId">Default registration role</Label>
-                            <Select
-                                value={data.defaultRegistrationRoleId}
-                                onValueChange={(value) => setData('defaultRegistrationRoleId', value)}
-                            >
+                            <Select value={data.defaultRegistrationRoleId} onValueChange={(value) => setData('defaultRegistrationRoleId', value)}>
                                 <SelectTrigger id="defaultRegistrationRoleId" className={inputClass}>
                                     <SelectValue placeholder="Select a role" />
                                 </SelectTrigger>
@@ -80,6 +84,30 @@ export default function AdminSiteSettings({ settings, registrationRoles }: Props
                                 Only roles with dashboard access are available. Super Admin is never allowed.
                             </p>
                             <InputError message={errors.defaultRegistrationRoleId} />
+                        </div>
+                    </AdminFormPanel>
+
+                    <AdminFormPanel
+                        title="Image matching"
+                        description="Control which visually similar designs appear in image-search results."
+                        icon={ScanSearch}
+                    >
+                        <div className="max-w-sm">
+                            <div className="grid gap-2">
+                                <Label htmlFor="imageSearchSimilarity">Search minimum similarity (%)</Label>
+                                <Input
+                                    id="imageSearchSimilarity"
+                                    type="number"
+                                    min={1}
+                                    max={100}
+                                    value={data.imageSearchSimilarity}
+                                    onChange={(event) => setData('imageSearchSimilarity', event.target.value)}
+                                    className={inputClass}
+                                    required
+                                />
+                                <p className="text-xs leading-5 text-slate-500">Only designs at or above this score appear in image search.</p>
+                                <InputError message={errors.imageSearchSimilarity} />
+                            </div>
                         </div>
                     </AdminFormPanel>
 

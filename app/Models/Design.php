@@ -90,6 +90,11 @@ class Design extends Model
         return $this->hasMany(DesignVariant::class)->orderBy('sort_order')->orderBy('id');
     }
 
+    public function imageFingerprints(): HasMany
+    {
+        return $this->hasMany(DesignImageFingerprint::class)->orderBy('image_index');
+    }
+
     public function scopeListed($query)
     {
         return $query->whereNull('deleted_at');

@@ -1,0 +1,289 @@
+<?php
+
+namespace App\Services;
+
+use App\Exceptions\DuplicateDesignImageException;
+use App\Exceptions\ImageMatchingUnavailableException;
+use App\Models\Design;
+use App\Models\DesignImageFingerprint;
+use App\Models\SiteSetting;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Throwable;
+
+class DesignImageMatchingService
+{
+    public function __construct(
+        private readonly ImageFingerprintService $fingerprints,
+        private readonly QdrantImageIndex $vectors,
+    ) {}
+
+    /** @param list<array{path: string}> $images */
+    public function assertStoredImagesAreUnique(array $images, ?Design $ignore = null): void
+    {
+        foreach ($images as $image) {
+            $this->assertFingerprintIsUnique(
+                $this->fingerprints->fromPublicPath($image['path']),
+                $ignore,
+            );
+        }
+    }
+
+    /** @param iterable<UploadedFile> $images */
+    public function assertUploadedImagesAreUnique(iterable $images, ?Design $ignore = null): void
+    {
+        foreach ($images as $image) {
+            $this->assertFingerprintIsUnique(
+                $this->fingerprints->fromUploadedFile($image),
+                $ignore,
+            );
+        }
+    }
+
+    /**
+     * @param  array<string, string|null>  $filters
+     * @return list<array{designId: string, score: float}>
+     */
+    public function search(string $contents, string $mime, array $filters = [], int $limit = 200): array
+    {
+        $fingerprint = $this->fingerprints->fromContents($contents, $mime);
+        $minimum = (float) SiteSetting::current()->image_search_similarity;
+
+        if ($this->vectors->enabled()) {
+            try {
+                return $this->uniqueDesignMatches(
+                    $this->vectors->search($contents, $filters, $minimum, $limit),
+                );
+            } catch (Throwable $exception) {
+                throw new ImageMatchingUnavailableException($exception);
+            }
+        }
+
+        return $this->localPerceptualMatches($fingerprint['perceptual_hash'], $filters, $minimum, $limit);
+    }
+
+    public function syncDesign(Design $design): void
+    {
+        $design->loadMissing('machineType.machine');
+        $oldPointIds = $design->imageFingerprints()->whereNotNull('vector_id')->pluck('vector_id')->all();
+
+        try {
+            $this->vectors->delete($oldPointIds);
+        } catch (Throwable $exception) {
+            Log::warning('Unable to remove previous design image vectors.', [
+                'design' => $design->public_id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+
+        $design->imageFingerprints()->delete();
+        $points = [];
+
+        foreach ($this->designImages($design) as $index => $image) {
+            try {
+                $fingerprint = $this->fingerprints->fromPublicPath($image['path']);
+                $vectorId = (string) Str::uuid();
+                $record = $design->imageFingerprints()->create([
+                    'image_index' => $index,
+                    'image_path' => $image['path'],
+                    'sha256' => $fingerprint['sha256'],
+                    'perceptual_hash' => $fingerprint['perceptual_hash'],
+                    'vector_id' => $this->vectors->enabled() ? $vectorId : null,
+                    'vector_status' => $this->vectors->enabled() ? 'pending' : 'disabled',
+                ]);
+
+                if ($this->vectors->enabled()) {
+                    $points[] = [
+                        'id' => $vectorId,
+                        'contents' => $fingerprint['contents'],
+                        'payload' => [
+                            'design_id' => $design->public_id,
+                            'image_index' => $index,
+                            'machine_id' => $design->machineType?->machine?->public_id,
+                            'machine_type_id' => $design->machine_type_id,
+                            'category_id' => $design->category_id,
+                            'listed' => $design->deleted_at === null,
+                        ],
+                        'record' => $record,
+                    ];
+                }
+            } catch (Throwable $exception) {
+                Log::warning('Unable to fingerprint a design image.', [
+                    'design' => $design->public_id,
+                    'image' => $image['path'],
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        if ($points === []) {
+            return;
+        }
+
+        try {
+            $this->vectors->upsert(collect($points)->map(fn (array $point) => [
+                'id' => $point['id'],
+                'contents' => $point['contents'],
+                'payload' => $point['payload'],
+            ])->all());
+
+            DesignImageFingerprint::query()
+                ->whereIn('id', collect($points)->pluck('record.id'))
+                ->update(['vector_status' => 'ready', 'vector_error' => null]);
+        } catch (Throwable $exception) {
+            DesignImageFingerprint::query()
+                ->whereIn('id', collect($points)->pluck('record.id'))
+                ->update([
+                    'vector_status' => 'failed',
+                    'vector_error' => Str::limit($exception->getMessage(), 1000),
+                ]);
+
+            Log::error('Unable to index design images.', [
+                'design' => $design->public_id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    public function removeDesign(Design $design): void
+    {
+        $pointIds = $design->imageFingerprints()->whereNotNull('vector_id')->pluck('vector_id')->all();
+
+        try {
+            $this->vectors->delete($pointIds);
+        } catch (Throwable $exception) {
+            Log::warning('Unable to remove design image vectors.', [
+                'design' => $design->public_id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+
+        $design->imageFingerprints()->delete();
+    }
+
+    /** @param array{sha256: string, perceptual_hash: string, contents: string, mime: string} $fingerprint */
+    private function assertFingerprintIsUnique(array $fingerprint, ?Design $ignore): void
+    {
+        $exactMatch = DesignImageFingerprint::query()
+            ->where('sha256', $fingerprint['sha256'])
+            ->whereHas('design', fn ($query) => $query->listed())
+            ->when($ignore, fn ($query) => $query->where('design_id', '!=', $ignore->id))
+            ->with('design:id,public_id')
+            ->first();
+
+        if ($exactMatch !== null) {
+            throw new DuplicateDesignImageException(100, $exactMatch->design?->public_id);
+        }
+
+        $minimum = (float) SiteSetting::current()->duplicate_image_similarity;
+
+        if ($this->vectors->enabled()) {
+            try {
+                $match = collect($this->vectors->search(
+                    $fingerprint['contents'],
+                    [],
+                    $minimum,
+                    1,
+                    $ignore?->public_id,
+                ))->first();
+            } catch (Throwable $exception) {
+                throw new ImageMatchingUnavailableException($exception);
+            }
+
+            if ($match !== null) {
+                throw new DuplicateDesignImageException($match['score'], $match['designId']);
+            }
+
+            return;
+        }
+
+        $match = $this->localPerceptualMatches(
+            $fingerprint['perceptual_hash'],
+            [],
+            $minimum,
+            1,
+            $ignore?->id,
+        )[0] ?? null;
+
+        if ($match !== null) {
+            throw new DuplicateDesignImageException($match['score'], $match['designId']);
+        }
+    }
+
+    /**
+     * @param  array<string, string|null>  $filters
+     * @return list<array{designId: string, score: float}>
+     */
+    private function localPerceptualMatches(
+        string $hash,
+        array $filters,
+        float $minimum,
+        int $limit,
+        ?int $ignoreDesignId = null,
+    ): array {
+        $query = DesignImageFingerprint::query()
+            ->with('design:id,public_id')
+            ->whereNotNull('perceptual_hash')
+            ->whereHas('design', function ($designQuery) use ($filters) {
+                $designQuery->listed()
+                    ->when($filters['categoryId'] ?? null, fn ($query, $id) => $query->where('category_id', $id))
+                    ->when($filters['machineTypeId'] ?? null, fn ($query, $id) => $query->where('machine_type_id', $id))
+                    ->when($filters['machineId'] ?? null, fn ($query, $id) => $query->whereHas(
+                        'machineType.machine',
+                        fn ($machineQuery) => $machineQuery->where('public_id', $id),
+                    ));
+            })
+            ->when($ignoreDesignId, fn ($builder) => $builder->where('design_id', '!=', $ignoreDesignId));
+
+        $matches = collect();
+
+        $query->chunkById(500, function (Collection $records) use ($hash, $minimum, $matches) {
+            foreach ($records as $record) {
+                $score = $this->fingerprints->similarity($hash, $record->perceptual_hash);
+
+                if ($score >= $minimum && $record->design !== null) {
+                    $matches->push(['designId' => $record->design->public_id, 'score' => $score]);
+                }
+            }
+        });
+
+        return $this->uniqueDesignMatches($matches->all(), $limit);
+    }
+
+    /**
+     * @param  list<array{designId: string, score: float}>  $matches
+     * @return list<array{designId: string, score: float}>
+     */
+    private function uniqueDesignMatches(array $matches, ?int $limit = null): array
+    {
+        $matches = collect($matches)
+            ->groupBy('designId')
+            ->map(fn (Collection $designMatches) => $designMatches->sortByDesc('score')->first())
+            ->sortByDesc('score')
+            ->values();
+
+        if ($limit !== null) {
+            $matches = $matches->take($limit);
+        }
+
+        return $matches->all();
+    }
+
+    /** @return list<array{name: string, path: string}> */
+    private function designImages(Design $design): array
+    {
+        if (is_array($design->images) && $design->images !== []) {
+            return collect($design->images)
+                ->filter(fn (array $image) => filled($image['path'] ?? null))
+                ->values()
+                ->all();
+        }
+
+        return $design->preview_path === null ? [] : [[
+            'name' => basename($design->preview_path),
+            'path' => $design->preview_path,
+        ]];
+    }
+}

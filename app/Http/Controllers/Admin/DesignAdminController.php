@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\ImageMatchingUnavailableException;
 use App\Http\Controllers\Controller;
 use App\Models\Design;
 use App\Models\DesignCategory;
@@ -10,10 +11,12 @@ use App\Models\DesignType;
 use App\Models\Machine;
 use App\Models\MachineType;
 use App\Models\User;
+use App\Services\DesignImageMatchingService;
 use App\Services\DesignPresenter;
 use App\Support\DesignTypeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -23,7 +26,10 @@ use Inertia\Response;
 
 class DesignAdminController extends Controller
 {
-    public function __construct(private readonly DesignPresenter $presenter) {}
+    public function __construct(
+        private readonly DesignPresenter $presenter,
+        private readonly DesignImageMatchingService $imageMatching,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -53,18 +59,82 @@ class DesignAdminController extends Controller
             ->latest('created_at')
             ->paginate(20)
             ->withQueryString()
-            ->through(function (Design $design) {
-                $presented = $this->presenter->forUser($design, $design->owner);
+            ->through(fn (Design $design) => $this->designRow($design));
 
-                return array_merge($presented, [
-                    'ownerName' => $design->owner?->name,
-                    'machineName' => $design->machineType?->machine?->name,
-                    'machineTypeName' => $design->machineType?->name,
-                    'thumbnailUri' => $presented['images'][0]['thumbnailUri'] ?? $presented['imageUri'],
-                ]);
-            });
+        return Inertia::render('admin/designs/index', $this->designIndexProps(
+            $designs,
+            [
+                'search' => $search,
+                'owner' => $ownerId,
+                'machine' => $machineId,
+                'fileType' => $fileTypeId,
+            ],
+        ));
+    }
 
-        return Inertia::render('admin/designs/index', [
+    public function searchByImage(Request $request): Response|RedirectResponse
+    {
+        $validated = $request->validate([
+            'image' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'machineId' => ['nullable', 'string', Rule::exists('machines', 'public_id')->where('is_active', true)],
+        ]);
+        $contents = file_get_contents($request->file('image')->getRealPath());
+
+        if ($contents === false) {
+            return back()->withErrors(['image' => 'The selected image could not be read.']);
+        }
+
+        try {
+            $matches = collect($this->imageMatching->search(
+                $contents,
+                $request->file('image')->getMimeType() ?: 'image/jpeg',
+                ['machineId' => $validated['machineId'] ?? null],
+                100,
+            ));
+        } catch (ImageMatchingUnavailableException) {
+            return back()->withErrors(['image' => 'Image matching is temporarily unavailable. Please try again.']);
+        }
+
+        $designs = Design::query()
+            ->listed()
+            ->with(['owner', 'type.category', 'machineType.machine', 'fileType'])
+            ->whereIn('public_id', $matches->pluck('designId'))
+            ->get()
+            ->keyBy('public_id');
+
+        $rows = $matches->map(function (array $match) use ($designs) {
+            $design = $designs->get($match['designId']);
+
+            return $design === null ? null : [
+                ...$this->designRow($design),
+                'similarityScore' => $match['score'],
+            ];
+        })->filter()->values();
+
+        $paginator = new LengthAwarePaginator(
+            $rows,
+            $rows->count(),
+            max($rows->count(), 1),
+            1,
+            ['path' => route('admin.designs.index')],
+        );
+
+        return Inertia::render('admin/designs/index', $this->designIndexProps(
+            $paginator,
+            [
+                'search' => '',
+                'owner' => '',
+                'machine' => $validated['machineId'] ?? '',
+                'fileType' => '',
+            ],
+            true,
+        ));
+    }
+
+    /** @return array<string, mixed> */
+    private function designIndexProps(LengthAwarePaginator $designs, array $filters, bool $imageSearchActive = false): array
+    {
+        return [
             'designs' => $designs,
             'owners' => $this->ownerOptions(),
             'machines' => Machine::query()->orderBy('sort_order')->orderBy('name')->get()->map(fn (Machine $machine) => [
@@ -72,12 +142,21 @@ class DesignAdminController extends Controller
                 'name' => $machine->name,
             ])->values(),
             'fileTypes' => $this->fileTypeOptions(),
-            'filters' => [
-                'search' => $search,
-                'owner' => $ownerId,
-                'machine' => $machineId,
-                'fileType' => $fileTypeId,
-            ],
+            'filters' => $filters,
+            'imageSearchActive' => $imageSearchActive,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function designRow(Design $design): array
+    {
+        $presented = $this->presenter->forUser($design, $design->owner);
+
+        return array_merge($presented, [
+            'ownerName' => $design->owner?->name,
+            'machineName' => $design->machineType?->machine?->name,
+            'machineTypeName' => $design->machineType?->name,
+            'thumbnailUri' => $presented['images'][0]['thumbnailUri'] ?? $presented['imageUri'],
         ]);
     }
 
@@ -102,7 +181,7 @@ class DesignAdminController extends Controller
         $stitchFiles = $this->storeStitchFiles($request, $owner);
         $firstStitchFile = $stitchFiles[0];
 
-        DB::transaction(function () use ($owner, $validated, $previewImages, $previewPath, $stitchFiles, $firstStitchFile) {
+        $design = DB::transaction(function () use ($owner, $validated, $previewImages, $previewPath, $stitchFiles, $firstStitchFile) {
             $design = Design::query()->create([
                 'user_id' => $owner->id,
                 'design_type_id' => $validated['designTypeId'],
@@ -122,7 +201,11 @@ class DesignAdminController extends Controller
             ]);
 
             $design->variants()->createMany($validated['variants']);
+
+            return $design;
         });
+
+        $this->imageMatching->syncDesign($design);
 
         return redirect()->route('admin.designs.index')->with('success', 'Design created.');
     }
@@ -214,6 +297,8 @@ class DesignAdminController extends Controller
             $model->variants()->createMany($validated['variants']);
         });
 
+        $this->imageMatching->syncDesign($model->fresh());
+
         return redirect()->route('admin.designs.index')->with('success', 'Design updated.');
     }
 
@@ -221,6 +306,7 @@ class DesignAdminController extends Controller
     {
         $model = Design::query()->listed()->where('public_id', $design)->firstOrFail();
         $model->update(['deleted_at' => now()]);
+        $this->imageMatching->removeDesign($model);
 
         return redirect()->route('admin.designs.index')->with('success', 'Design removed from marketplace.');
     }

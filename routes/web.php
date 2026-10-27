@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\SiteSettingController;
 use App\Http\Controllers\Admin\TypeAdminController;
 use App\Http\Controllers\Admin\UserAdminController;
 use Illuminate\Support\Facades\Route;
+
 Route::redirect('/', '/dashboard')->name('home');
 
 Route::middleware(['auth', 'admin'])->group(function () {
@@ -84,6 +85,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
         ->middlewareFor(['create', 'store'], 'permission:design_file_types.create')
         ->middlewareFor(['edit', 'update'], 'permission:design_file_types.update')
         ->middlewareFor('destroy', 'permission:design_file_types.delete');
+
+    Route::post('admin/designs/search-by-image', [DesignAdminController::class, 'searchByImage'])
+        ->middleware('permission:designs.read')
+        ->name('admin.designs.search-by-image');
 
     Route::resource('admin/designs', DesignAdminController::class)
         ->parameters(['designs' => 'design'])

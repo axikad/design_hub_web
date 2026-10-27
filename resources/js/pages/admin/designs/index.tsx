@@ -11,8 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ImageIcon, Pencil, RotateCcw, Search } from 'lucide-react';
-import { type FormEventHandler, useState } from 'react';
+import { ImageIcon, LoaderCircle, Pencil, RotateCcw, ScanSearch, Search } from 'lucide-react';
+import { type ChangeEvent, type FormEventHandler, useRef, useState } from 'react';
 
 type Option = { id: string; name?: string; label?: string; extension?: string };
 type DesignRow = {
@@ -29,6 +29,7 @@ type DesignRow = {
     machineTypeName?: string | null;
     designFileTypeName?: string | null;
     createdAt: string | null;
+    similarityScore?: number;
 };
 type Props = {
     designs: { data: DesignRow[]; links: { url: string | null; label: string; active: boolean }[] };
@@ -36,6 +37,7 @@ type Props = {
     machines: Option[];
     fileTypes: Option[];
     filters: { search: string; owner: string; machine: string; fileType: string };
+    imageSearchActive?: boolean;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -48,8 +50,9 @@ function formatInr(paise: number | null): string {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(paise / 100);
 }
 
-export default function AdminDesignsIndex({ designs, owners, machines, fileTypes, filters }: Props) {
-    const permissions = usePage<SharedData>().props.auth.permissions ?? [];
+export default function AdminDesignsIndex({ designs, owners, machines, fileTypes, filters, imageSearchActive = false }: Props) {
+    const page = usePage<SharedData & { errors: Record<string, string> }>();
+    const permissions = page.props.auth.permissions ?? [];
     const canCreate = permissions.includes('designs.create');
     const canUpdate = permissions.includes('designs.update');
     const canDelete = permissions.includes('designs.delete');
@@ -57,6 +60,8 @@ export default function AdminDesignsIndex({ designs, owners, machines, fileTypes
     const [owner, setOwner] = useState(filters.owner || 'all');
     const [machine, setMachine] = useState(filters.machine || 'all');
     const [fileType, setFileType] = useState(filters.fileType || 'all');
+    const [imageSearching, setImageSearching] = useState(false);
+    const imageInput = useRef<HTMLInputElement>(null);
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
@@ -80,6 +85,27 @@ export default function AdminDesignsIndex({ designs, owners, machines, fileTypes
         router.get(route('admin.designs.index'), {}, { preserveState: true, replace: true });
     };
 
+    const searchByImage = (event: ChangeEvent<HTMLInputElement>) => {
+        const image = event.target.files?.[0];
+
+        if (!image) return;
+
+        router.post(
+            route('admin.designs.search-by-image'),
+            {
+                image,
+                machineId: machine === 'all' ? undefined : machine,
+            },
+            {
+                forceFormData: true,
+                preserveScroll: true,
+                onStart: () => setImageSearching(true),
+                onFinish: () => setImageSearching(false),
+            },
+        );
+        event.target.value = '';
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Designs" />
@@ -95,6 +121,23 @@ export default function AdminDesignsIndex({ designs, owners, machines, fileTypes
                     <AdminFilterBar
                         actions={
                             <>
+                                <input
+                                    ref={imageInput}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    className="hidden"
+                                    onChange={searchByImage}
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="rounded-xl"
+                                    disabled={imageSearching}
+                                    onClick={() => imageInput.current?.click()}
+                                >
+                                    {imageSearching ? <LoaderCircle className="size-4 animate-spin" /> : <ScanSearch className="size-4" />}
+                                    {imageSearching ? 'Matching...' : 'Search by image'}
+                                </Button>
                                 <Button type="button" variant="ghost" className="rounded-xl" onClick={reset}>
                                     <RotateCcw className="size-4" /> Reset
                                 </Button>
@@ -152,7 +195,27 @@ export default function AdminDesignsIndex({ designs, owners, machines, fileTypes
                     </AdminFilterBar>
                 </form>
 
-                <AdminTablePanel footer={<PaginationLinks paginator={designs} />}>
+                {page.props.errors.image ? (
+                    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
+                        {page.props.errors.image}
+                    </div>
+                ) : null}
+
+                {imageSearchActive ? (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 dark:border-indigo-900/60 dark:bg-indigo-950/30">
+                        <div>
+                            <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">Image search results</p>
+                            <p className="mt-0.5 text-xs text-indigo-700 dark:text-indigo-300">
+                                Showing designs that meet the configured minimum similarity.
+                            </p>
+                        </div>
+                        <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={reset}>
+                            <RotateCcw className="size-3.5" /> Clear image search
+                        </Button>
+                    </div>
+                ) : null}
+
+                <AdminTablePanel footer={imageSearchActive ? undefined : <PaginationLinks paginator={designs} />}>
                     {designs.data.length === 0 ? (
                         <AdminEmptyState
                             icon={ImageIcon}
@@ -194,6 +257,11 @@ export default function AdminDesignsIndex({ designs, owners, machines, fileTypes
                                                         {design.displayName || design.title}
                                                     </p>
                                                     <p className="mt-1 text-xs text-slate-400">{design.id}</p>
+                                                    {design.similarityScore !== undefined ? (
+                                                        <span className="mt-2 inline-flex rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-bold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                                                            {design.similarityScore}% match
+                                                        </span>
+                                                    ) : null}
                                                 </div>
                                             </div>
                                         </td>

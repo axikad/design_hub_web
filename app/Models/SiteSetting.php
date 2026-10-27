@@ -13,7 +13,17 @@ class SiteSetting extends Model
         'logo_path',
         'favicon_path',
         'default_registration_role_id',
+        'image_search_similarity',
+        'duplicate_image_similarity',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'image_search_similarity' => 'integer',
+            'duplicate_image_similarity' => 'integer',
+        ];
+    }
 
     public static function current(): self
     {

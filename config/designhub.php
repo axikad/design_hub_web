@@ -16,6 +16,15 @@ return [
 
     'download_url_ttl_minutes' => 15,
 
+    'image_matching' => [
+        'qdrant_url' => env('DESIGNHUB_QDRANT_URL'),
+        'qdrant_api_key' => env('DESIGNHUB_QDRANT_API_KEY'),
+        'collection' => env('DESIGNHUB_QDRANT_COLLECTION', 'design_images'),
+        'model' => env('DESIGNHUB_IMAGE_EMBEDDING_MODEL', 'qdrant/clip-vit-b-32-vision'),
+        'dimensions' => (int) env('DESIGNHUB_IMAGE_EMBEDDING_DIMENSIONS', 512),
+        'timeout_seconds' => (int) env('DESIGNHUB_IMAGE_MATCHING_TIMEOUT', 30),
+    ],
+
     'razorpay_key_id' => env('RAZORPAY_KEY_ID'),
     'razorpay_key_secret' => env('RAZORPAY_KEY_SECRET'),
     'razorpay_webhook_secret' => env('RAZORPAY_WEBHOOK_SECRET'),

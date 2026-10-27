@@ -22,6 +22,7 @@ class SiteSettingController extends Controller
             'settings' => [
                 ...$settings->toBranding(),
                 'defaultRegistrationRoleId' => $settings->default_registration_role_id,
+                'imageSearchSimilarity' => $settings->image_search_similarity,
             ],
             'registrationRoles' => Role::query()
                 ->where('slug', '!=', 'super_admin')
@@ -42,6 +43,7 @@ class SiteSettingController extends Controller
                 'integer',
                 Rule::exists('roles', 'id')->where(fn ($query) => $query->where('slug', '!=', 'super_admin')),
             ],
+            'imageSearchSimilarity' => ['required', 'integer', 'between:1,100'],
         ]);
 
         $setting = SiteSetting::current();
@@ -57,6 +59,7 @@ class SiteSettingController extends Controller
         $payload = [
             'name' => trim($validated['name']),
             'default_registration_role_id' => $registrationRole->id,
+            'image_search_similarity' => $validated['imageSearchSimilarity'],
         ];
 
         if ($request->hasFile('logo')) {
