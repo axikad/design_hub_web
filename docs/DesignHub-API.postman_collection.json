@@ -985,6 +985,53 @@
                     ]
                 },
                 {
+                    "name": "Delete Account",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"confirmation\": \"DELETE\"\n}"
+                        },
+                        "url": "{{base_url}}/users/me",
+                        "description": "Permanently signs out the user, anonymizes contact data, removes the profile image and saved collection, revokes all tokens/sessions, and soft-deletes the account. Confirmation is case-sensitive."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - Account Deleted",
+                            "originalRequest": {
+                                "method": "DELETE",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"confirmation\": \"DELETE\"\n}"
+                                },
+                                "url": "{{base_url}}/users/me"
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [],
+                            "cookie": [],
+                            "body": "{\n  \"success\": true,\n  \"message\": \"Account deleted successfully.\",\n  \"data\": {\n    \"message\": \"Account deleted successfully.\"\n  }\n}"
+                        }
+                    ]
+                },
+                {
                     "name": "My Designs",
                     "request": {
                         "method": "GET",

@@ -42,6 +42,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('users/me', [UserController::class, 'me']);
         Route::post('users/me', [UserController::class, 'update']);
         Route::patch('users/me', [UserController::class, 'update']);
+        Route::delete('users/me', [UserController::class, 'destroyAccount']);
         Route::post('users/me/contact/request-otp', [ProfileContactController::class, 'requestOtp']);
         Route::post('users/me/contact/verify-otp', [ProfileContactController::class, 'verifyOtp']);
         Route::get('users/me/designs', [UserController::class, 'myDesigns']);

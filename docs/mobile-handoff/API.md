@@ -21,6 +21,7 @@ Design and user collection endpoints accept `page` and `per_page` (default 20, m
 | PATCH  | `/users/me`                                        | JSON `{ name: string }`                                                                                  | Updated `User`                                                                    |
 | POST   | `/users/me/contact/request-otp`                    | `{ type: "mobile", countryCode, mobileNumber }` or `{ type: "email", email }`                         | Masked destination and OTP expiry                                                  |
 | POST   | `/users/me/contact/verify-otp`                     | Same contact fields plus `{ code: "1234" }`                                                            | Updated `User`                                                                    |
+| DELETE | `/users/me`                                        | JSON `{ confirmation: "DELETE" }`                                                                      | Account deleted and current tokens revoked                                         |
 | GET    | `/catalog/design-options`                          | Bearer token                                                                                            | Combined machines, machine types, and compatible categories (backward-compatible) |
 | GET    | `/catalog/design-file-types`                       | Bearer token; optional `machineId`                                                                      | Active compatible design file types ordered by `sort_order`                       |
 | GET    | `/catalog/machines`                                | Bearer token                                                                                            | Active machines                                                                   |
@@ -188,6 +189,8 @@ Local photo/file URIs are uploaded before saving. The ordered `images` and `file
 Update the name and optional photo directly with multipart `POST /users/me`. Send `name` and optional `image` (JPG, PNG, or WebP; maximum 5 MB). If `image` is omitted, the existing photo stays unchanged. Send `removeImage=1` without an image to remove it.
 
 Email and mobile number cannot be changed directly through `/users/me`. First call `POST /users/me/contact/request-otp`, then submit the same contact value and received code to `POST /users/me/contact/verify-otp`. For mobile use `{ type: "mobile", countryCode: "+91", mobileNumber: "9876543210" }`. For email use `{ type: "email", email: "user@example.com" }`. A verified email gets `email_verified_at`; a verified mobile updates `country_code`, `mobile_number`, and normalized `phone_key` together.
+
+Delete an authenticated account with `DELETE /users/me` and body `{ "confirmation": "DELETE" }`. The confirmation is case-sensitive. The server anonymizes personal contact data, removes the profile image and saved-design collection, revokes every API token and session, and soft-deletes the account while retaining purchase/design records required for marketplace integrity. The Super Admin account cannot use this endpoint.
 
 ## App flow
 

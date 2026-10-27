@@ -162,4 +162,55 @@ class ProfileApiTest extends TestCase
 
         $this->assertNull($user->fresh()->avatar_path);
     }
+
+    public function test_authenticated_user_can_delete_their_account_with_explicit_confirmation(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('avatars/delete-me.jpg', 'avatar');
+
+        $user = User::factory()->create([
+            'name' => 'Delete Me',
+            'country_code' => '+91',
+            'mobile_number' => '9000000099',
+            'phone_key' => '+919000000099',
+            'email' => 'delete@example.com',
+            'avatar_path' => 'avatars/delete-me.jpg',
+        ]);
+        $token = $user->createToken('mobile')->plainTextToken;
+
+        $this->withToken($token)
+            ->deleteJson('/api/v1/users/me', ['confirmation' => 'DELETE'])
+            ->assertOk()
+            ->assertJsonPath('message', 'Account deleted successfully.');
+
+        $this->assertSoftDeleted('users', ['id' => $user->id]);
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'name' => 'Deleted User',
+            'country_code' => null,
+            'mobile_number' => null,
+            'phone_key' => null,
+            'email' => null,
+            'avatar_path' => null,
+            'status' => 'inactive',
+        ]);
+        $this->assertDatabaseMissing('personal_access_tokens', [
+            'tokenable_type' => User::class,
+            'tokenable_id' => $user->id,
+        ]);
+        Storage::disk('public')->assertMissing('avatars/delete-me.jpg');
+    }
+
+    public function test_account_deletion_requires_exact_confirmation(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->deleteJson('/api/v1/users/me', ['confirmation' => 'delete'])
+            ->assertUnprocessable()
+            ->assertJsonPath('code', 'validation_error')
+            ->assertJsonStructure(['errors' => ['confirmation']]);
+
+        $this->assertNotSoftDeleted('users', ['id' => $user->id]);
+    }
 }

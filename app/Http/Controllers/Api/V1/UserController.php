@@ -7,12 +7,17 @@ use App\Http\Resources\DesignResource;
 use App\Http\Resources\PurchaseResource;
 use App\Http\Resources\UserResource;
 use App\Models\Design;
+use App\Models\OtpChallenge;
+use App\Models\ProfileContactChallenge;
 use App\Models\Purchase;
 use App\Models\SavedDesign;
 use App\Services\UploadService;
 use App\Support\ApiResponse;
 use App\Support\Pagination;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
@@ -61,6 +66,61 @@ class UserController extends Controller
             (new UserResource($user->fresh()))->resolve($request),
             message: 'Profile updated successfully.',
         );
+    }
+
+    public function destroyAccount(Request $request)
+    {
+        $validated = $request->validate([
+            'confirmation' => ['required', 'string', Rule::in(['DELETE'])],
+        ]);
+
+        $user = $request->user();
+
+        if ($user->isSuperAdmin()) {
+            return ApiResponse::error(
+                'The Super Admin account cannot be deleted from the mobile API.',
+                'protected_account',
+                403,
+            );
+        }
+
+        $avatarPath = $user->avatar_path;
+        $phoneKey = $user->phone_key;
+
+        DB::transaction(function () use ($user, $phoneKey) {
+            ProfileContactChallenge::query()->where('user_id', $user->id)->delete();
+            SavedDesign::query()->where('user_id', $user->id)->delete();
+            DB::table('sessions')->where('user_id', $user->id)->delete();
+            $user->tokens()->delete();
+
+            if ($phoneKey !== null) {
+                OtpChallenge::query()
+                    ->where('phone_key', $phoneKey)
+                    ->whereNull('consumed_at')
+                    ->update(['consumed_at' => now()]);
+            }
+
+            $user->forceFill([
+                'name' => 'Deleted User',
+                'country_code' => null,
+                'mobile_number' => null,
+                'phone_key' => null,
+                'email' => null,
+                'email_verified_at' => null,
+                'avatar_path' => null,
+                'password' => null,
+                'remember_token' => null,
+                'status' => 'inactive',
+            ])->save();
+
+            $user->delete();
+        });
+
+        if ($avatarPath !== null) {
+            Storage::disk('public')->delete($avatarPath);
+        }
+
+        return ApiResponse::success('Account deleted successfully.');
     }
 
     public function myDesigns(Request $request)
