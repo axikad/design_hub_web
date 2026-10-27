@@ -26,6 +26,7 @@ Design and user collection endpoints accept `page` and `per_page` (default 20, m
 | GET    | `/catalog/categories/:categoryId/types`            | Bearer token                                                                                            | Active design types for the selected category                                     |
 | GET    | `/home`                                            | Bearer token                                                                                            | Latest, today, tomorrow and category home sections                                |
 | GET    | `/designs`                                         | Bearer token                                                                                            | `Design[]`, all community designs, newest first                                   |
+| POST   | `/designs/search-by-image`                         | Bearer token; multipart `image` plus optional catalog filters                                           | Search engine, threshold, and matching designs                                    |
 | GET    | `/users/me/designs`                                | Bearer token                                                                                            | `Design[]`, only authenticated user's designs                                     |
 | GET    | `/designs/:id`                                     | Bearer token                                                                                            | `Design` (404 if missing)                                                         |
 | POST   | `/uploads`                                         | Multipart form with one `file` field                                                                    | `{ url: "https://..." }`                                                          |
@@ -80,6 +81,11 @@ type Design = DesignRequest & {
     ownerKey: string | null; // countryCode + mobileNumber, e.g. +919876543210
 };
 
+type ImageSearchResult = Design & {
+    similarityScore: number; // 0..100
+    similarityLabel: 'Very close' | 'Similar' | 'Related';
+};
+
 type FolderFile = {
     id: string;
     name: string;
@@ -105,6 +111,18 @@ type Folder = {
 ```
 
 Folder image previews use temporary signed URLs and can be displayed directly without a Bearer header. Non-image files intentionally return `previewUri: null`. To buy a folder, send `folderId` instead of `designId` through the existing payment endpoints. The backend always takes `amount` from the folder's stored `pricePaise`; clients must not submit an amount. Once status is `paid`, `POST /folders/:id/download` returns a short-lived signed URL for the original ZIP. Unpaid users receive `403 folder_download_forbidden` and never receive a full-file URL.
+
+## Search by image
+
+Send `POST /designs/search-by-image` as `multipart/form-data` with:
+
+- `image` (required): JPG, PNG, or WebP, maximum 10 MB.
+- `machineId`, `machineTypeId`, `categoryId` (optional): reduce the candidate set when known.
+- `limit` (optional): 1 to 50, default 20.
+
+The response data is `{ engine, minimumSimilarity, results }`. `engine` is `ai_embedding` when Qdrant AI image matching is configured and available; otherwise it is `local_visual`. Local matching uses the same weighted method as the app prototype: 45% RGB colour histogram, 35% 8x8 grayscale layout, and 20% difference hash. The backend searches the central published catalog rather than a device-only cache.
+
+Each result is a normal `Design` plus `similarityScore` and `similarityLabel`. Scores above 97 are `Very close`, above 80 are `Similar`, and the remaining results that meet the configured minimum are `Related`.
 
 ## Home feed and View More
 

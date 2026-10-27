@@ -48,20 +48,37 @@ class DesignImageMatchingService
      */
     public function search(string $contents, string $mime, array $filters = [], int $limit = 200): array
     {
+        return $this->searchWithMeta($contents, $mime, $filters, $limit)['matches'];
+    }
+
+    /**
+     * @param  array<string, string|null>  $filters
+     * @return array{engine: string, matches: list<array{designId: string, score: float}>}
+     */
+    public function searchWithMeta(string $contents, string $mime, array $filters = [], int $limit = 200): array
+    {
         $fingerprint = $this->fingerprints->fromContents($contents, $mime);
         $minimum = (float) SiteSetting::current()->image_search_similarity;
 
         if ($this->vectors->enabled()) {
             try {
-                return $this->uniqueDesignMatches(
-                    $this->vectors->search($contents, $filters, $minimum, $limit),
-                );
+                return [
+                    'engine' => 'ai_embedding',
+                    'matches' => $this->uniqueDesignMatches(
+                        $this->vectors->search($contents, $filters, $minimum, $limit),
+                    ),
+                ];
             } catch (Throwable $exception) {
-                throw new ImageMatchingUnavailableException($exception);
+                Log::warning('AI image search failed; using local visual matching.', [
+                    'error' => $exception->getMessage(),
+                ]);
             }
         }
 
-        return $this->localPerceptualMatches($fingerprint['perceptual_hash'], $filters, $minimum, $limit);
+        return [
+            'engine' => 'local_visual',
+            'matches' => $this->localPerceptualMatches($fingerprint, $filters, $minimum, $limit),
+        ];
     }
 
     public function syncDesign(Design $design): void
@@ -90,6 +107,8 @@ class DesignImageMatchingService
                     'image_path' => $image['path'],
                     'sha256' => $fingerprint['sha256'],
                     'perceptual_hash' => $fingerprint['perceptual_hash'],
+                    'color_histogram' => $fingerprint['color_histogram'],
+                    'grayscale_layout' => $fingerprint['grayscale_layout'],
                     'vector_id' => $this->vectors->enabled() ? $vectorId : null,
                     'vector_status' => $this->vectors->enabled() ? 'pending' : 'disabled',
                 ]);
@@ -199,13 +218,7 @@ class DesignImageMatchingService
             return;
         }
 
-        $match = $this->localPerceptualMatches(
-            $fingerprint['perceptual_hash'],
-            [],
-            $minimum,
-            1,
-            $ignore?->id,
-        )[0] ?? null;
+        $match = $this->localPerceptualMatches($fingerprint, [], $minimum, 1, $ignore?->id)[0] ?? null;
 
         if ($match !== null) {
             throw new DuplicateDesignImageException($match['score'], $match['designId']);
@@ -213,11 +226,12 @@ class DesignImageMatchingService
     }
 
     /**
+     * @param  array{sha256: string, perceptual_hash: string, color_histogram: list<float>, grayscale_layout: list<float>, contents: string, mime: string}  $fingerprint
      * @param  array<string, string|null>  $filters
      * @return list<array{designId: string, score: float}>
      */
     private function localPerceptualMatches(
-        string $hash,
+        array $fingerprint,
         array $filters,
         float $minimum,
         int $limit,
@@ -239,9 +253,24 @@ class DesignImageMatchingService
 
         $matches = collect();
 
-        $query->chunkById(500, function (Collection $records) use ($hash, $minimum, $matches) {
+        $query->chunkById(500, function (Collection $records) use ($fingerprint, $minimum, $matches) {
             foreach ($records as $record) {
-                $score = $this->fingerprints->similarity($hash, $record->perceptual_hash);
+                $hasLocalFeatures = is_array($record->color_histogram)
+                    && is_array($record->grayscale_layout);
+
+                $score = $hasLocalFeatures
+                    ? $this->fingerprints->visualSimilarity(
+                        $fingerprint['color_histogram'],
+                        $fingerprint['grayscale_layout'],
+                        $fingerprint['perceptual_hash'],
+                        $record->color_histogram,
+                        $record->grayscale_layout,
+                        $record->perceptual_hash,
+                    )['score']
+                    : $this->fingerprints->similarity(
+                        $fingerprint['perceptual_hash'],
+                        $record->perceptual_hash,
+                    );
 
                 if ($score >= $minimum && $record->design !== null) {
                     $matches->push(['designId' => $record->design->public_id, 'score' => $score]);

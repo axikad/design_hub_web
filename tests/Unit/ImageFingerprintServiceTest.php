@@ -32,10 +32,20 @@ class ImageFingerprintServiceTest extends TestCase
         $second = $service->fromContents($resized, 'image/png');
 
         $this->assertNotSame($first['sha256'], $second['sha256']);
+        $this->assertCount(64, $first['color_histogram']);
+        $this->assertCount(64, $first['grayscale_layout']);
         $this->assertGreaterThanOrEqual(95, $service->similarity(
             $first['perceptual_hash'],
             $second['perceptual_hash'],
         ));
+        $this->assertGreaterThanOrEqual(95, $service->visualSimilarity(
+            $first['color_histogram'],
+            $first['grayscale_layout'],
+            $first['perceptual_hash'],
+            $second['color_histogram'],
+            $second['grayscale_layout'],
+            $second['perceptual_hash'],
+        )['score']);
     }
 
     private function pngContents(\GdImage $image): string

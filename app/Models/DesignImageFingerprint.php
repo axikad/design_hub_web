@@ -13,6 +13,8 @@ class DesignImageFingerprint extends Model
         'image_path',
         'sha256',
         'perceptual_hash',
+        'color_histogram',
+        'grayscale_layout',
         'vector_id',
         'vector_status',
         'vector_error',
@@ -20,7 +22,11 @@ class DesignImageFingerprint extends Model
 
     protected function casts(): array
     {
-        return ['image_index' => 'integer'];
+        return [
+            'image_index' => 'integer',
+            'color_histogram' => 'array',
+            'grayscale_layout' => 'array',
+        ];
     }
 
     public function design(): BelongsTo

@@ -9,6 +9,7 @@ use App\Models\DesignCategory;
 use App\Models\DesignFileType;
 use App\Models\DesignType;
 use App\Models\MachineType;
+use App\Services\DesignImageMatchingService;
 use App\Services\PurchaseAccessService;
 use App\Services\UploadService;
 use App\Support\ApiResponse;
@@ -26,6 +27,7 @@ class DesignController extends Controller
     public function __construct(
         private readonly UploadService $uploads,
         private readonly PurchaseAccessService $access,
+        private readonly DesignImageMatchingService $imageMatching,
     ) {}
 
     public function index(Request $request)
@@ -112,6 +114,7 @@ class DesignController extends Controller
         });
 
         $design->load(['owner', 'type.category', 'fileType', 'variants.type']);
+        $this->imageMatching->syncDesign($design);
 
         return ApiResponse::data(
             (new DesignResource($design))->resolve($request),
@@ -159,6 +162,7 @@ class DesignController extends Controller
         });
 
         $design->load(['owner', 'type.category', 'fileType', 'variants.type']);
+        $this->imageMatching->syncDesign($design);
 
         return ApiResponse::data(
             (new DesignResource($design))->resolve($request),
@@ -179,6 +183,7 @@ class DesignController extends Controller
         }
 
         $design->update(['deleted_at' => now()]);
+        $this->imageMatching->removeDesign($design);
 
         return ApiResponse::success('Design deleted successfully.');
     }

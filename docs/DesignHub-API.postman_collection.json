@@ -2187,6 +2187,120 @@
                     ]
                 },
                 {
+                    "name": "Search Designs by Image",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "image",
+                                    "type": "file",
+                                    "src": []
+                                },
+                                {
+                                    "key": "machineId",
+                                    "value": "",
+                                    "type": "text",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "machineTypeId",
+                                    "value": "",
+                                    "type": "text",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "categoryId",
+                                    "value": "",
+                                    "type": "text",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "20",
+                                    "type": "text"
+                                }
+                            ]
+                        },
+                        "url": "{{base_url}}/designs/search-by-image",
+                        "description": "Searches the central published catalog. Uses Qdrant AI embeddings when configured; otherwise uses local colour, layout, and difference-hash matching."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - Image Search Completed",
+                            "originalRequest": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "formdata",
+                                    "formdata": [
+                                        {
+                                            "key": "image",
+                                            "type": "file",
+                                            "src": []
+                                        },
+                                        {
+                                            "key": "limit",
+                                            "value": "20",
+                                            "type": "text"
+                                        }
+                                    ]
+                                },
+                                "url": "{{base_url}}/designs/search-by-image"
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": true,\n    \"message\": \"Image search completed successfully.\",\n    \"data\": {\n        \"engine\": \"local_visual\",\n        \"minimumSimilarity\": 60,\n        \"results\": [\n            {\n                \"id\": \"design_example\",\n                \"title\": \"Floral neckline\",\n                \"similarityScore\": 91.25,\n                \"similarityLabel\": \"Similar\"\n            }\n        ]\n    }\n}"
+                        },
+                        {
+                            "name": "422 - Validation Error",
+                            "originalRequest": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/designs/search-by-image"
+                            },
+                            "status": "Unprocessable Entity",
+                            "code": 422,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": false,\n    \"message\": \"The image field is required.\",\n    \"code\": \"validation_error\",\n    \"errors\": {\n        \"image\": [\"The image field is required.\"]\n    }\n}"
+                        }
+                    ]
+                },
+                {
                     "name": "Get Design",
                     "request": {
                         "method": "GET",

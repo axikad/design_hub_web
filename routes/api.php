@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CatalogController;
 use App\Http\Controllers\Api\V1\DesignController;
+use App\Http\Controllers\Api\V1\DesignImageSearchController;
 use App\Http\Controllers\Api\V1\FolderController;
 use App\Http\Controllers\Api\V1\HomeController;
 use App\Http\Controllers\Api\V1\PaymentController;
@@ -45,6 +46,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::delete('users/me/saved-designs/{designId}', [UserController::class, 'unsaveDesign']);
 
         Route::get('designs', [DesignController::class, 'index'])->name('designs.index');
+        Route::post('designs/search-by-image', DesignImageSearchController::class)
+            ->name('designs.search-by-image');
         Route::post('designs', [DesignController::class, 'store']);
         Route::get('designs/{designId}', [DesignController::class, 'show']);
         Route::patch('designs/{designId}', [DesignController::class, 'update']);
