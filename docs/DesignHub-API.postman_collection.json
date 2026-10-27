@@ -765,7 +765,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": true,\n    \"message\": \"User retrieved successfully.\",\n    \"data\": {\n        \"id\": \"user_example\",\n        \"name\": \"Postman User\",\n        \"countryCode\": \"+91\",\n        \"mobileNumber\": \"9876543210\"\n    }\n}"
+                            "body": "{\n    \"success\": true,\n    \"message\": \"User retrieved successfully.\",\n    \"data\": {\n        \"id\": \"user_example\",\n        \"name\": \"Postman User\",\n        \"email\": \"user@example.com\",\n        \"countryCode\": \"+91\",\n        \"mobileNumber\": \"9876543210\"\n    }\n}"
                         },
                         {
                             "name": "401 - Unauthenticated",
@@ -791,6 +791,88 @@
                             ],
                             "cookie": [],
                             "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                        }
+                    ]
+                },
+                {
+                    "name": "Update Profile",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Updated User\",\n  \"email\": \"user@example.com\"\n}"
+                        },
+                        "url": "{{base_url}}/users/me",
+                        "description": "Updates the authenticated user's name and optional email. Phone number changes require a separate OTP-verified flow and are not accepted here."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - Profile Updated",
+                            "originalRequest": {
+                                "method": "PATCH",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"name\": \"Updated User\",\n  \"email\": \"user@example.com\"\n}"
+                                },
+                                "url": "{{base_url}}/users/me"
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": true,\n    \"message\": \"Profile updated successfully.\",\n    \"data\": {\n        \"id\": \"user_example\",\n        \"name\": \"Updated User\",\n        \"email\": \"user@example.com\",\n        \"countryCode\": \"+91\",\n        \"mobileNumber\": \"9876543210\"\n    }\n}"
+                        },
+                        {
+                            "name": "422 - Validation Error",
+                            "originalRequest": {
+                                "method": "PATCH",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/users/me"
+                            },
+                            "status": "Unprocessable Entity",
+                            "code": 422,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": false,\n    \"message\": \"The name field is required.\",\n    \"code\": \"validation_error\",\n    \"errors\": {\n        \"name\": [\"The name field is required.\"]\n    }\n}"
                         }
                     ]
                 },

@@ -17,6 +17,7 @@ Design and user collection endpoints accept `page` and `per_page` (default 20, m
 | POST   | `/auth/request-otp`                                | `{ flow: "login" or "register", name: string or null, countryCode: "+91", mobileNumber: "9876543210" }` | `{ message: "OTP sent successfully." }`                                           |
 | POST   | `/auth/verify-otp`                                 | Same fields plus `{ code: "1234" }`                                                                     | `{ user: User, accessToken: string }`                                             |
 | GET    | `/users/me`                                        | Bearer token                                                                                            | `User`                                                                            |
+| PATCH  | `/users/me`                                        | `{ name: string, email?: string or null }`                                                              | Updated `User`                                                                    |
 | GET    | `/catalog/design-options`                          | Bearer token                                                                                            | Combined machines, machine types, and compatible categories (backward-compatible) |
 | GET    | `/catalog/design-file-types`                       | Bearer token; optional `machineId`                                                                      | Active compatible design file types ordered by `sort_order`                       |
 | GET    | `/catalog/machines`                                | Bearer token                                                                                            | Active machines                                                                   |
@@ -44,6 +45,7 @@ Design and user collection endpoints accept `page` and `per_page` (default 20, m
 type User = {
     id: string;
     name: string | null;
+    email: string | null;
     countryCode: string;
     mobileNumber: string;
 };

@@ -12,6 +12,7 @@ use App\Models\SavedDesign;
 use App\Support\ApiResponse;
 use App\Support\Pagination;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -20,6 +21,41 @@ class UserController extends Controller
         return ApiResponse::data(
             (new UserResource($request->user()))->resolve($request),
             message: 'User retrieved successfully.',
+        );
+    }
+
+    public function update(Request $request)
+    {
+        $user = $request->user();
+
+        if ($request->filled('email')) {
+            $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'min:1', 'max:120'],
+            'email' => [
+                'sometimes',
+                'nullable',
+                'string',
+                'lowercase',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($user->id),
+            ],
+        ]);
+
+        $user->fill($validated);
+
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
+        }
+
+        $user->save();
+
+        return ApiResponse::data(
+            (new UserResource($user->fresh()))->resolve($request),
+            message: 'Profile updated successfully.',
         );
     }
 

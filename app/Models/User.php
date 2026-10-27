@@ -134,6 +134,7 @@ class User extends Authenticatable
         return [
             'id' => $this->public_id,
             'name' => $this->name,
+            'email' => $this->email,
             'countryCode' => $this->country_code,
             'mobileNumber' => $this->mobile_number,
             'role' => $this->role === null ? null : [
