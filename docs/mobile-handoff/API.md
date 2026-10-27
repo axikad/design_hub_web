@@ -17,7 +17,8 @@ Design and user collection endpoints accept `page` and `per_page` (default 20, m
 | POST   | `/auth/request-otp`                                | `{ flow: "login" or "register", name: string or null, countryCode: "+91", mobileNumber: "9876543210" }` | `{ message: "OTP sent successfully." }`                                           |
 | POST   | `/auth/verify-otp`                                 | Same fields plus `{ code: "1234" }`                                                                     | `{ user: User, accessToken: string }`                                             |
 | GET    | `/users/me`                                        | Bearer token                                                                                            | `User`                                                                            |
-| PATCH  | `/users/me`                                        | `{ name: string, email?: string or null }`                                                              | Updated `User`                                                                    |
+| POST   | `/users/me`                                        | Multipart `name`, optional `email`, optional `image`, optional `removeImage`                             | Updated `User`                                                                    |
+| PATCH  | `/users/me`                                        | JSON `{ name: string, email?: string or null }` (backward compatible)                                    | Updated `User`                                                                    |
 | GET    | `/catalog/design-options`                          | Bearer token                                                                                            | Combined machines, machine types, and compatible categories (backward-compatible) |
 | GET    | `/catalog/design-file-types`                       | Bearer token; optional `machineId`                                                                      | Active compatible design file types ordered by `sort_order`                       |
 | GET    | `/catalog/machines`                                | Bearer token                                                                                            | Active machines                                                                   |
@@ -46,6 +47,7 @@ type User = {
     id: string;
     name: string | null;
     email: string | null;
+    avatarUri: string | null;
     countryCode: string;
     mobileNumber: string;
 };
@@ -180,6 +182,8 @@ Seeded compatibility examples:
 The server derives ownership from the token, never from request data, and must enforce it for update/delete and `/users/me/designs`. Null ownerKey is reserved for shared samples. Keep phone formatting consistent with `User`; ownerKey is a compatibility field used by the existing app.
 
 Local photo/file URIs are uploaded before saving. The ordered `images` and `files` arrays contain URLs returned by `/uploads`; the server verifies that every attachment belongs to the authenticated user. Image URLs are public, while stitch file names are visible but their URIs are returned only to the owner or a paid buyer through the protected signed-download flow. The flat attachment and summary fields remain for catalog-card and older-client compatibility.
+
+Update the profile and optional photo directly with multipart `POST /users/me`. Send `name`, optional `email`, and optional `image` (JPG, PNG, or WebP; maximum 5 MB). If `image` is omitted, the existing photo stays unchanged. Send `removeImage=1` without an image to remove it. The JSON `PATCH /users/me` name/email flow remains backward compatible.
 
 ## App flow
 

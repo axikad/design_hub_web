@@ -9,6 +9,7 @@ use App\Http\Resources\UserResource;
 use App\Models\Design;
 use App\Models\Purchase;
 use App\Models\SavedDesign;
+use App\Services\UploadService;
 use App\Support\ApiResponse;
 use App\Support\Pagination;
 use Illuminate\Http\Request;
@@ -16,6 +17,8 @@ use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
+    public function __construct(private readonly UploadService $uploads) {}
+
     public function me(Request $request)
     {
         return ApiResponse::data(
@@ -43,7 +46,19 @@ class UserController extends Controller
                 'max:255',
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
+            'image' => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'removeImage' => ['sometimes', 'boolean'],
         ]);
+
+        if ($request->hasFile('image')) {
+            $upload = $this->uploads->store($user, $request->file('image'));
+            $upload->update(['attached' => true]);
+            $validated['avatar_path'] = $upload->path;
+        } elseif (($validated['removeImage'] ?? false) === true) {
+            $validated['avatar_path'] = null;
+        }
+
+        unset($validated['image'], $validated['removeImage']);
 
         $user->fill($validated);
 

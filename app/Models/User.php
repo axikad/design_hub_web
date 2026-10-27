@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
@@ -135,6 +136,9 @@ class User extends Authenticatable
             'id' => $this->public_id,
             'name' => $this->name,
             'email' => $this->email,
+            'avatarUri' => $this->avatar_path === null
+                ? null
+                : Storage::disk('public')->url($this->avatar_path),
             'countryCode' => $this->country_code,
             'mobileNumber' => $this->mobile_number,
             'role' => $this->role === null ? null : [

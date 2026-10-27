@@ -797,42 +797,66 @@
                 {
                     "name": "Update Profile",
                     "request": {
-                        "method": "PATCH",
+                        "method": "POST",
                         "header": [
                             {
                                 "key": "Accept",
                                 "value": "application/json"
-                            },
-                            {
-                                "key": "Content-Type",
-                                "value": "application/json"
                             }
                         ],
                         "body": {
-                            "mode": "raw",
-                            "raw": "{\n  \"name\": \"Updated User\",\n  \"email\": \"user@example.com\"\n}"
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "name",
+                                    "value": "Updated User",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "email",
+                                    "value": "user@example.com",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "image",
+                                    "type": "file",
+                                    "src": []
+                                }
+                            ]
                         },
                         "url": "{{base_url}}/users/me",
-                        "description": "Updates the authenticated user's name and optional email. Phone number changes require a separate OTP-verified flow and are not accepted here."
+                        "description": "Updates name, optional email, and optional profile image in one multipart request. Omit image to keep the current photo. Send removeImage=1 to remove it. Phone number changes require a separate OTP-verified flow."
                     },
                     "response": [
                         {
                             "name": "200 - Profile Updated",
                             "originalRequest": {
-                                "method": "PATCH",
+                                "method": "POST",
                                 "header": [
                                     {
                                         "key": "Accept",
                                         "value": "application/json"
-                                    },
-                                    {
-                                        "key": "Content-Type",
-                                        "value": "application/json"
                                     }
                                 ],
                                 "body": {
-                                    "mode": "raw",
-                                    "raw": "{\n  \"name\": \"Updated User\",\n  \"email\": \"user@example.com\"\n}"
+                                    "mode": "formdata",
+                                    "formdata": [
+                                        {
+                                            "key": "name",
+                                            "value": "Updated User",
+                                            "type": "text"
+                                        },
+                                        {
+                                            "key": "email",
+                                            "value": "user@example.com",
+                                            "type": "text"
+                                        },
+                                        {
+                                            "key": "image",
+                                            "type": "file",
+                                            "src": []
+                                        }
+                                    ]
                                 },
                                 "url": "{{base_url}}/users/me"
                             },
@@ -847,12 +871,12 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": true,\n    \"message\": \"Profile updated successfully.\",\n    \"data\": {\n        \"id\": \"user_example\",\n        \"name\": \"Updated User\",\n        \"email\": \"user@example.com\",\n        \"countryCode\": \"+91\",\n        \"mobileNumber\": \"9876543210\"\n    }\n}"
+                            "body": "{\n    \"success\": true,\n    \"message\": \"Profile updated successfully.\",\n    \"data\": {\n        \"id\": \"user_example\",\n        \"name\": \"Updated User\",\n        \"email\": \"user@example.com\",\n        \"avatarUri\": \"https://app.designshub.org/storage/previews/user_xxx/avatar.jpg\",\n        \"countryCode\": \"+91\",\n        \"mobileNumber\": \"9876543210\"\n    }\n}"
                         },
                         {
                             "name": "422 - Validation Error",
                             "originalRequest": {
-                                "method": "PATCH",
+                                "method": "POST",
                                 "header": [
                                     {
                                         "key": "Accept",

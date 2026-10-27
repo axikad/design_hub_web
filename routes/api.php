@@ -39,6 +39,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('catalog/categories/{categoryId}/types', [CatalogController::class, 'categoryTypes']);
 
         Route::get('users/me', [UserController::class, 'me']);
+        Route::post('users/me', [UserController::class, 'update']);
         Route::patch('users/me', [UserController::class, 'update']);
         Route::get('users/me/designs', [UserController::class, 'myDesigns']);
         Route::get('users/me/purchases', [UserController::class, 'purchases']);
