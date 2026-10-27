@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\CategoryAdminController;
+use App\Http\Controllers\Admin\ContentPageAdminController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DesignAdminController;
 use App\Http\Controllers\Admin\DesignFileTypeAdminController;
@@ -12,7 +13,21 @@ use App\Http\Controllers\Admin\RoleAdminController;
 use App\Http\Controllers\Admin\SiteSettingController;
 use App\Http\Controllers\Admin\TypeAdminController;
 use App\Http\Controllers\Admin\UserAdminController;
+use App\Http\Controllers\ContentPageController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('legal/terms', [ContentPageController::class, 'show'])
+    ->defaults('slug', 'terms-and-conditions')
+    ->name('content.terms');
+Route::get('legal/privacy', [ContentPageController::class, 'show'])
+    ->defaults('slug', 'privacy-policy')
+    ->name('content.privacy');
+Route::get('legal/refund', [ContentPageController::class, 'show'])
+    ->defaults('slug', 'refund-policy')
+    ->name('content.refund');
+Route::get('about', [ContentPageController::class, 'show'])
+    ->defaults('slug', 'about-app')
+    ->name('content.about');
 
 Route::redirect('/', '/dashboard')->name('home');
 
@@ -27,6 +42,13 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('admin/settings/site', [SiteSettingController::class, 'update'])
         ->middleware('permission:branding.update')
         ->name('admin.settings.site.update');
+
+    Route::get('admin/content-pages', [ContentPageAdminController::class, 'index'])
+        ->middleware('permission:branding.read')
+        ->name('admin.content-pages.index');
+    Route::put('admin/content-pages/{contentPage}', [ContentPageAdminController::class, 'update'])
+        ->middleware('permission:branding.update')
+        ->name('admin.content-pages.update');
 
     Route::get('admin/roles', [RoleAdminController::class, 'index'])
         ->middleware('permission:roles.read')

@@ -813,11 +813,6 @@
                                     "type": "text"
                                 },
                                 {
-                                    "key": "email",
-                                    "value": "user@example.com",
-                                    "type": "text"
-                                },
-                                {
                                     "key": "image",
                                     "type": "file",
                                     "src": []
@@ -825,7 +820,7 @@
                             ]
                         },
                         "url": "{{base_url}}/users/me",
-                        "description": "Updates name, optional email, and optional profile image in one multipart request. Omit image to keep the current photo. Send removeImage=1 to remove it. Phone number changes require a separate OTP-verified flow."
+                        "description": "Updates name and optional profile image. Omit image to keep the current photo. Send removeImage=1 to remove it. Email and mobile changes require the separate OTP-verified contact flow."
                     },
                     "response": [
                         {
@@ -844,11 +839,6 @@
                                         {
                                             "key": "name",
                                             "value": "Updated User",
-                                            "type": "text"
-                                        },
-                                        {
-                                            "key": "email",
-                                            "value": "user@example.com",
                                             "type": "text"
                                         },
                                         {
@@ -897,6 +887,100 @@
                             ],
                             "cookie": [],
                             "body": "{\n    \"success\": false,\n    \"message\": \"The name field is required.\",\n    \"code\": \"validation_error\",\n    \"errors\": {\n        \"name\": [\"The name field is required.\"]\n    }\n}"
+                        }
+                    ]
+                },
+                {
+                    "name": "Request Profile Contact OTP",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"type\": \"mobile\",\n  \"countryCode\": \"{{country_code}}\",\n  \"mobileNumber\": \"{{mobile_number}}\"\n}"
+                        },
+                        "url": "{{base_url}}/users/me/contact/request-otp",
+                        "description": "Use type=mobile with countryCode/mobileNumber, or type=email with email. The new value is not saved until OTP verification succeeds."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - OTP Sent",
+                            "originalRequest": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"type\": \"mobile\",\n  \"countryCode\": \"+91\",\n  \"mobileNumber\": \"9876543210\"\n}"
+                                },
+                                "url": "{{base_url}}/users/me/contact/request-otp"
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [],
+                            "cookie": [],
+                            "body": "{\n  \"success\": true,\n  \"message\": \"OTP sent successfully.\",\n  \"data\": {\n    \"type\": \"mobile\",\n    \"destination\": \"*********3210\",\n    \"expiresInSeconds\": 600\n  }\n}"
+                        }
+                    ]
+                },
+                {
+                    "name": "Verify Profile Contact OTP",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"type\": \"mobile\",\n  \"countryCode\": \"{{country_code}}\",\n  \"mobileNumber\": \"{{mobile_number}}\",\n  \"code\": \"{{otp_code}}\"\n}"
+                        },
+                        "url": "{{base_url}}/users/me/contact/verify-otp",
+                        "description": "Send the exact same contact value used for the request, plus the OTP code. Successful verification updates and returns the user."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - Contact Updated",
+                            "originalRequest": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"type\": \"mobile\",\n  \"countryCode\": \"+91\",\n  \"mobileNumber\": \"9876543210\",\n  \"code\": \"1234\"\n}"
+                                },
+                                "url": "{{base_url}}/users/me/contact/verify-otp"
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [],
+                            "cookie": [],
+                            "body": "{\n  \"success\": true,\n  \"message\": \"Mobile number verified and updated successfully.\",\n  \"data\": {\n    \"id\": \"user_example\",\n    \"countryCode\": \"+91\",\n    \"mobileNumber\": \"9876543210\"\n  }\n}"
                         }
                     ]
                 },

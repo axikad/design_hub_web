@@ -13,7 +13,7 @@ use App\Services\UploadService;
 use App\Support\ApiResponse;
 use App\Support\Pagination;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
 {
@@ -31,21 +31,14 @@ class UserController extends Controller
     {
         $user = $request->user();
 
-        if ($request->filled('email')) {
-            $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
+        if ($request->hasAny(['email', 'countryCode', 'mobileNumber'])) {
+            throw ValidationException::withMessages([
+                'contact' => 'Email and mobile number changes require OTP verification. Use the profile contact OTP APIs.',
+            ]);
         }
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'min:1', 'max:120'],
-            'email' => [
-                'sometimes',
-                'nullable',
-                'string',
-                'lowercase',
-                'email',
-                'max:255',
-                Rule::unique('users', 'email')->ignore($user->id),
-            ],
             'image' => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'removeImage' => ['sometimes', 'boolean'],
         ]);
@@ -61,10 +54,6 @@ class UserController extends Controller
         unset($validated['image'], $validated['removeImage']);
 
         $user->fill($validated);
-
-        if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
-        }
 
         $user->save();
 

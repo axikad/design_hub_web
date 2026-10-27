@@ -17,8 +17,10 @@ Design and user collection endpoints accept `page` and `per_page` (default 20, m
 | POST   | `/auth/request-otp`                                | `{ flow: "login" or "register", name: string or null, countryCode: "+91", mobileNumber: "9876543210" }` | `{ message: "OTP sent successfully." }`                                           |
 | POST   | `/auth/verify-otp`                                 | Same fields plus `{ code: "1234" }`                                                                     | `{ user: User, accessToken: string }`                                             |
 | GET    | `/users/me`                                        | Bearer token                                                                                            | `User`                                                                            |
-| POST   | `/users/me`                                        | Multipart `name`, optional `email`, optional `image`, optional `removeImage`                             | Updated `User`                                                                    |
-| PATCH  | `/users/me`                                        | JSON `{ name: string, email?: string or null }` (backward compatible)                                    | Updated `User`                                                                    |
+| POST   | `/users/me`                                        | Multipart `name`, optional `image`, optional `removeImage`                                               | Updated `User`                                                                    |
+| PATCH  | `/users/me`                                        | JSON `{ name: string }`                                                                                  | Updated `User`                                                                    |
+| POST   | `/users/me/contact/request-otp`                    | `{ type: "mobile", countryCode, mobileNumber }` or `{ type: "email", email }`                         | Masked destination and OTP expiry                                                  |
+| POST   | `/users/me/contact/verify-otp`                     | Same contact fields plus `{ code: "1234" }`                                                            | Updated `User`                                                                    |
 | GET    | `/catalog/design-options`                          | Bearer token                                                                                            | Combined machines, machine types, and compatible categories (backward-compatible) |
 | GET    | `/catalog/design-file-types`                       | Bearer token; optional `machineId`                                                                      | Active compatible design file types ordered by `sort_order`                       |
 | GET    | `/catalog/machines`                                | Bearer token                                                                                            | Active machines                                                                   |
@@ -183,9 +185,20 @@ The server derives ownership from the token, never from request data, and must e
 
 Local photo/file URIs are uploaded before saving. The ordered `images` and `files` arrays contain URLs returned by `/uploads`; the server verifies that every attachment belongs to the authenticated user. Image URLs are public, while stitch file names are visible but their URIs are returned only to the owner or a paid buyer through the protected signed-download flow. The flat attachment and summary fields remain for catalog-card and older-client compatibility.
 
-Update the profile and optional photo directly with multipart `POST /users/me`. Send `name`, optional `email`, and optional `image` (JPG, PNG, or WebP; maximum 5 MB). If `image` is omitted, the existing photo stays unchanged. Send `removeImage=1` without an image to remove it. The JSON `PATCH /users/me` name/email flow remains backward compatible.
+Update the name and optional photo directly with multipart `POST /users/me`. Send `name` and optional `image` (JPG, PNG, or WebP; maximum 5 MB). If `image` is omitted, the existing photo stays unchanged. Send `removeImage=1` without an image to remove it.
+
+Email and mobile number cannot be changed directly through `/users/me`. First call `POST /users/me/contact/request-otp`, then submit the same contact value and received code to `POST /users/me/contact/verify-otp`. For mobile use `{ type: "mobile", countryCode: "+91", mobileNumber: "9876543210" }`. For email use `{ type: "email", email: "user@example.com" }`. A verified email gets `email_verified_at`; a verified mobile updates `country_code`, `mobile_number`, and normalized `phone_key` together.
 
 ## App flow
+
+The mobile app opens these public, responsive pages in a WebView; no Bearer token is required:
+
+- Terms and Conditions: `https://app.designshub.org/legal/terms`
+- Privacy Policy: `https://app.designshub.org/legal/privacy`
+- Refund Policy: `https://app.designshub.org/legal/refund`
+- About DesignHub: `https://app.designshub.org/about`
+
+Administrators edit the Markdown content from **Admin → Content pages**. Each page shows its own last-updated date.
 
 Home cards open `/design/:id` without Edit/Delete controls. Profile contains a three-column grid filtered to the current owner. Only an owned design's details show Edit/Delete. CRUD changes update the shared store immediately after server success; errors retain form values. Pull down on Home/Profile to refresh. No follower/like counts are fabricated.
 

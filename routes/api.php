@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\DesignImageSearchController;
 use App\Http\Controllers\Api\V1\FolderController;
 use App\Http\Controllers\Api\V1\HomeController;
 use App\Http\Controllers\Api\V1\PaymentController;
+use App\Http\Controllers\Api\V1\ProfileContactController;
 use App\Http\Controllers\Api\V1\UploadController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
@@ -41,6 +42,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('users/me', [UserController::class, 'me']);
         Route::post('users/me', [UserController::class, 'update']);
         Route::patch('users/me', [UserController::class, 'update']);
+        Route::post('users/me/contact/request-otp', [ProfileContactController::class, 'requestOtp']);
+        Route::post('users/me/contact/verify-otp', [ProfileContactController::class, 'verifyOtp']);
         Route::get('users/me/designs', [UserController::class, 'myDesigns']);
         Route::get('users/me/purchases', [UserController::class, 'purchases']);
         Route::get('users/me/saved-designs', [UserController::class, 'savedDesigns']);
