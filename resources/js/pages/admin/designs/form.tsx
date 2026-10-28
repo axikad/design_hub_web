@@ -22,6 +22,7 @@ type VariantInput = {
     nameOrNumber: string;
     stitchCount: string;
     needle: string;
+    sequenceType: string;
     area: string;
     height: string;
     width: string;
@@ -53,6 +54,7 @@ const emptyVariant = (typeId: string): VariantInput => ({
     nameOrNumber: '',
     stitchCount: '0',
     needle: '0',
+    sequenceType: '0',
     area: '0',
     height: '0',
     width: '0',
@@ -86,6 +88,7 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                   ...variant,
                   stitchCount: variant.stitchCount.toString(),
                   needle: variant.needle.toString(),
+                  sequenceType: variant.sequenceType.toString(),
                   area: variant.area.toString(),
                   height: variant.height.toString(),
                   width: variant.width.toString(),
@@ -285,6 +288,16 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                                                 error={fieldError('needle')}
                                             />
                                             <VariantField
+                                                label="Sequence type"
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                suffix="mm"
+                                                value={variant.sequenceType}
+                                                onChange={(value) => updateVariant(index, 'sequenceType', value)}
+                                                error={fieldError('sequenceType')}
+                                            />
+                                            <VariantField
                                                 label="Area"
                                                 type="number"
                                                 min="0"
@@ -478,22 +491,30 @@ type VariantFieldProps = {
     type?: 'text' | 'number';
     min?: string;
     step?: string;
+    suffix?: string;
 };
 
-function VariantField({ label, value, onChange, error, type = 'text', min, step }: VariantFieldProps) {
+function VariantField({ label, value, onChange, error, type = 'text', min, step, suffix }: VariantFieldProps) {
     return (
         <div className="grid gap-2">
             <Label>{label}</Label>
-            <Input
-                type={type}
-                min={min}
-                step={step}
-                value={value}
-                onChange={(event) => onChange(event.target.value)}
-                placeholder={type === 'number' ? '0' : 'Enter name or number'}
-                required
-                className={inputClass}
-            />
+            <div className="relative">
+                <Input
+                    type={type}
+                    min={min}
+                    step={step}
+                    value={value}
+                    onChange={(event) => onChange(event.target.value)}
+                    placeholder={type === 'number' ? '0' : 'Enter name or number'}
+                    required
+                    className={`${inputClass} ${suffix ? 'pr-14' : ''}`}
+                />
+                {suffix ? (
+                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center border-l border-slate-200 px-3 text-sm font-medium text-slate-500 dark:border-slate-700">
+                        {suffix}
+                    </span>
+                ) : null}
+            </div>
             <InputError message={error} />
         </div>
     );

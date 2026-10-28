@@ -63,6 +63,7 @@ type DesignRequest = {
             nameOrNumber: string;
             stitchCount: number;
             needle: number;
+            sequenceType: number; // millimetres (mm)
             area: number;
             height: number;
             width: number;

@@ -23,6 +23,7 @@ class DesignVariantStructureTest extends TestCase
             'name_or_number',
             'stitch_count',
             'needle',
+            'sequence_type',
             'area',
             'height',
             'width',
@@ -49,6 +50,7 @@ class DesignVariantStructureTest extends TestCase
             'name_or_number' => 'Pallu 101',
             'stitch_count' => 12000,
             'needle' => 12,
+            'sequence_type' => 5.5,
             'area' => 36,
             'height' => 6,
             'width' => 6,
@@ -58,5 +60,6 @@ class DesignVariantStructureTest extends TestCase
         $this->assertTrue($variant->type->is($type));
         $this->assertTrue($variant->design->is($design));
         $this->assertSame(12, $variant->needle);
+        $this->assertSame('5.50', $variant->sequence_type);
     }
 }
