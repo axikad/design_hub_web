@@ -49,7 +49,7 @@ export default function AdminTypeForm({ type, categories }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={editing ? 'Edit design type' : 'Add design type'} />
-            <div className="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
+            <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
                 <AdminPageHeader
                     title={editing ? 'Edit design type' : 'Add design type'}
                     description="Connect each design type to one or more categories."

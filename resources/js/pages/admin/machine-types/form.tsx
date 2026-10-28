@@ -44,7 +44,7 @@ export default function AdminMachineTypeForm({ machineType, machines, categories
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={editing ? 'Edit machine type' : 'Add machine type'} />
-            <div className="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
+            <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
                 <AdminPageHeader
                     title={editing ? 'Edit machine type' : 'Add machine type'}
                     description="Choose its parent machine and compatible design categories."

@@ -67,7 +67,7 @@ export default function AdminUserForm({ user, roles }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={editing ? 'Edit user' : 'Add user'} />
-            <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
+            <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
                 <AdminPageHeader
                     title={editing ? 'Edit user' : 'Add user'}
                     description="Configure identity, role, panel credentials and mobile-app contact information."

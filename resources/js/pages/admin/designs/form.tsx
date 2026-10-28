@@ -162,7 +162,7 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={editing ? 'Edit design' : 'Add design'} />
-            <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
+            <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
                 <AdminPageHeader
                     title={editing ? 'Edit design' : 'Add design'}
                     description="Configure the seller, catalog classification, pricing, preview, and stitch file."

@@ -49,7 +49,7 @@ export default function AdminDesignFileTypeForm({ fileType, machines }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={editing ? 'Edit design file type' : 'Add design file type'} />
-            <div className="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
+            <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
                 <AdminPageHeader
                     title={editing ? 'Edit design file type' : 'Add design file type'}
                     description="Configure the stitch format name, extension, availability, and display order."

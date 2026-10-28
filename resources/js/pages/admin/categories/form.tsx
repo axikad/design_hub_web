@@ -51,7 +51,7 @@ export default function AdminCategoryForm({ category, machineTypes }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={editing ? 'Edit category' : 'Add category'} />
-            <div className="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
+            <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
                 <AdminPageHeader
                     title={editing ? 'Edit category' : 'Add category'}
                     description="Categories group related design types and define machine type compatibility."

@@ -71,7 +71,7 @@ export default function AdminMachineForm({ machine }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={editing ? 'Edit machine' : 'Add machine'} />
-            <div className="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
+            <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
                 <AdminPageHeader
                     title={editing ? 'Edit machine' : 'Add machine'}
                     description="Machines are the top-level grouping used to organize compatible machine types."
