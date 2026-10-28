@@ -11,8 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ImageIcon, LoaderCircle, Pencil, RotateCcw, ScanSearch, Search } from 'lucide-react';
-import { type ChangeEvent, type FormEventHandler, useRef, useState } from 'react';
+import { AlertCircle, ImageIcon, LoaderCircle, Pencil, RotateCcw, ScanSearch, Search, X } from 'lucide-react';
+import { type ChangeEvent, type FormEventHandler, useEffect, useRef, useState } from 'react';
 
 type Option = { id: string; name?: string; label?: string; extension?: string };
 type DesignRow = {
@@ -61,7 +61,22 @@ export default function AdminDesignsIndex({ designs, owners, machines, fileTypes
     const [machine, setMachine] = useState(filters.machine || 'all');
     const [fileType, setFileType] = useState(filters.fileType || 'all');
     const [imageSearching, setImageSearching] = useState(false);
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
     const imageInput = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (page.props.errors.image) {
+            setToastMessage(page.props.errors.image);
+        }
+    }, [page.props.errors.image]);
+
+    useEffect(() => {
+        if (!toastMessage) return;
+
+        const timeout = window.setTimeout(() => setToastMessage(null), 6000);
+
+        return () => window.clearTimeout(timeout);
+    }, [toastMessage]);
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
@@ -90,6 +105,21 @@ export default function AdminDesignsIndex({ designs, owners, machines, fileTypes
 
         if (!image) return;
 
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        const maximumBytes = 10 * 1024 * 1024;
+
+        if (!allowedTypes.includes(image.type)) {
+            setToastMessage('Please select a JPG, PNG, or WebP image.');
+            event.target.value = '';
+            return;
+        }
+
+        if (image.size > maximumBytes) {
+            setToastMessage('The image must not be larger than 10 MB.');
+            event.target.value = '';
+            return;
+        }
+
         router.post(
             route('admin.designs.search-by-image'),
             {
@@ -100,6 +130,10 @@ export default function AdminDesignsIndex({ designs, owners, machines, fileTypes
                 forceFormData: true,
                 preserveScroll: true,
                 onStart: () => setImageSearching(true),
+                onError: (errors) => {
+                    const message = errors.image ?? Object.values(errors)[0];
+                    setToastMessage(typeof message === 'string' ? message : 'Image search failed. Please try again.');
+                },
                 onFinish: () => setImageSearching(false),
             },
         );
@@ -109,6 +143,23 @@ export default function AdminDesignsIndex({ designs, owners, machines, fileTypes
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Designs" />
+            {toastMessage ? (
+                <div
+                    role="alert"
+                    className="fixed top-5 right-5 z-[100] flex max-w-md items-start gap-3 rounded-xl border border-red-200 bg-white px-4 py-3 text-sm text-red-700 shadow-xl dark:border-red-900 dark:bg-slate-950 dark:text-red-300"
+                >
+                    <AlertCircle className="mt-0.5 size-5 shrink-0" />
+                    <span className="flex-1 font-medium">{toastMessage}</span>
+                    <button
+                        type="button"
+                        className="rounded-md p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                        aria-label="Close error"
+                        onClick={() => setToastMessage(null)}
+                    >
+                        <X className="size-4" />
+                    </button>
+                </div>
+            ) : null}
             <div className="space-y-6 p-4 md:p-6">
                 <AdminPageHeader
                     title="Designs"

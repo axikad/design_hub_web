@@ -53,4 +53,16 @@ class DesignImageSearchApiTest extends TestCase
             ->assertJsonPath('data.results.0.similarityScore', 100)
             ->assertJsonPath('data.results.0.similarityLabel', 'Very close');
     }
+
+    public function test_image_search_returns_a_standard_validation_error_for_an_oversized_image(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->post('/api/v1/designs/search-by-image', [
+            'image' => UploadedFile::fake()->create('large.jpg', 10241, 'image/jpeg'),
+        ], ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonPath('code', 'validation_error')
+            ->assertJsonStructure(['errors' => ['image']]);
+    }
 }

@@ -38,6 +38,25 @@ class DesignAdminController extends Controller
         $machineId = (string) $request->string('machine');
         $fileTypeId = (string) $request->string('fileType');
 
+        if ($request->boolean('imageSearch')) {
+            $imageSearch = $request->session()->get('admin_design_image_search');
+
+            if (is_array($imageSearch) && is_array($imageSearch['matches'] ?? null)) {
+                return Inertia::render('admin/designs/index', $this->designIndexProps(
+                    $this->imageSearchPaginator($imageSearch['matches']),
+                    [
+                        'search' => '',
+                        'owner' => '',
+                        'machine' => (string) ($imageSearch['machineId'] ?? ''),
+                        'fileType' => '',
+                    ],
+                    true,
+                ));
+            }
+        } else {
+            $request->session()->forget('admin_design_image_search');
+        }
+
         $designs = Design::query()
             ->listed()
             ->with(['owner', 'type.category', 'machineType.machine', 'fileType'])
@@ -72,10 +91,10 @@ class DesignAdminController extends Controller
         ));
     }
 
-    public function searchByImage(Request $request): Response|RedirectResponse
+    public function searchByImage(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'image' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'image' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
             'machineId' => ['nullable', 'string', Rule::exists('machines', 'public_id')->where('is_active', true)],
         ]);
         $contents = file_get_contents($request->file('image')->getRealPath());
@@ -95,40 +114,19 @@ class DesignAdminController extends Controller
             return back()->withErrors(['image' => 'Image matching is temporarily unavailable. Please try again.']);
         }
 
-        $designs = Design::query()
-            ->listed()
-            ->with(['owner', 'type.category', 'machineType.machine', 'fileType'])
-            ->whereIn('public_id', $matches->pluck('designId'))
-            ->get()
-            ->keyBy('public_id');
+        $request->session()->put('admin_design_image_search', [
+            'matches' => $matches->values()->all(),
+            'machineId' => $validated['machineId'] ?? '',
+        ]);
 
-        $rows = $matches->map(function (array $match) use ($designs) {
-            $design = $designs->get($match['designId']);
+        return redirect()->route('admin.designs.index', ['imageSearch' => 1]);
+    }
 
-            return $design === null ? null : [
-                ...$this->designRow($design),
-                'similarityScore' => $match['score'],
-            ];
-        })->filter()->values();
+    public function imageSearchFallback(Request $request): RedirectResponse
+    {
+        $request->session()->forget('admin_design_image_search');
 
-        $paginator = new LengthAwarePaginator(
-            $rows,
-            $rows->count(),
-            max($rows->count(), 1),
-            1,
-            ['path' => route('admin.designs.index')],
-        );
-
-        return Inertia::render('admin/designs/index', $this->designIndexProps(
-            $paginator,
-            [
-                'search' => '',
-                'owner' => '',
-                'machine' => $validated['machineId'] ?? '',
-                'fileType' => '',
-            ],
-            true,
-        ));
+        return redirect()->route('admin.designs.index');
     }
 
     /** @return array<string, mixed> */
@@ -145,6 +143,35 @@ class DesignAdminController extends Controller
             'filters' => $filters,
             'imageSearchActive' => $imageSearchActive,
         ];
+    }
+
+    /** @param list<array{designId: string, score: float}> $matches */
+    private function imageSearchPaginator(array $matches): LengthAwarePaginator
+    {
+        $matches = collect($matches);
+        $designs = Design::query()
+            ->listed()
+            ->with(['owner', 'type.category', 'machineType.machine', 'fileType'])
+            ->whereIn('public_id', $matches->pluck('designId'))
+            ->get()
+            ->keyBy('public_id');
+
+        $rows = $matches->map(function (array $match) use ($designs) {
+            $design = $designs->get($match['designId']);
+
+            return $design === null ? null : [
+                ...$this->designRow($design),
+                'similarityScore' => $match['score'],
+            ];
+        })->filter()->values();
+
+        return new LengthAwarePaginator(
+            $rows,
+            $rows->count(),
+            max($rows->count(), 1),
+            1,
+            ['path' => route('admin.designs.index')],
+        );
     }
 
     /** @return array<string, mixed> */

@@ -111,6 +111,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('admin/designs/search-by-image', [DesignAdminController::class, 'searchByImage'])
         ->middleware('permission:designs.read')
         ->name('admin.designs.search-by-image');
+    Route::get('admin/designs/search-by-image', [DesignAdminController::class, 'imageSearchFallback'])
+        ->middleware('permission:designs.read')
+        ->name('admin.designs.search-by-image.fallback');
 
     Route::resource('admin/designs', DesignAdminController::class)
         ->parameters(['designs' => 'design'])
