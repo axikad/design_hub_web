@@ -13,9 +13,9 @@ import { type FormEventHandler } from 'react';
 
 type Category = { id: string; name: string };
 type TypeForm = { id: string; categoryIds: string[]; name: string; description: string; isActive: boolean; sortOrder: number };
-type Props = { type: TypeForm | null; categories: Category[] };
+type Props = { type: TypeForm | null; categories: Category[]; nextSortOrder: number };
 
-export default function AdminTypeForm({ type, categories }: Props) {
+export default function AdminTypeForm({ type, categories, nextSortOrder }: Props) {
     const editing = Boolean(type?.id);
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Overview', href: '/dashboard' },
@@ -27,7 +27,7 @@ export default function AdminTypeForm({ type, categories }: Props) {
         name: type?.name ?? '',
         description: type?.description ?? '',
         isActive: type?.isActive ?? true,
-        sortOrder: type?.sortOrder ?? 0,
+        sortOrder: type?.sortOrder ?? nextSortOrder,
     });
     const allCategoryIds = categories.map((category) => category.id);
     const allCategoriesSelected = categories.length > 0 && allCategoryIds.every((id) => data.categoryIds.includes(id));
@@ -79,11 +79,11 @@ export default function AdminTypeForm({ type, categories }: Props) {
                                 <InputError message={errors.name} />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="sortOrder">Sort order</Label>
+                                <Label htmlFor="sortOrder">Position</Label>
                                 <Input
                                     id="sortOrder"
                                     type="number"
-                                    min={0}
+                                    min={1}
                                     value={data.sortOrder}
                                     onChange={(event) => setData('sortOrder', Number(event.target.value))}
                                     className="h-11 rounded-xl border-slate-200 focus-visible:border-indigo-500 dark:border-slate-700"

@@ -14,9 +14,9 @@ import { type FormEventHandler } from 'react';
 
 type Option = { id: string; name: string };
 type MachineTypeForm = { id: string; machineId: string | null; name: string; categoryIds: string[]; isActive: boolean; sortOrder: number };
-type Props = { machineType: MachineTypeForm | null; machines: Option[]; categories: Option[] };
+type Props = { machineType: MachineTypeForm | null; machines: Option[]; categories: Option[]; nextSortOrders: Record<string, number> };
 
-export default function AdminMachineTypeForm({ machineType, machines, categories }: Props) {
+export default function AdminMachineTypeForm({ machineType, machines, categories, nextSortOrders }: Props) {
     const editing = Boolean(machineType?.id);
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Overview', href: '/dashboard' },
@@ -28,7 +28,7 @@ export default function AdminMachineTypeForm({ machineType, machines, categories
         name: machineType?.name ?? '',
         categoryIds: machineType?.categoryIds ?? [],
         isActive: machineType?.isActive ?? true,
-        sortOrder: machineType?.sortOrder ?? 0,
+        sortOrder: machineType?.sortOrder ?? nextSortOrders[machineType?.machineId ?? machines[0]?.id ?? ''] ?? 1,
     });
     const allCategoryIds = categories.map((category) => category.id);
     const allCategoriesSelected = categories.length > 0 && allCategoryIds.every((id) => data.categoryIds.includes(id));
@@ -62,7 +62,13 @@ export default function AdminMachineTypeForm({ machineType, machines, categories
                         <div className="grid gap-5 sm:grid-cols-2">
                             <div className="grid gap-2">
                                 <Label>Parent machine</Label>
-                                <Select value={data.machineId} onValueChange={(value) => setData('machineId', value)}>
+                                <Select
+                                    value={data.machineId}
+                                    onValueChange={(value) => {
+                                        setData('machineId', value);
+                                        if (!editing) setData('sortOrder', nextSortOrders[value] ?? 1);
+                                    }}
+                                >
                                     <SelectTrigger className="h-11 rounded-xl border-slate-200 dark:border-slate-700">
                                         <SelectValue placeholder="Select machine" />
                                     </SelectTrigger>
@@ -92,11 +98,11 @@ export default function AdminMachineTypeForm({ machineType, machines, categories
                         </div>
                         <div className="mt-5 grid gap-5 sm:grid-cols-[180px_1fr]">
                             <div className="grid gap-2">
-                                <Label htmlFor="sortOrder">Sort order</Label>
+                                <Label htmlFor="sortOrder">Position</Label>
                                 <Input
                                     id="sortOrder"
                                     type="number"
-                                    min={0}
+                                    min={1}
                                     value={data.sortOrder}
                                     onChange={(event) => setData('sortOrder', Number(event.target.value))}
                                     className="h-11 rounded-xl border-slate-200 focus-visible:border-indigo-500 dark:border-slate-700"

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Design;
 use App\Models\DesignCategory;
 use App\Models\MachineType;
+use App\Services\SortOrderService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,8 @@ use Inertia\Response;
 
 class CategoryAdminController extends Controller
 {
+    public function __construct(private readonly SortOrderService $sortOrder) {}
+
     public function index(Request $request): Response
     {
         $search = trim((string) $request->string('search'));
@@ -56,6 +59,7 @@ class CategoryAdminController extends Controller
         return Inertia::render('admin/categories/form', [
             'category' => null,
             'machineTypes' => $this->machineTypeOptions(),
+            'nextSortOrder' => $this->sortOrder->nextPosition(DesignCategory::class),
         ]);
     }
 
@@ -63,7 +67,10 @@ class CategoryAdminController extends Controller
     {
         $validated = $this->validated($request);
         DB::transaction(function () use ($validated): void {
+            $position = $validated['attributes']['sort_order'];
+            $validated['attributes']['sort_order'] = $position ?? $this->sortOrder->nextPosition(DesignCategory::class);
             $category = DesignCategory::query()->create($validated['attributes']);
+            $this->sortOrder->place($category, $position);
             $category->machineTypes()->sync($validated['machineTypeIds']);
         });
 
@@ -87,6 +94,7 @@ class CategoryAdminController extends Controller
                 'machineTypeIds' => $model->machineTypes->pluck('public_id')->values(),
             ],
             'machineTypes' => $this->machineTypeOptions(),
+            'nextSortOrder' => $this->sortOrder->nextPosition(DesignCategory::class),
         ]);
     }
 
@@ -95,7 +103,10 @@ class CategoryAdminController extends Controller
         $model = DesignCategory::query()->where('public_id', $category)->firstOrFail();
         $validated = $this->validated($request);
         DB::transaction(function () use ($model, $validated): void {
+            $position = $validated['attributes']['sort_order'];
+            unset($validated['attributes']['sort_order']);
             $model->update($validated['attributes']);
+            $this->sortOrder->place($model, $position);
             $model->machineTypes()->sync($validated['machineTypeIds']);
         });
 
@@ -113,9 +124,23 @@ class CategoryAdminController extends Controller
         DB::transaction(function () use ($model): void {
             $model->machineTypes()->detach();
             $model->delete();
+            $this->sortOrder->remove(DesignCategory::class);
         });
 
         return redirect()->route('admin.categories.index')->with('success', 'Category deleted.');
+    }
+
+    public function reorder(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required', 'string', 'distinct', Rule::exists('design_categories', 'public_id')],
+            'startPosition' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $this->sortOrder->reorderPage(DesignCategory::class, $validated['ids'], $validated['startPosition']);
+
+        return back()->with('success', 'Category order updated.');
     }
 
     /** @return array{attributes: array<string, mixed>, machineTypeIds: list<int>} */
@@ -125,7 +150,7 @@ class CategoryAdminController extends Controller
             'name' => ['required', 'string', 'max:80'],
             'description' => ['nullable', 'string', 'max:255'],
             'isActive' => ['boolean'],
-            'sortOrder' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'sortOrder' => ['nullable', 'integer', 'min:1', 'max:9999'],
             'machineTypeIds' => ['array'],
             'machineTypeIds.*' => [
                 'string',
@@ -139,7 +164,7 @@ class CategoryAdminController extends Controller
                 'name' => trim($validated['name']),
                 'description' => isset($validated['description']) ? trim($validated['description']) : null,
                 'is_active' => $request->boolean('isActive', true),
-                'sort_order' => $validated['sortOrder'] ?? 0,
+                'sort_order' => isset($validated['sortOrder']) ? (int) $validated['sortOrder'] : null,
             ],
             'machineTypeIds' => MachineType::query()
                 ->where('is_active', true)

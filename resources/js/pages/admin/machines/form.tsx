@@ -12,7 +12,7 @@ import { ArrowLeft, Cpu, ImageIcon, LoaderCircle, Save, Trash2, Upload } from 'l
 import { type ChangeEvent, type FormEventHandler, useRef, useState } from 'react';
 
 type MachineForm = { id: string; name: string; imageUri: string | null; isActive: boolean; sortOrder: number };
-type Props = { machine: MachineForm | null };
+type Props = { machine: MachineForm | null; nextSortOrder: number };
 type MachineFormData = {
     name: string;
     image: File | null;
@@ -22,7 +22,7 @@ type MachineFormData = {
     _method: 'post' | 'put';
 };
 
-export default function AdminMachineForm({ machine }: Props) {
+export default function AdminMachineForm({ machine, nextSortOrder }: Props) {
     const editing = Boolean(machine?.id);
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Overview', href: '/dashboard' },
@@ -36,7 +36,7 @@ export default function AdminMachineForm({ machine }: Props) {
         image: null,
         removeImage: false,
         isActive: machine?.isActive ?? true,
-        sortOrder: machine?.sortOrder ?? 0,
+        sortOrder: machine?.sortOrder ?? nextSortOrder,
         _method: editing ? 'put' : 'post',
     });
 
@@ -101,11 +101,11 @@ export default function AdminMachineForm({ machine }: Props) {
                                 <InputError message={errors.name} />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="sortOrder">Sort order</Label>
+                                <Label htmlFor="sortOrder">Position</Label>
                                 <Input
                                     id="sortOrder"
                                     type="number"
-                                    min={0}
+                                    min={1}
                                     value={data.sortOrder}
                                     onChange={(event) => setData('sortOrder', Number(event.target.value))}
                                     className="h-11 rounded-xl border-slate-200 focus-visible:border-indigo-500 dark:border-slate-700"

@@ -61,4 +61,40 @@ class CategoryManagementTest extends TestCase
         $this->assertDatabaseMissing('design_categories', ['id' => $category->id]);
         $this->assertDatabaseMissing('category_machine_type', ['design_category_id' => $category->id]);
     }
+
+    public function test_category_positions_shift_and_can_be_reordered(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+        $first = DesignCategory::query()->create(['name' => 'First', 'sort_order' => 1]);
+        $second = DesignCategory::query()->create(['name' => 'Second', 'sort_order' => 2]);
+        $third = DesignCategory::query()->create(['name' => 'Third', 'sort_order' => 3]);
+
+        $this->actingAs($admin)->put('/admin/categories/'.$third->public_id, [
+            'name' => 'Third',
+            'isActive' => true,
+            'sortOrder' => 1,
+            'machineTypeIds' => [],
+        ])->assertRedirect(route('admin.categories.index'));
+
+        $this->assertSame(1, $third->fresh()->sort_order);
+        $this->assertSame(2, $first->fresh()->sort_order);
+        $this->assertSame(3, $second->fresh()->sort_order);
+
+        $this->actingAs($admin)->put('/admin/categories/reorder', [
+            'ids' => [$second->public_id, $third->public_id, $first->public_id],
+            'startPosition' => 1,
+        ])->assertRedirect();
+
+        $this->assertSame(1, $second->fresh()->sort_order);
+        $this->assertSame(2, $third->fresh()->sort_order);
+        $this->assertSame(3, $first->fresh()->sort_order);
+
+        $this->actingAs($admin)->post('/admin/categories', [
+            'name' => 'Fourth',
+            'isActive' => true,
+            'machineTypeIds' => [],
+        ])->assertRedirect(route('admin.categories.index'));
+
+        $this->assertDatabaseHas('design_categories', ['name' => 'Fourth', 'sort_order' => 4]);
+    }
 }

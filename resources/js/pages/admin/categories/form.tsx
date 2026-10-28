@@ -13,9 +13,9 @@ import { type FormEventHandler } from 'react';
 
 type MachineTypeOption = { id: string; name: string; machineName: string };
 type CategoryForm = { id: string; name: string; description: string; isActive: boolean; sortOrder: number; machineTypeIds: string[] };
-type Props = { category: CategoryForm | null; machineTypes: MachineTypeOption[] };
+type Props = { category: CategoryForm | null; machineTypes: MachineTypeOption[]; nextSortOrder: number };
 
-export default function AdminCategoryForm({ category, machineTypes }: Props) {
+export default function AdminCategoryForm({ category, machineTypes, nextSortOrder }: Props) {
     const editing = Boolean(category?.id);
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Overview', href: '/dashboard' },
@@ -26,7 +26,7 @@ export default function AdminCategoryForm({ category, machineTypes }: Props) {
         name: category?.name ?? '',
         description: category?.description ?? '',
         isActive: category?.isActive ?? true,
-        sortOrder: category?.sortOrder ?? 0,
+        sortOrder: category?.sortOrder ?? nextSortOrder,
         machineTypeIds: category?.machineTypeIds ?? [],
     });
     const allMachineTypeIds = machineTypes.map((machineType) => machineType.id);
@@ -81,11 +81,11 @@ export default function AdminCategoryForm({ category, machineTypes }: Props) {
                                 <InputError message={errors.name} />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="sortOrder">Sort order</Label>
+                                <Label htmlFor="sortOrder">Position</Label>
                                 <Input
                                     id="sortOrder"
                                     type="number"
-                                    min={0}
+                                    min={1}
                                     value={data.sortOrder}
                                     onChange={(event) => setData('sortOrder', Number(event.target.value))}
                                     className="h-11 rounded-xl border-slate-200 focus-visible:border-indigo-500 dark:border-slate-700"

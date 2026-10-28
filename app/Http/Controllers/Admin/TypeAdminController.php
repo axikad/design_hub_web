@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\DesignCategory;
 use App\Models\DesignType;
+use App\Services\SortOrderService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,8 @@ use Inertia\Response;
 
 class TypeAdminController extends Controller
 {
+    public function __construct(private readonly SortOrderService $sortOrder) {}
+
     public function index(Request $request): Response
     {
         $search = trim((string) $request->string('search'));
@@ -66,6 +69,7 @@ class TypeAdminController extends Controller
         return Inertia::render('admin/types/form', [
             'type' => null,
             'categories' => $this->categoryOptions(),
+            'nextSortOrder' => $this->sortOrder->nextPosition(DesignType::class),
         ]);
     }
 
@@ -74,13 +78,15 @@ class TypeAdminController extends Controller
         $validated = $this->validated($request);
 
         DB::transaction(function () use ($validated): void {
+            $position = $validated['sortOrder'];
             $type = DesignType::query()->create([
                 'design_category_id' => $validated['categoryIds'][0],
                 'name' => $validated['name'],
                 'description' => $validated['description'],
                 'is_active' => $validated['isActive'],
-                'sort_order' => $validated['sortOrder'],
+                'sort_order' => $position ?? $this->sortOrder->nextPosition(DesignType::class),
             ]);
+            $this->sortOrder->place($type, $position);
             $type->categories()->sync($validated['categoryIds']);
         });
 
@@ -104,6 +110,7 @@ class TypeAdminController extends Controller
                 'sortOrder' => $model->sort_order,
             ],
             'categories' => $this->categoryOptions(),
+            'nextSortOrder' => $this->sortOrder->nextPosition(DesignType::class),
         ]);
     }
 
@@ -118,8 +125,8 @@ class TypeAdminController extends Controller
                 'name' => $validated['name'],
                 'description' => $validated['description'],
                 'is_active' => $validated['isActive'],
-                'sort_order' => $validated['sortOrder'],
             ]);
+            $this->sortOrder->place($model, $validated['sortOrder']);
             $model->categories()->sync($validated['categoryIds']);
         });
 
@@ -135,8 +142,22 @@ class TypeAdminController extends Controller
         }
 
         $model->delete();
+        $this->sortOrder->remove(DesignType::class);
 
         return redirect()->route('admin.types.index')->with('success', 'Type deleted.');
+    }
+
+    public function reorder(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required', 'string', 'distinct', Rule::exists('design_types', 'public_id')],
+            'startPosition' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $this->sortOrder->reorderPage(DesignType::class, $validated['ids'], $validated['startPosition']);
+
+        return back()->with('success', 'Design type order updated.');
     }
 
     /** @return list<array{id: string, name: string}> */
@@ -155,7 +176,7 @@ class TypeAdminController extends Controller
             ->all();
     }
 
-    /** @return array{categoryIds: list<int>, name: string, description: ?string, isActive: bool, sortOrder: int} */
+    /** @return array{categoryIds: list<int>, name: string, description: ?string, isActive: bool, sortOrder: ?int} */
     private function validated(Request $request): array
     {
         $validated = $request->validate([
@@ -169,7 +190,7 @@ class TypeAdminController extends Controller
             'name' => ['required', 'string', 'max:80'],
             'description' => ['nullable', 'string', 'max:255'],
             'isActive' => ['boolean'],
-            'sortOrder' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'sortOrder' => ['nullable', 'integer', 'min:1', 'max:9999'],
         ]);
 
         $categories = DesignCategory::query()
@@ -185,7 +206,7 @@ class TypeAdminController extends Controller
             'name' => trim($validated['name']),
             'description' => isset($validated['description']) ? trim($validated['description']) : null,
             'isActive' => $request->boolean('isActive', true),
-            'sortOrder' => (int) ($validated['sortOrder'] ?? 0),
+            'sortOrder' => isset($validated['sortOrder']) ? (int) $validated['sortOrder'] : null,
         ];
     }
 }

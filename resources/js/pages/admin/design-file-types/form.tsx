@@ -13,9 +13,9 @@ import { type FormEventHandler } from 'react';
 
 type MachineOption = { id: string; name: string };
 type FileTypeForm = { id: string; name: string; extension: string; isActive: boolean; sortOrder: number; machineIds: string[] };
-type Props = { fileType: FileTypeForm | null; machines: MachineOption[] };
+type Props = { fileType: FileTypeForm | null; machines: MachineOption[]; nextSortOrder: number };
 
-export default function AdminDesignFileTypeForm({ fileType, machines }: Props) {
+export default function AdminDesignFileTypeForm({ fileType, machines, nextSortOrder }: Props) {
     const editing = Boolean(fileType?.id);
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Overview', href: '/dashboard' },
@@ -26,7 +26,7 @@ export default function AdminDesignFileTypeForm({ fileType, machines }: Props) {
         name: fileType?.name ?? '',
         extension: fileType?.extension ?? '',
         isActive: fileType?.isActive ?? true,
-        sortOrder: fileType?.sortOrder ?? 0,
+        sortOrder: fileType?.sortOrder ?? nextSortOrder,
         machineIds: fileType?.machineIds ?? machines.map((machine) => machine.id),
     });
     const allMachineIds = machines.map((machine) => machine.id);
@@ -98,11 +98,11 @@ export default function AdminDesignFileTypeForm({ fileType, machines }: Props) {
                                 <InputError message={errors.extension} />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="sortOrder">Sort order</Label>
+                                <Label htmlFor="sortOrder">Position</Label>
                                 <Input
                                     id="sortOrder"
                                     type="number"
-                                    min={0}
+                                    min={1}
                                     value={data.sortOrder}
                                     onChange={(event) => setData('sortOrder', Number(event.target.value))}
                                     className="h-11 rounded-xl border-slate-200 focus-visible:border-indigo-500 dark:border-slate-700"

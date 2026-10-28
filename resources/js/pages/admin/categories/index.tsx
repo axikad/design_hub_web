@@ -8,10 +8,11 @@ import { AdminPageHeader } from '@/components/admin/page-header';
 import { PaginationLinks } from '@/components/admin/pagination-links';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useReorderableRows } from '@/hooks/use-reorderable-rows';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { FolderTree, Pencil, RotateCcw, Search } from 'lucide-react';
+import { FolderTree, GripVertical, Pencil, RotateCcw, Search } from 'lucide-react';
 import { type FormEventHandler, useState } from 'react';
 
 type Row = {
@@ -24,7 +25,7 @@ type Row = {
     machineTypesCount: number;
 };
 type Props = {
-    categories: { data: Row[]; links: { url: string | null; label: string; active: boolean }[] };
+    categories: { data: Row[]; from: number | null; links: { url: string | null; label: string; active: boolean }[] };
     filters: { search: string; status: string };
 };
 
@@ -40,6 +41,10 @@ export default function AdminCategoriesIndex({ categories, filters }: Props) {
     const canDelete = permissions.includes('categories.delete');
     const [search, setSearch] = useState(filters.search);
     const [status, setStatus] = useState(filters.status || 'all');
+    const canReorder = canUpdate && !filters.search && !filters.status;
+    const { rows, rowDragProps, draggedId, dropTargetId } = useReorderableRows(categories.data, canReorder, (ids) =>
+        router.put(route('admin.categories.reorder'), { ids, startPosition: categories.from ?? 1 }, { preserveScroll: true }),
+    );
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
@@ -110,7 +115,7 @@ export default function AdminCategoriesIndex({ categories, filters }: Props) {
                         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                             <thead className="bg-slate-50/80 dark:bg-slate-950/60">
                                 <tr>
-                                    {['Category', 'Description', 'Design types', 'Machine types', 'Sort order', 'Status', 'Actions'].map(
+                                    {['', 'Category', 'Description', 'Design types', 'Machine types', 'Position', 'Status', 'Actions'].map(
                                         (heading) => (
                                             <th
                                                 key={heading}
@@ -123,8 +128,17 @@ export default function AdminCategoriesIndex({ categories, filters }: Props) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                {categories.data.map((category) => (
-                                    <tr key={category.id} className="transition-colors hover:bg-indigo-50/40 dark:hover:bg-indigo-950/10">
+                                {rows.map((category) => (
+                                    <tr
+                                        key={category.id}
+                                        {...rowDragProps(category.id)}
+                                        className={`transition-colors hover:bg-indigo-50/40 dark:hover:bg-indigo-950/10 ${
+                                            draggedId === category.id ? 'opacity-50' : ''
+                                        } ${dropTargetId === category.id ? 'bg-indigo-50 ring-2 ring-indigo-300 ring-inset dark:bg-indigo-950/30' : ''}`}
+                                    >
+                                        <td className="w-10 px-3 py-4 text-slate-400">
+                                            <GripVertical className={`size-4 ${canReorder ? 'cursor-grab active:cursor-grabbing' : 'opacity-30'}`} />
+                                        </td>
                                         <td className="px-5 py-4">
                                             <div className="flex items-center gap-3">
                                                 <span className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-300">

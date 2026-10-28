@@ -8,16 +8,17 @@ import { AdminPageHeader } from '@/components/admin/page-header';
 import { PaginationLinks } from '@/components/admin/pagination-links';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useReorderableRows } from '@/hooks/use-reorderable-rows';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Cog, Pencil, RotateCcw, Search } from 'lucide-react';
+import { Cog, GripVertical, Pencil, RotateCcw, Search } from 'lucide-react';
 import { type FormEventHandler, useState } from 'react';
 
 type Row = { id: string; name: string; machineName: string | null; categoryNames: string[]; isActive: boolean; sortOrder: number };
 type Option = { id: string; name: string };
 type Props = {
-    machineTypes: { data: Row[]; links: { url: string | null; label: string; active: boolean }[] };
+    machineTypes: { data: Row[]; from: number | null; links: { url: string | null; label: string; active: boolean }[] };
     machines: Option[];
     filters: { search: string; status: string; machine: string };
 };
@@ -35,6 +36,14 @@ export default function AdminMachineTypesIndex({ machineTypes, machines, filters
     const [search, setSearch] = useState(filters.search);
     const [status, setStatus] = useState(filters.status || 'all');
     const [machine, setMachine] = useState(filters.machine || 'all');
+    const canReorder = canUpdate && !filters.search && !filters.status && Boolean(filters.machine);
+    const { rows, rowDragProps, draggedId, dropTargetId } = useReorderableRows(machineTypes.data, canReorder, (ids) =>
+        router.put(
+            route('admin.machine-types.reorder'),
+            { ids, machineId: filters.machine, startPosition: machineTypes.from ?? 1 },
+            { preserveScroll: true },
+        ),
+    );
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
@@ -112,6 +121,10 @@ export default function AdminMachineTypesIndex({ machineTypes, machines, filters
                     </AdminFilterBar>
                 </form>
 
+                {canUpdate && !filters.machine ? (
+                    <p className="-mt-3 text-sm text-slate-500">Select one machine and apply the filter to drag and reorder its machine types.</p>
+                ) : null}
+
                 <AdminTablePanel footer={<PaginationLinks paginator={machineTypes} />}>
                     {machineTypes.data.length === 0 ? (
                         <AdminEmptyState
@@ -123,7 +136,7 @@ export default function AdminMachineTypesIndex({ machineTypes, machines, filters
                         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                             <thead className="bg-slate-50/80 dark:bg-slate-950/60">
                                 <tr>
-                                    {['Machine type', 'Machine', 'Categories', 'Sort order', 'Status', 'Actions'].map((heading) => (
+                                    {['', 'Machine type', 'Machine', 'Categories', 'Position', 'Status', 'Actions'].map((heading) => (
                                         <th
                                             key={heading}
                                             className="px-5 py-3.5 text-left text-[11px] font-bold tracking-wider text-slate-500 uppercase"
@@ -134,8 +147,17 @@ export default function AdminMachineTypesIndex({ machineTypes, machines, filters
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                {machineTypes.data.map((machineType) => (
-                                    <tr key={machineType.id} className="transition-colors hover:bg-indigo-50/40 dark:hover:bg-indigo-950/10">
+                                {rows.map((machineType) => (
+                                    <tr
+                                        key={machineType.id}
+                                        {...rowDragProps(machineType.id)}
+                                        className={`transition-colors hover:bg-indigo-50/40 dark:hover:bg-indigo-950/10 ${
+                                            draggedId === machineType.id ? 'opacity-50' : ''
+                                        } ${dropTargetId === machineType.id ? 'bg-indigo-50 ring-2 ring-indigo-300 ring-inset dark:bg-indigo-950/30' : ''}`}
+                                    >
+                                        <td className="w-10 px-3 py-4 text-slate-400">
+                                            <GripVertical className={`size-4 ${canReorder ? 'cursor-grab active:cursor-grabbing' : 'opacity-30'}`} />
+                                        </td>
                                         <td className="px-5 py-4">
                                             <div className="flex items-center gap-3">
                                                 <span className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-300">

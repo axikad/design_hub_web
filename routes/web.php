@@ -63,6 +63,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
         ->middleware('permission:roles.delete')
         ->name('admin.roles.destroy');
 
+    Route::put('admin/categories/reorder', [CategoryAdminController::class, 'reorder'])
+        ->middleware('permission:categories.update')
+        ->name('admin.categories.reorder');
     Route::resource('admin/categories', CategoryAdminController::class)
         ->parameters(['categories' => 'category'])
         ->names('admin.categories')
@@ -72,6 +75,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
         ->middlewareFor(['edit', 'update'], 'permission:categories.update')
         ->middlewareFor('destroy', 'permission:categories.delete');
 
+    Route::put('admin/machines/reorder', [MachineAdminController::class, 'reorder'])
+        ->middleware('permission:machines.update')
+        ->name('admin.machines.reorder');
     Route::resource('admin/machines', MachineAdminController::class)
         ->parameters(['machines' => 'machine'])
         ->names('admin.machines')
@@ -81,6 +87,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
         ->middlewareFor(['edit', 'update'], 'permission:machines.update')
         ->middlewareFor('destroy', 'permission:machines.delete');
 
+    Route::put('admin/machine-types/reorder', [MachineTypeAdminController::class, 'reorder'])
+        ->middleware('permission:machine_types.update')
+        ->name('admin.machine-types.reorder');
     Route::resource('admin/machine-types', MachineTypeAdminController::class)
         ->parameters(['machine-types' => 'machineType'])
         ->names('admin.machine-types')
@@ -90,6 +99,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
         ->middlewareFor(['edit', 'update'], 'permission:machine_types.update')
         ->middlewareFor('destroy', 'permission:machine_types.delete');
 
+    Route::put('admin/types/reorder', [TypeAdminController::class, 'reorder'])
+        ->middleware('permission:design_types.update')
+        ->name('admin.types.reorder');
     Route::resource('admin/types', TypeAdminController::class)
         ->parameters(['types' => 'type'])
         ->names('admin.types')
@@ -99,6 +111,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
         ->middlewareFor(['edit', 'update'], 'permission:design_types.update')
         ->middlewareFor('destroy', 'permission:design_types.delete');
 
+    Route::put('admin/design-file-types/reorder', [DesignFileTypeAdminController::class, 'reorder'])
+        ->middleware('permission:design_file_types.update')
+        ->name('admin.design-file-types.reorder');
     Route::resource('admin/design-file-types', DesignFileTypeAdminController::class)
         ->parameters(['design-file-types' => 'designFileType'])
         ->names('admin.design-file-types')

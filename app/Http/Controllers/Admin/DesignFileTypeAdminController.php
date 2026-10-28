@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\DesignFileType;
 use App\Models\Machine;
+use App\Services\SortOrderService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,8 @@ use Inertia\Response;
 
 class DesignFileTypeAdminController extends Controller
 {
+    public function __construct(private readonly SortOrderService $sortOrder) {}
+
     public function index(Request $request): Response
     {
         $search = trim((string) $request->string('search'));
@@ -56,6 +59,7 @@ class DesignFileTypeAdminController extends Controller
         return Inertia::render('admin/design-file-types/form', [
             'fileType' => null,
             'machines' => $this->machineOptions(),
+            'nextSortOrder' => $this->sortOrder->nextPosition(DesignFileType::class),
         ]);
     }
 
@@ -63,7 +67,10 @@ class DesignFileTypeAdminController extends Controller
     {
         $validated = $this->validated($request);
         DB::transaction(function () use ($validated): void {
+            $position = $validated['attributes']['sort_order'];
+            $validated['attributes']['sort_order'] = $position ?? $this->sortOrder->nextPosition(DesignFileType::class);
             $fileType = DesignFileType::query()->create($validated['attributes']);
+            $this->sortOrder->place($fileType, $position);
             $fileType->machines()->sync($validated['machineIds']);
         });
 
@@ -84,6 +91,7 @@ class DesignFileTypeAdminController extends Controller
                 'machineIds' => $fileType->machines->pluck('public_id')->values(),
             ],
             'machines' => $this->machineOptions(),
+            'nextSortOrder' => $this->sortOrder->nextPosition(DesignFileType::class),
         ]);
     }
 
@@ -92,7 +100,10 @@ class DesignFileTypeAdminController extends Controller
         $fileType = $this->find($designFileType);
         $validated = $this->validated($request, $fileType);
         DB::transaction(function () use ($fileType, $validated): void {
+            $position = $validated['attributes']['sort_order'];
+            unset($validated['attributes']['sort_order']);
             $fileType->update($validated['attributes']);
+            $this->sortOrder->place($fileType, $position);
             $fileType->machines()->sync($validated['machineIds']);
         });
 
@@ -110,8 +121,22 @@ class DesignFileTypeAdminController extends Controller
         }
 
         $fileType->delete();
+        $this->sortOrder->remove(DesignFileType::class);
 
         return redirect()->route('admin.design-file-types.index')->with('success', 'Design file type deleted.');
+    }
+
+    public function reorder(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required', 'string', 'distinct', Rule::exists('design_file_types', 'public_id')],
+            'startPosition' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $this->sortOrder->reorderPage(DesignFileType::class, $validated['ids'], $validated['startPosition']);
+
+        return back()->with('success', 'Design file type order updated.');
     }
 
     private function find(string $publicId): DesignFileType
@@ -119,7 +144,7 @@ class DesignFileTypeAdminController extends Controller
         return DesignFileType::query()->where('public_id', $publicId)->firstOrFail();
     }
 
-    /** @return array{attributes: array{name: string, extension: string, is_active: bool, sort_order: int}, machineIds: list<int>} */
+    /** @return array{attributes: array{name: string, extension: string, is_active: bool, sort_order: ?int}, machineIds: list<int>} */
     private function validated(Request $request, ?DesignFileType $fileType = null): array
     {
         $request->merge([
@@ -142,7 +167,7 @@ class DesignFileTypeAdminController extends Controller
                 Rule::unique('design_file_types', 'extension')->ignore($fileType?->id),
             ],
             'isActive' => ['boolean'],
-            'sortOrder' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'sortOrder' => ['nullable', 'integer', 'min:1', 'max:9999'],
             'machineIds' => ['required', 'array', 'min:1'],
             'machineIds.*' => [
                 'required',
@@ -157,7 +182,7 @@ class DesignFileTypeAdminController extends Controller
                 'name' => trim($validated['name']),
                 'extension' => strtolower(ltrim($validated['extension'], '.')),
                 'is_active' => $request->boolean('isActive', true),
-                'sort_order' => (int) ($validated['sortOrder'] ?? 0),
+                'sort_order' => isset($validated['sortOrder']) ? (int) $validated['sortOrder'] : null,
             ],
             'machineIds' => Machine::query()
                 ->whereIn('public_id', $validated['machineIds'])

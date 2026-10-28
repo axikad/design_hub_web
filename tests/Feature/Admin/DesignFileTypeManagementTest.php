@@ -41,7 +41,7 @@ class DesignFileTypeManagementTest extends TestCase
             'name' => 'PES File',
             'extension' => 'pes',
             'is_active' => false,
-            'sort_order' => 5,
+            'sort_order' => 1,
         ]);
         $this->assertDatabaseHas('machine_design_file_type', [
             'machine_id' => $machine->id,

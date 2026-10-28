@@ -7,6 +7,7 @@ use App\Models\Design;
 use App\Models\DesignCategory;
 use App\Models\Machine;
 use App\Models\MachineType;
+use App\Services\SortOrderService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -15,6 +16,8 @@ use Inertia\Response;
 
 class MachineTypeAdminController extends Controller
 {
+    public function __construct(private readonly SortOrderService $sortOrder) {}
+
     public function index(Request $request): Response
     {
         $search = trim((string) $request->string('search'));
@@ -64,13 +67,18 @@ class MachineTypeAdminController extends Controller
         return Inertia::render('admin/machine-types/form', [
             'machineType' => null,
             ...$this->options(),
+            'nextSortOrders' => $this->nextSortOrders(),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $validated = $this->validated($request);
+        $position = $validated['attributes']['sort_order'];
+        $scope = ['machine_id' => $validated['attributes']['machine_id']];
+        $validated['attributes']['sort_order'] = $position ?? $this->sortOrder->nextPosition(MachineType::class, $scope);
         $machineType = MachineType::query()->create($validated['attributes']);
+        $this->sortOrder->place($machineType, $position, $scope, $scope);
         $machineType->categories()->sync($validated['categoryIds']);
 
         return redirect()->route('admin.machine-types.index')->with('success', 'Machine type created.');
@@ -96,6 +104,7 @@ class MachineTypeAdminController extends Controller
                 'sortOrder' => $model->sort_order,
             ],
             ...$this->options(),
+            'nextSortOrders' => $this->nextSortOrders(),
         ]);
     }
 
@@ -103,7 +112,12 @@ class MachineTypeAdminController extends Controller
     {
         $model = MachineType::query()->where('public_id', $machineType)->firstOrFail();
         $validated = $this->validated($request);
+        $oldScope = ['machine_id' => $model->machine_id];
+        $newScope = ['machine_id' => $validated['attributes']['machine_id']];
+        $position = $validated['attributes']['sort_order'];
+        unset($validated['attributes']['sort_order']);
         $model->update($validated['attributes']);
+        $this->sortOrder->place($model, $position, $oldScope, $newScope);
         $model->categories()->sync($validated['categoryIds']);
 
         return redirect()->route('admin.machine-types.index')->with('success', 'Machine type updated.');
@@ -117,9 +131,30 @@ class MachineTypeAdminController extends Controller
             return back()->withErrors(['machineType' => 'Reassign designs before deleting this machine type.']);
         }
 
+        $scope = ['machine_id' => $model->machine_id];
         $model->delete();
+        $this->sortOrder->remove(MachineType::class, $scope);
 
         return redirect()->route('admin.machine-types.index')->with('success', 'Machine type deleted.');
+    }
+
+    public function reorder(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'machineId' => ['required', 'string', Rule::exists('machines', 'public_id')],
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required', 'string', 'distinct', Rule::exists('machine_types', 'public_id')],
+            'startPosition' => ['required', 'integer', 'min:1'],
+        ]);
+        $machine = Machine::query()->where('public_id', $validated['machineId'])->firstOrFail();
+        $this->sortOrder->reorderPage(
+            MachineType::class,
+            $validated['ids'],
+            $validated['startPosition'],
+            ['machine_id' => $machine->id],
+        );
+
+        return back()->with('success', 'Machine type order updated.');
     }
 
     private function options(): array
@@ -147,7 +182,7 @@ class MachineTypeAdminController extends Controller
                 Rule::exists('design_categories', 'public_id')->where('is_active', true),
             ],
             'isActive' => ['boolean'],
-            'sortOrder' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'sortOrder' => ['nullable', 'integer', 'min:1', 'max:9999'],
         ]);
 
         $machine = Machine::query()->where('public_id', $validated['machineId'])->firstOrFail();
@@ -162,9 +197,17 @@ class MachineTypeAdminController extends Controller
                 'machine_id' => $machine->id,
                 'name' => trim($validated['name']),
                 'is_active' => $request->boolean('isActive', true),
-                'sort_order' => (int) ($validated['sortOrder'] ?? 0),
+                'sort_order' => isset($validated['sortOrder']) ? (int) $validated['sortOrder'] : null,
             ],
             'categoryIds' => $categoryIds,
         ];
+    }
+
+    /** @return array<string, int> */
+    private function nextSortOrders(): array
+    {
+        return Machine::query()->get(['id', 'public_id'])->mapWithKeys(fn (Machine $machine) => [
+            $machine->public_id => $this->sortOrder->nextPosition(MachineType::class, ['machine_id' => $machine->id]),
+        ])->all();
     }
 }

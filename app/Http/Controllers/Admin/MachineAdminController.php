@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Machine;
+use App\Services\SortOrderService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -12,6 +13,8 @@ use Inertia\Response;
 
 class MachineAdminController extends Controller
 {
+    public function __construct(private readonly SortOrderService $sortOrder) {}
+
     public function index(Request $request): Response
     {
         $filters = $request->validate([
@@ -47,12 +50,19 @@ class MachineAdminController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('admin/machines/form', ['machine' => null]);
+        return Inertia::render('admin/machines/form', [
+            'machine' => null,
+            'nextSortOrder' => $this->sortOrder->nextPosition(Machine::class),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        $machine = Machine::query()->create($this->validated($request));
+        $attributes = $this->validated($request);
+        $position = $attributes['sort_order'];
+        $attributes['sort_order'] = $position ?? $this->sortOrder->nextPosition(Machine::class);
+        $machine = Machine::query()->create($attributes);
+        $this->sortOrder->place($machine, $position);
         $this->syncImage($request, $machine);
 
         return redirect()->route('admin.machines.index')->with('success', 'Machine created.');
@@ -70,13 +80,18 @@ class MachineAdminController extends Controller
                 'isActive' => $model->is_active,
                 'sortOrder' => $model->sort_order,
             ],
+            'nextSortOrder' => $this->sortOrder->nextPosition(Machine::class),
         ]);
     }
 
     public function update(Request $request, string $machine): RedirectResponse
     {
         $model = Machine::query()->where('public_id', $machine)->firstOrFail();
-        $model->update($this->validated($request));
+        $attributes = $this->validated($request);
+        $position = $attributes['sort_order'];
+        unset($attributes['sort_order']);
+        $model->update($attributes);
+        $this->sortOrder->place($model, $position);
         $this->syncImage($request, $model);
 
         return redirect()->route('admin.machines.index')->with('success', 'Machine updated.');
@@ -92,6 +107,7 @@ class MachineAdminController extends Controller
 
         $imagePath = $model->image_path;
         $model->delete();
+        $this->sortOrder->remove(Machine::class);
 
         if ($imagePath !== null) {
             Storage::disk('public')->delete($imagePath);
@@ -100,12 +116,25 @@ class MachineAdminController extends Controller
         return redirect()->route('admin.machines.index')->with('success', 'Machine deleted.');
     }
 
+    public function reorder(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required', 'string', 'distinct', 'exists:machines,public_id'],
+            'startPosition' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $this->sortOrder->reorderPage(Machine::class, $validated['ids'], $validated['startPosition']);
+
+        return back()->with('success', 'Machine order updated.');
+    }
+
     private function validated(Request $request): array
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:80'],
             'isActive' => ['boolean'],
-            'sortOrder' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'sortOrder' => ['nullable', 'integer', 'min:1', 'max:9999'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'removeImage' => ['nullable', 'boolean'],
         ]);
@@ -113,7 +142,7 @@ class MachineAdminController extends Controller
         return [
             'name' => trim($validated['name']),
             'is_active' => $request->boolean('isActive', true),
-            'sort_order' => (int) ($validated['sortOrder'] ?? 0),
+            'sort_order' => isset($validated['sortOrder']) ? (int) $validated['sortOrder'] : null,
         ];
     }
 
