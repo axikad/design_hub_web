@@ -29,6 +29,9 @@ export default function AdminDesignFileTypeForm({ fileType, machines }: Props) {
         sortOrder: fileType?.sortOrder ?? 0,
         machineIds: fileType?.machineIds ?? machines.map((machine) => machine.id),
     });
+    const allMachineIds = machines.map((machine) => machine.id);
+    const allMachinesSelected = machines.length > 0 && allMachineIds.every((id) => data.machineIds.includes(id));
+    const someMachinesSelected = data.machineIds.length > 0 && !allMachinesSelected;
 
     const toggleMachine = (machineId: string) => {
         setData(
@@ -36,6 +39,7 @@ export default function AdminDesignFileTypeForm({ fileType, machines }: Props) {
             data.machineIds.includes(machineId) ? data.machineIds.filter((id) => id !== machineId) : [...data.machineIds, machineId],
         );
     };
+    const toggleAllMachines = (checked: boolean) => setData('machineIds', checked ? allMachineIds : []);
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
@@ -134,6 +138,27 @@ export default function AdminDesignFileTypeForm({ fileType, machines }: Props) {
                         description="Choose every machine that supports this design file format."
                         icon={FileCode2}
                     >
+                        {machines.length > 0 && (
+                            <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 dark:border-indigo-900 dark:bg-indigo-950/20">
+                                <label className="flex cursor-pointer items-center gap-3">
+                                    <Checkbox
+                                        checked={allMachinesSelected ? true : someMachinesSelected ? 'indeterminate' : false}
+                                        onCheckedChange={(value) => toggleAllMachines(value === true)}
+                                    />
+                                    <span>
+                                        <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">Select all machines</span>
+                                        <span className="mt-0.5 block text-xs text-slate-500">
+                                            {data.machineIds.length} of {machines.length} selected
+                                        </span>
+                                    </span>
+                                </label>
+                                {data.machineIds.length > 0 && (
+                                    <Button type="button" variant="ghost" size="sm" onClick={() => toggleAllMachines(false)}>
+                                        Clear all
+                                    </Button>
+                                )}
+                            </div>
+                        )}
                         <div className="grid gap-3 sm:grid-cols-2">
                             {machines.map((machine) => (
                                 <label

@@ -29,6 +29,9 @@ export default function AdminCategoryForm({ category, machineTypes }: Props) {
         sortOrder: category?.sortOrder ?? 0,
         machineTypeIds: category?.machineTypeIds ?? [],
     });
+    const allMachineTypeIds = machineTypes.map((machineType) => machineType.id);
+    const allMachineTypesSelected = machineTypes.length > 0 && allMachineTypeIds.every((id) => data.machineTypeIds.includes(id));
+    const someMachineTypesSelected = data.machineTypeIds.length > 0 && !allMachineTypesSelected;
 
     const toggleMachineType = (machineTypeId: string) => {
         setData(
@@ -38,6 +41,7 @@ export default function AdminCategoryForm({ category, machineTypes }: Props) {
                 : [...data.machineTypeIds, machineTypeId],
         );
     };
+    const toggleAllMachineTypes = (checked: boolean) => setData('machineTypeIds', checked ? allMachineTypeIds : []);
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
@@ -114,6 +118,29 @@ export default function AdminCategoryForm({ category, machineTypes }: Props) {
                         description="Select every machine type where this category should be available."
                         icon={Cog}
                     >
+                        {machineTypes.length > 0 && (
+                            <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 dark:border-indigo-900 dark:bg-indigo-950/20">
+                                <label className="flex cursor-pointer items-center gap-3">
+                                    <Checkbox
+                                        checked={allMachineTypesSelected ? true : someMachineTypesSelected ? 'indeterminate' : false}
+                                        onCheckedChange={(value) => toggleAllMachineTypes(value === true)}
+                                    />
+                                    <span>
+                                        <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                            Select all machine types
+                                        </span>
+                                        <span className="mt-0.5 block text-xs text-slate-500">
+                                            {data.machineTypeIds.length} of {machineTypes.length} selected
+                                        </span>
+                                    </span>
+                                </label>
+                                {data.machineTypeIds.length > 0 && (
+                                    <Button type="button" variant="ghost" size="sm" onClick={() => toggleAllMachineTypes(false)}>
+                                        Clear all
+                                    </Button>
+                                )}
+                            </div>
+                        )}
                         <div className="grid gap-3 sm:grid-cols-2">
                             {machineTypes.map((machineType) => (
                                 <label

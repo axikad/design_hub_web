@@ -29,6 +29,9 @@ export default function AdminTypeForm({ type, categories }: Props) {
         isActive: type?.isActive ?? true,
         sortOrder: type?.sortOrder ?? 0,
     });
+    const allCategoryIds = categories.map((category) => category.id);
+    const allCategoriesSelected = categories.length > 0 && allCategoryIds.every((id) => data.categoryIds.includes(id));
+    const someCategoriesSelected = data.categoryIds.length > 0 && !allCategoriesSelected;
 
     const toggleCategory = (categoryId: string) => {
         setData(
@@ -36,6 +39,7 @@ export default function AdminTypeForm({ type, categories }: Props) {
             data.categoryIds.includes(categoryId) ? data.categoryIds.filter((id) => id !== categoryId) : [...data.categoryIds, categoryId],
         );
     };
+    const toggleAllCategories = (checked: boolean) => setData('categoryIds', checked ? allCategoryIds : []);
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
@@ -110,6 +114,27 @@ export default function AdminTypeForm({ type, categories }: Props) {
                     </AdminFormPanel>
 
                     <AdminFormPanel title="Categories" description="Select every category where this design type should be available." icon={Shapes}>
+                        {categories.length > 0 && (
+                            <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 dark:border-indigo-900 dark:bg-indigo-950/20">
+                                <label className="flex cursor-pointer items-center gap-3">
+                                    <Checkbox
+                                        checked={allCategoriesSelected ? true : someCategoriesSelected ? 'indeterminate' : false}
+                                        onCheckedChange={(value) => toggleAllCategories(value === true)}
+                                    />
+                                    <span>
+                                        <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">Select all categories</span>
+                                        <span className="mt-0.5 block text-xs text-slate-500">
+                                            {data.categoryIds.length} of {categories.length} selected
+                                        </span>
+                                    </span>
+                                </label>
+                                {data.categoryIds.length > 0 && (
+                                    <Button type="button" variant="ghost" size="sm" onClick={() => toggleAllCategories(false)}>
+                                        Clear all
+                                    </Button>
+                                )}
+                            </div>
+                        )}
                         <div className="grid gap-3 sm:grid-cols-2">
                             {categories.map((category) => (
                                 <label
