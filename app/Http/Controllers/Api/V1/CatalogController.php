@@ -67,6 +67,7 @@ class CatalogController extends Controller
             ->map(fn (Machine $machine) => [
                 'id' => $machine->public_id,
                 'name' => $machine->name,
+                'imageUri' => $machine->imageUrl(),
             ]);
 
         return ApiResponse::data($machines->values(), message: 'Machines retrieved successfully.');
@@ -170,6 +171,7 @@ class CatalogController extends Controller
             'machines' => $machines->map(fn (Machine $machine) => [
                 'id' => $machine->public_id,
                 'name' => $machine->name,
+                'imageUri' => $machine->imageUrl(),
                 'machineTypeIds' => $machine->machineTypes->pluck('public_id')->values(),
                 'designFileTypeIds' => $machine->designFileTypes->pluck('public_id')->values(),
             ])->values(),

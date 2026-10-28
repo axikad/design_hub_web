@@ -164,6 +164,8 @@ Tomorrow designs use `publishDate` and are excluded from latest and category lis
 
 Clients send only `machineTypeId` when creating or updating a design. The backend derives and returns `machineId`, so clients do not need to submit duplicate machine data. After selecting a machine, load its compatible formats from `/catalog/machines/:machineId/design-file-types` (or `/catalog/design-file-types?machineId=...`). The backend rejects a `designFileTypeId` that is not connected to the selected machine.
 
+Every machine returned by `/catalog/machines` and `/catalog/design-options` includes `imageUri`. It is an absolute public image URL when an admin uploaded a machine image, otherwise `null`. Mobile clients should display the image when present and use their existing machine placeholder/icon when it is null.
+
 Catalog selection uses two levels. `categoryId` is the main product group and every `designTypes[].typeId` is a selected placement/type with its own specifications:
 
 - `saree`: `pallu`, `border`, `all-over`

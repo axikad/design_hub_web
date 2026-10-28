@@ -1684,7 +1684,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": true,\n    \"message\": \"Machines retrieved successfully.\",\n    \"data\": [\n        {\n            \"id\": \"embroidery\",\n            \"name\": \"Embroidery\"\n        }\n    ]\n}"
+                            "body": "{\n    \"success\": true,\n    \"message\": \"Machines retrieved successfully.\",\n    \"data\": [\n        {\n            \"id\": \"embroidery\",\n            \"name\": \"Embroidery\",\n            \"imageUri\": \"https://app.designshub.org/storage/machines/embroidery/machine.png\"\n        }\n    ]\n}"
                         },
                         {
                             "name": "401 - Unauthenticated",

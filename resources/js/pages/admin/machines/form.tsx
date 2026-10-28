@@ -8,11 +8,19 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Cpu, LoaderCircle, Save } from 'lucide-react';
-import { type FormEventHandler } from 'react';
+import { ArrowLeft, Cpu, ImageIcon, LoaderCircle, Save, Trash2, Upload } from 'lucide-react';
+import { type ChangeEvent, type FormEventHandler, useRef, useState } from 'react';
 
-type MachineForm = { id: string; name: string; isActive: boolean; sortOrder: number };
+type MachineForm = { id: string; name: string; imageUri: string | null; isActive: boolean; sortOrder: number };
 type Props = { machine: MachineForm | null };
+type MachineFormData = {
+    name: string;
+    image: File | null;
+    removeImage: boolean;
+    isActive: boolean;
+    sortOrder: number;
+    _method: 'post' | 'put';
+};
 
 export default function AdminMachineForm({ machine }: Props) {
     const editing = Boolean(machine?.id);
@@ -21,15 +29,43 @@ export default function AdminMachineForm({ machine }: Props) {
         { title: 'Machines', href: '/admin/machines' },
         { title: editing ? 'Edit machine' : 'Add machine', href: '#' },
     ];
-    const { data, setData, post, put, processing, errors } = useForm({
+    const [imagePreview, setImagePreview] = useState<string | null>(machine?.imageUri ?? null);
+    const imageInput = useRef<HTMLInputElement>(null);
+    const { data, setData, post, processing, errors } = useForm<MachineFormData>({
         name: machine?.name ?? '',
+        image: null,
+        removeImage: false,
         isActive: machine?.isActive ?? true,
         sortOrder: machine?.sortOrder ?? 0,
+        _method: editing ? 'put' : 'post',
     });
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
-        editing && machine?.id ? put(route('admin.machines.update', machine.id)) : post(route('admin.machines.store'));
+        post(editing && machine?.id ? route('admin.machines.update', machine.id) : route('admin.machines.store'), {
+            forceFormData: true,
+        });
+    };
+
+    const selectImage = (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0] ?? null;
+
+        if (!file) return;
+
+        setData('image', file);
+        setData('removeImage', false);
+
+        const reader = new FileReader();
+        reader.onload = () => setImagePreview(typeof reader.result === 'string' ? reader.result : null);
+        reader.readAsDataURL(file);
+    };
+
+    const removeImage = () => {
+        setData('image', null);
+        setData('removeImage', true);
+        setImagePreview(null);
+
+        if (imageInput.current) imageInput.current.value = '';
     };
 
     return (
@@ -86,6 +122,43 @@ export default function AdminMachineForm({ machine }: Props) {
                                 </span>
                             </span>
                         </label>
+                    </AdminFormPanel>
+
+                    <AdminFormPanel
+                        title="Machine image"
+                        description="Upload the image shown for this machine in the admin and mobile catalog."
+                        icon={ImageIcon}
+                    >
+                        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+                            <div className="flex size-32 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
+                                {imagePreview ? (
+                                    <img src={imagePreview} alt="Machine preview" className="size-full object-cover" />
+                                ) : (
+                                    <ImageIcon className="size-8 text-slate-300" />
+                                )}
+                            </div>
+                            <div className="space-y-3">
+                                <input
+                                    ref={imageInput}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    className="hidden"
+                                    onChange={selectImage}
+                                />
+                                <div className="flex flex-wrap gap-2">
+                                    <Button type="button" variant="outline" className="rounded-xl" onClick={() => imageInput.current?.click()}>
+                                        <Upload className="size-4" /> {imagePreview ? 'Change image' : 'Choose image'}
+                                    </Button>
+                                    {imagePreview ? (
+                                        <Button type="button" variant="outline" className="rounded-xl text-red-600" onClick={removeImage}>
+                                            <Trash2 className="size-4" /> Remove
+                                        </Button>
+                                    ) : null}
+                                </div>
+                                <p className="text-xs text-slate-500">JPG, PNG or WebP. Maximum size 5 MB.</p>
+                                <InputError message={errors.image} />
+                            </div>
+                        </div>
                     </AdminFormPanel>
 
                     <div className="flex justify-end gap-3">

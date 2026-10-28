@@ -14,7 +14,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Cpu, Pencil, RotateCcw, Search } from 'lucide-react';
 import { type FormEventHandler, useState } from 'react';
 
-type Row = { id: string; name: string; machineTypesCount: number; isActive: boolean; sortOrder: number };
+type Row = { id: string; name: string; imageUri: string | null; machineTypesCount: number; isActive: boolean; sortOrder: number };
 type Props = {
     machines: { data: Row[]; links: { url: string | null; label: string; active: boolean }[] };
     filters: { search: string; status: string };
@@ -117,9 +117,17 @@ export default function AdminMachinesIndex({ machines, filters }: Props) {
                                     <tr key={machine.id} className="transition-colors hover:bg-indigo-50/40 dark:hover:bg-indigo-950/10">
                                         <td className="px-5 py-4">
                                             <div className="flex items-center gap-3">
-                                                <span className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-300">
-                                                    <Cpu className="size-4.5" />
-                                                </span>
+                                                {machine.imageUri ? (
+                                                    <img
+                                                        src={machine.imageUri}
+                                                        alt=""
+                                                        className="size-10 rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                                                    />
+                                                ) : (
+                                                    <span className="flex size-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-300">
+                                                        <Cpu className="size-4.5" />
+                                                    </span>
+                                                )}
                                                 <div>
                                                     <p className="text-sm font-semibold text-slate-900 dark:text-white">{machine.name}</p>
                                                     <p className="mt-0.5 text-xs text-slate-400">{machine.id}</p>

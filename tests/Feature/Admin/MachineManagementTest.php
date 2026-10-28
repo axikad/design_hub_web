@@ -7,7 +7,10 @@ use App\Models\Machine;
 use App\Models\MachineType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class MachineManagementTest extends TestCase
@@ -29,6 +32,40 @@ class MachineManagementTest extends TestCase
             'is_active' => true,
             'sort_order' => 1,
         ]);
+    }
+
+    public function test_admin_can_upload_remove_and_expose_a_machine_image_in_the_catalog_api(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->superAdmin()->create();
+
+        $this->actingAs($admin)->post('/admin/machines', [
+            'name' => 'Embroidery',
+            'image' => UploadedFile::fake()->image('embroidery.png', 400, 400),
+            'isActive' => true,
+            'sortOrder' => 1,
+        ])->assertRedirect(route('admin.machines.index'));
+
+        $machine = Machine::query()->where('name', 'Embroidery')->firstOrFail();
+        $this->assertNotNull($machine->image_path);
+        Storage::disk('public')->assertExists($machine->image_path);
+
+        Sanctum::actingAs($admin);
+        $this->getJson('/api/v1/catalog/machines')
+            ->assertOk()
+            ->assertJsonPath('data.0.imageUri', Storage::disk('public')->url($machine->image_path));
+
+        $oldPath = $machine->image_path;
+        $this->actingAs($admin)->post('/admin/machines/'.$machine->public_id, [
+            '_method' => 'put',
+            'name' => $machine->name,
+            'removeImage' => true,
+            'isActive' => true,
+            'sortOrder' => 1,
+        ])->assertRedirect(route('admin.machines.index'));
+
+        $this->assertNull($machine->fresh()->image_path);
+        Storage::disk('public')->assertMissing($oldPath);
     }
 
     public function test_admin_can_create_a_machine_type_and_map_categories(): void

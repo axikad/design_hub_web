@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Machine;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -29,6 +30,7 @@ class MachineAdminController extends Controller
             ->through(fn (Machine $machine) => [
                 'id' => $machine->public_id,
                 'name' => $machine->name,
+                'imageUri' => $machine->imageUrl(),
                 'isActive' => $machine->is_active,
                 'sortOrder' => $machine->sort_order,
                 'machineTypesCount' => $machine->machine_types_count,
@@ -50,7 +52,8 @@ class MachineAdminController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        Machine::query()->create($this->validated($request));
+        $machine = Machine::query()->create($this->validated($request));
+        $this->syncImage($request, $machine);
 
         return redirect()->route('admin.machines.index')->with('success', 'Machine created.');
     }
@@ -63,6 +66,7 @@ class MachineAdminController extends Controller
             'machine' => [
                 'id' => $model->public_id,
                 'name' => $model->name,
+                'imageUri' => $model->imageUrl(),
                 'isActive' => $model->is_active,
                 'sortOrder' => $model->sort_order,
             ],
@@ -71,7 +75,9 @@ class MachineAdminController extends Controller
 
     public function update(Request $request, string $machine): RedirectResponse
     {
-        Machine::query()->where('public_id', $machine)->firstOrFail()->update($this->validated($request));
+        $model = Machine::query()->where('public_id', $machine)->firstOrFail();
+        $model->update($this->validated($request));
+        $this->syncImage($request, $model);
 
         return redirect()->route('admin.machines.index')->with('success', 'Machine updated.');
     }
@@ -84,7 +90,12 @@ class MachineAdminController extends Controller
             return back()->withErrors(['machine' => 'Delete or reassign this machine\'s types first.']);
         }
 
+        $imagePath = $model->image_path;
         $model->delete();
+
+        if ($imagePath !== null) {
+            Storage::disk('public')->delete($imagePath);
+        }
 
         return redirect()->route('admin.machines.index')->with('success', 'Machine deleted.');
     }
@@ -95,6 +106,8 @@ class MachineAdminController extends Controller
             'name' => ['required', 'string', 'max:80'],
             'isActive' => ['boolean'],
             'sortOrder' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'removeImage' => ['nullable', 'boolean'],
         ]);
 
         return [
@@ -102,5 +115,27 @@ class MachineAdminController extends Controller
             'is_active' => $request->boolean('isActive', true),
             'sort_order' => (int) ($validated['sortOrder'] ?? 0),
         ];
+    }
+
+    private function syncImage(Request $request, Machine $machine): void
+    {
+        if ($request->hasFile('image')) {
+            $oldPath = $machine->image_path;
+            $path = $request->file('image')->store('machines/'.$machine->public_id, 'public');
+
+            $machine->update(['image_path' => $path]);
+
+            if ($oldPath !== null && $oldPath !== $path) {
+                Storage::disk('public')->delete($oldPath);
+            }
+
+            return;
+        }
+
+        if ($request->boolean('removeImage') && $machine->image_path !== null) {
+            $oldPath = $machine->image_path;
+            $machine->update(['image_path' => null]);
+            Storage::disk('public')->delete($oldPath);
+        }
     }
 }

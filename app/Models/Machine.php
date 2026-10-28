@@ -5,11 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Machine extends Model
 {
-    protected $fillable = ['public_id', 'name', 'is_active', 'sort_order'];
+    protected $fillable = ['public_id', 'name', 'image_path', 'is_active', 'sort_order'];
 
     protected function casts(): array
     {
@@ -28,6 +29,13 @@ class Machine extends Model
     public function machineTypes(): HasMany
     {
         return $this->hasMany(MachineType::class);
+    }
+
+    public function imageUrl(): ?string
+    {
+        return $this->image_path === null
+            ? null
+            : Storage::disk('public')->url($this->image_path);
     }
 
     public function designFileTypes(): BelongsToMany
