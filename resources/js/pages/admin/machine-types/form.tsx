@@ -30,8 +30,12 @@ export default function AdminMachineTypeForm({ machineType, machines, categories
         isActive: machineType?.isActive ?? true,
         sortOrder: machineType?.sortOrder ?? 0,
     });
+    const allCategoryIds = categories.map((category) => category.id);
+    const allCategoriesSelected = categories.length > 0 && allCategoryIds.every((id) => data.categoryIds.includes(id));
+    const someCategoriesSelected = data.categoryIds.length > 0 && !allCategoriesSelected;
     const toggleCategory = (id: string, checked: boolean) =>
-        setData('categoryIds', checked ? [...data.categoryIds, id] : data.categoryIds.filter((value) => value !== id));
+        setData('categoryIds', checked ? Array.from(new Set([...data.categoryIds, id])) : data.categoryIds.filter((value) => value !== id));
+    const toggleAllCategories = (checked: boolean) => setData('categoryIds', checked ? allCategoryIds : []);
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
         editing && machineType?.id ? put(route('admin.machine-types.update', machineType.id)) : post(route('admin.machine-types.store'));
@@ -118,6 +122,28 @@ export default function AdminMachineTypeForm({ machineType, machines, categories
                         description="Only selected categories will be available for this machine and machine type combination."
                         icon={Layers3}
                     >
+                        {categories.length > 0 && (
+                            <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 dark:border-indigo-900 dark:bg-indigo-950/20">
+                                <label className="flex cursor-pointer items-center gap-3">
+                                    <Checkbox
+                                        id="select-all-categories"
+                                        checked={allCategoriesSelected ? true : someCategoriesSelected ? 'indeterminate' : false}
+                                        onCheckedChange={(value) => toggleAllCategories(value === true)}
+                                    />
+                                    <span>
+                                        <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">Select all categories</span>
+                                        <span className="mt-0.5 block text-xs text-slate-500">
+                                            {data.categoryIds.length} of {categories.length} selected
+                                        </span>
+                                    </span>
+                                </label>
+                                {data.categoryIds.length > 0 && (
+                                    <Button type="button" variant="ghost" size="sm" onClick={() => toggleAllCategories(false)}>
+                                        Clear all
+                                    </Button>
+                                )}
+                            </div>
+                        )}
                         <div className="grid gap-3 sm:grid-cols-2">
                             {categories.map((category) => (
                                 <label
