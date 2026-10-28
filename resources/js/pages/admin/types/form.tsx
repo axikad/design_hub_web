@@ -64,7 +64,7 @@ export default function AdminTypeForm({ type, categories }: Props) {
 
                 <form onSubmit={submit} className="space-y-5">
                     <AdminFormPanel title="Design type details" description="Set its catalog name, description and display order." icon={Shapes}>
-                        <div className="grid gap-5 sm:grid-cols-2">
+                        <div className="grid gap-5 sm:grid-cols-[1fr_180px]">
                             <div className="grid gap-2">
                                 <Label htmlFor="name">Design type name</Label>
                                 <Input
@@ -78,19 +78,6 @@ export default function AdminTypeForm({ type, categories }: Props) {
                                 />
                                 <InputError message={errors.name} />
                             </div>
-                        </div>
-                        <div className="mt-5 grid gap-5 sm:grid-cols-[1fr_180px]">
-                            <div className="grid gap-2">
-                                <Label htmlFor="description">Description</Label>
-                                <Input
-                                    id="description"
-                                    value={data.description}
-                                    onChange={(event) => setData('description', event.target.value)}
-                                    placeholder="Short description for administrators"
-                                    className="h-11 rounded-xl border-slate-200 focus-visible:border-indigo-500 dark:border-slate-700"
-                                />
-                                <InputError message={errors.description} />
-                            </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="sortOrder">Sort order</Label>
                                 <Input
@@ -103,6 +90,17 @@ export default function AdminTypeForm({ type, categories }: Props) {
                                 />
                                 <InputError message={errors.sortOrder} />
                             </div>
+                        </div>
+                        <div className="mt-5 grid gap-2">
+                            <Label htmlFor="description">Description</Label>
+                            <Input
+                                id="description"
+                                value={data.description}
+                                onChange={(event) => setData('description', event.target.value)}
+                                placeholder="Short description for administrators"
+                                className="h-11 rounded-xl border-slate-200 focus-visible:border-indigo-500 dark:border-slate-700"
+                            />
+                            <InputError message={errors.description} />
                         </div>
                         <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
                             <Checkbox checked={data.isActive} onCheckedChange={(value) => setData('isActive', value === true)} className="mt-0.5" />
