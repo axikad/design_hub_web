@@ -318,6 +318,18 @@ class ApiResponseContractTest extends TestCase
                         'width' => 7,
                     ],
                 ],
+                [
+                    'customTypeName' => 'Custom Panel',
+                    'details' => [
+                        'nameOrNumber' => 'Panel 303',
+                        'stitchCount' => 7000,
+                        'needle' => 7,
+                        'sequenceType' => 4.5,
+                        'area' => 20,
+                        'height' => 5,
+                        'width' => 8,
+                    ],
+                ],
             ],
             'images' => [[
                 'name' => 'multi.jpg',
@@ -336,10 +348,14 @@ class ApiResponseContractTest extends TestCase
             ->assertJsonPath('data.designTypes.0.typeId', 'neckline')
             ->assertJsonPath('data.designTypes.0.details.needle', 8)
             ->assertJsonPath('data.designTypes.1.typeId', 'sleeve')
-            ->assertJsonPath('data.designTypes.1.details.nameOrNumber', 'Sleeve 202');
+            ->assertJsonPath('data.designTypes.1.details.nameOrNumber', 'Sleeve 202')
+            ->assertJsonPath('data.designTypes.2.typeId', null)
+            ->assertJsonPath('data.designTypes.2.customTypeName', 'Custom Panel')
+            ->assertJsonPath('data.designTypes.2.isCustom', true)
+            ->assertJsonPath('data.designTypes.2.details.sequenceType', '4.50');
 
         $designId = $response->json('data.id');
-        $this->assertDatabaseCount('design_variants', 2);
+        $this->assertDatabaseCount('design_variants', 3);
 
         $payload['designTypes'] = [$payload['designTypes'][1]];
         $payload['designTypes'][0]['details']['nameOrNumber'] = 'Sleeve updated';

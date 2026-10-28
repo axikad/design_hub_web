@@ -723,6 +723,61 @@
                             "body": "{\n    \"success\": false,\n    \"message\": \"The given data was invalid.\",\n    \"code\": \"validation_error\",\n    \"errors\": {\n        \"field\": [\n            \"The field is required.\"\n        ]\n    }\n}"
                         }
                     ]
+                },
+                {
+                    "name": "Logout",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const json = pm.response.json();",
+                                    "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                                    "pm.test('Current token was revoked', () => pm.expect(json.message).to.eql('Logged out successfully.'));",
+                                    "pm.collectionVariables.unset('accessToken');"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/auth/logout",
+                        "description": "Revokes only the Bearer token used for this request. Other signed-in devices remain active."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - Logged Out",
+                            "originalRequest": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/auth/logout"
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [
+                                {
+                                    "key": "Content-Type",
+                                    "value": "application/json",
+                                    "type": "text"
+                                }
+                            ],
+                            "cookie": [],
+                            "body": "{\n    \"success\": true,\n    \"message\": \"Logged out successfully.\",\n    \"data\": {\n        \"message\": \"Logged out successfully.\"\n    }\n}"
+                        }
+                    ]
                 }
             ]
         },

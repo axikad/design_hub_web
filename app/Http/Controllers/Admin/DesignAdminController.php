@@ -364,7 +364,8 @@ class DesignAdminController extends Controller
             'designFileTypeId' => ['required', 'string', Rule::exists('design_file_types', 'public_id')->where('is_active', true)],
             'priceRupees' => ['required', 'numeric', 'min:1', 'max:1000000'],
             'variants' => ['required', 'array', 'min:1'],
-            'variants.*.typeId' => ['required', 'string', 'distinct', Rule::exists('design_types', 'public_id')->where('is_active', true)],
+            'variants.*.typeId' => ['nullable', 'string', 'max:120'],
+            'variants.*.customTypeName' => ['nullable', 'string', 'min:1', 'max:120'],
             'variants.*.nameOrNumber' => ['required', 'string', 'min:1', 'max:120'],
             'variants.*.stitchCount' => ['required', 'integer', 'min:0'],
             'variants.*.needle' => ['required', 'integer', 'min:0'],
@@ -382,6 +383,33 @@ class DesignAdminController extends Controller
         $validated = $request->validate($rules);
         $pricePaise = (int) round(((float) $validated['priceRupees']) * 100);
 
+        $catalogTypeIds = collect($validated['variants'])
+            ->pluck('typeId')
+            ->filter()
+            ->values();
+        $customTypeNames = collect($validated['variants'])
+            ->pluck('customTypeName')
+            ->filter()
+            ->map(fn (string $name) => mb_strtolower(trim($name)))
+            ->values();
+
+        foreach ($validated['variants'] as $index => $variant) {
+            $hasCatalogType = filled($variant['typeId'] ?? null);
+            $hasCustomType = filled($variant['customTypeName'] ?? null);
+
+            if ($hasCatalogType === $hasCustomType) {
+                throw ValidationException::withMessages([
+                    "variants.{$index}.customTypeName" => 'Choose a catalog design type or enter one custom design type name.',
+                ]);
+            }
+        }
+
+        if ($catalogTypeIds->duplicates()->isNotEmpty() || $customTypeNames->duplicates()->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'variants' => 'Each catalog or custom design type may only be added once.',
+            ]);
+        }
+
         if ($pricePaise < 100 || $pricePaise > 100000000) {
             throw ValidationException::withMessages([
                 'priceRupees' => 'Price must be between ₹1 and ₹10,00,000.',
@@ -389,25 +417,34 @@ class DesignAdminController extends Controller
         }
 
         try {
-            $selection = DesignTypeResolver::resolveMobileSelection(
-                $validated['variants'][0]['typeId'],
-                $validated['categoryId'],
-                $validated['machineTypeId'],
-            );
+            $selection = $catalogTypeIds->isNotEmpty()
+                ? DesignTypeResolver::resolveMobileSelection(
+                    $catalogTypeIds->first(),
+                    $validated['categoryId'],
+                    $validated['machineTypeId'],
+                )
+                : DesignTypeResolver::resolveCategorySelection(
+                    $validated['categoryId'],
+                    $validated['machineTypeId'],
+                );
         } catch (\InvalidArgumentException $exception) {
             throw ValidationException::withMessages([
-                'variants.0.typeId' => $exception->getMessage(),
+                'categoryId' => $exception->getMessage(),
             ]);
         }
 
         $types = DesignType::query()
-            ->whereIn('public_id', collect($validated['variants'])->pluck('typeId'))
+            ->whereIn('public_id', $catalogTypeIds)
             ->where('is_active', true)
             ->with('categories:id,public_id,is_active')
             ->get()
             ->keyBy('public_id');
 
         foreach ($validated['variants'] as $index => $variant) {
+            if (! filled($variant['typeId'] ?? null)) {
+                continue;
+            }
+
             $type = $types->get($variant['typeId']);
 
             $belongsToCategory = $type?->categories->contains(
@@ -444,8 +481,11 @@ class DesignAdminController extends Controller
         }
 
         $variants = collect($validated['variants'])->map(function (array $variant, int $index) use ($types) {
+            $typeId = $variant['typeId'] ?? null;
+
             return [
-                'design_type_id' => $types->get($variant['typeId'])->id,
+                'design_type_id' => $typeId ? $types->get($typeId)?->id : null,
+                'custom_type_name' => $typeId ? null : trim($variant['customTypeName']),
                 'name_or_number' => trim($variant['nameOrNumber']),
                 'stitch_count' => (int) $variant['stitchCount'],
                 'needle' => (int) $variant['needle'],
@@ -469,6 +509,7 @@ class DesignAdminController extends Controller
             'size' => $firstVariant['height'].' Ã— '.$firstVariant['width'],
             'variants' => $variants->all(),
             'details' => $variants->map(fn (array $variant) => [
+                'customTypeName' => $variant['custom_type_name'],
                 'names' => [$variant['name_or_number']],
                 'stitch' => (string) $variant['stitch_count'],
                 'needle' => $variant['needle'],
@@ -486,6 +527,7 @@ class DesignAdminController extends Controller
         if ($design->variants->isNotEmpty()) {
             return $design->variants->map(fn ($variant) => [
                 'typeId' => $variant->type?->public_id ?? '',
+                'customTypeName' => $variant->custom_type_name ?? '',
                 'nameOrNumber' => $variant->name_or_number,
                 'stitchCount' => $variant->stitch_count,
                 'needle' => $variant->needle,
@@ -498,6 +540,7 @@ class DesignAdminController extends Controller
 
         return [[
             'typeId' => $design->type?->public_id ?? '',
+            'customTypeName' => '',
             'nameOrNumber' => $design->title,
             'stitchCount' => 0,
             'needle' => 0,

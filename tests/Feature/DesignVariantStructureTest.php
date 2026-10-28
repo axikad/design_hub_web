@@ -20,6 +20,7 @@ class DesignVariantStructureTest extends TestCase
         $this->assertTrue(Schema::hasColumns('design_variants', [
             'design_id',
             'design_type_id',
+            'custom_type_name',
             'name_or_number',
             'stitch_count',
             'needle',

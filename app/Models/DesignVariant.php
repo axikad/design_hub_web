@@ -10,6 +10,7 @@ class DesignVariant extends Model
     protected $fillable = [
         'design_id',
         'design_type_id',
+        'custom_type_name',
         'name_or_number',
         'stitch_count',
         'needle',

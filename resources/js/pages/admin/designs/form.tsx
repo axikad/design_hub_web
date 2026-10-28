@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, FileArchive, ImageIcon, Layers3, LoaderCircle, Save, Tag, UserRound } from 'lucide-react';
+import { ArrowLeft, FileArchive, ImageIcon, Layers3, LoaderCircle, Plus, Save, Tag, Trash2, UserRound } from 'lucide-react';
 import { type FormEventHandler } from 'react';
 
 type OwnerOption = { id: string; label: string };
@@ -19,6 +19,7 @@ type MachineOption = { id: string; name: string; machineTypes: MachineTypeOption
 type FileTypeOption = { id: string; name: string; extension: string; machineIds: string[] };
 type VariantInput = {
     typeId: string;
+    customTypeName: string;
     nameOrNumber: string;
     stitchCount: string;
     needle: string;
@@ -51,6 +52,7 @@ const inputClass = 'h-11 rounded-xl border-slate-200 focus-visible:border-indigo
 
 const emptyVariant = (typeId: string): VariantInput => ({
     typeId,
+    customTypeName: '',
     nameOrNumber: '',
     stitchCount: '0',
     needle: '0',
@@ -58,6 +60,11 @@ const emptyVariant = (typeId: string): VariantInput => ({
     area: '0',
     height: '0',
     width: '0',
+});
+
+const emptyCustomVariant = (): VariantInput => ({
+    ...emptyVariant(''),
+    customTypeName: '',
 });
 
 export default function AdminDesignForm({ design, owners, catalog, fileTypes }: Props) {
@@ -86,6 +93,7 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
         variants: design?.variants?.length
             ? design.variants.map((variant) => ({
                   ...variant,
+                  customTypeName: variant.customTypeName ?? '',
                   stitchCount: variant.stitchCount.toString(),
                   needle: variant.needle.toString(),
                   sequenceType: variant.sequenceType.toString(),
@@ -137,6 +145,8 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
         const selected = data.variants.some((variant) => variant.typeId === typeId);
         setData('variants', selected ? data.variants.filter((variant) => variant.typeId !== typeId) : [...data.variants, emptyVariant(typeId)]);
     };
+    const addCustomType = () => setData('variants', [...data.variants, emptyCustomVariant()]);
+    const removeVariant = (index: number) => setData('variants', data.variants.filter((_, variantIndex) => variantIndex !== index));
     const updateVariant = (index: number, field: keyof VariantInput, value: string) => {
         setData(
             'variants',
@@ -158,7 +168,6 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
         !catalog.length ||
         !machineTypes.length ||
         !categories.length ||
-        !types.length ||
         !data.variants.length ||
         !availableFileTypes.length;
 
@@ -225,7 +234,12 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                             />
                         </div>
                         <div className="mt-5 grid gap-2">
-                            <Label>Design types</Label>
+                            <div className="flex items-center justify-between gap-3">
+                                <Label>Design types</Label>
+                                <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={addCustomType}>
+                                    <Plus className="size-4" /> Add custom type
+                                </Button>
+                            </div>
                             <div className="flex flex-wrap gap-2">
                                 {types.map((type) => {
                                     const selected = data.variants.some((variant) => variant.typeId === type.id);
@@ -247,24 +261,43 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                                 })}
                             </div>
                             <InputError message={errors.variants} />
+                            <p className="text-xs text-slate-500">Custom types are saved only with this design and are not added to the catalog.</p>
                         </div>
                         {!catalog.length ? <p className="mt-4 text-sm text-amber-700">Add active catalog options before creating designs.</p> : null}
                     </AdminFormPanel>
 
                     <AdminFormPanel
                         title="Design type specifications"
-                        description="Enter separate specifications for every selected design type."
+                        description="Enter separate specifications for every catalog or custom design type."
                         icon={Layers3}
                     >
                         <div className="space-y-4">
                             {data.variants.map((variant, index) => {
                                 const type = types.find((option) => option.id === variant.typeId);
+                                const isCustom = !variant.typeId;
                                 const fieldError = (field: keyof VariantInput) => (errors as Record<string, string>)[`variants.${index}.${field}`];
 
                                 return (
-                                    <div key={variant.typeId} className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
-                                        <h3 className="mb-4 font-semibold text-slate-900 dark:text-white">{type?.name ?? 'Design type'}</h3>
+                                    <div key={`${variant.typeId || 'custom'}-${index}`} className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+                                        <div className="mb-4 flex items-center justify-between gap-3">
+                                            <h3 className="font-semibold text-slate-900 dark:text-white">
+                                                {type?.name || variant.customTypeName || 'Custom design type'}
+                                            </h3>
+                                            {isCustom ? (
+                                                <Button type="button" variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => removeVariant(index)}>
+                                                    <Trash2 className="size-4" /> Remove
+                                                </Button>
+                                            ) : null}
+                                        </div>
                                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                            {isCustom ? (
+                                                <VariantField
+                                                    label="Custom design type name"
+                                                    value={variant.customTypeName}
+                                                    onChange={(value) => updateVariant(index, 'customTypeName', value)}
+                                                    error={fieldError('customTypeName')}
+                                                />
+                                            ) : null}
                                             <VariantField
                                                 label="Name or number"
                                                 value={variant.nameOrNumber}

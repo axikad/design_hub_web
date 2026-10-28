@@ -65,4 +65,11 @@ class AuthController extends Controller
             'accessToken' => $token,
         ], message: 'OTP verified successfully.');
     }
+
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()?->delete();
+
+        return ApiResponse::success('Logged out successfully.');
+    }
 }

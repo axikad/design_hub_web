@@ -58,6 +58,17 @@ class DesignManagementTest extends TestCase
                     'height' => 3,
                     'width' => 12,
                 ],
+                [
+                    'typeId' => '',
+                    'customTypeName' => 'Custom Sleeve',
+                    'nameOrNumber' => 'Sleeve 103',
+                    'stitchCount' => 6000,
+                    'needle' => 6,
+                    'sequenceType' => 5.5,
+                    'area' => 18,
+                    'height' => 4,
+                    'width' => 7,
+                ],
             ],
             'previewImages' => [
                 UploadedFile::fake()->image('front.jpg'),
@@ -88,7 +99,14 @@ class DesignManagementTest extends TestCase
             'name_or_number' => 'Border 102',
             'needle' => 8,
         ]);
+        $this->assertDatabaseHas('design_variants', [
+            'design_type_id' => null,
+            'custom_type_name' => 'Custom Sleeve',
+            'name_or_number' => 'Sleeve 103',
+            'sequence_type' => 5.5,
+        ]);
         $createdDesign = Design::query()->where('title', 'Pallu 101')->firstOrFail();
+        $this->assertCount(3, $createdDesign->variants);
         $this->assertCount(2, $createdDesign->images);
         $this->assertSame(['front.jpg', 'back.png'], collect($createdDesign->images)->pluck('name')->all());
         $this->assertSame($createdDesign->images[0]['path'], $createdDesign->preview_path);

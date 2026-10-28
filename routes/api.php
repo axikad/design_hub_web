@@ -29,6 +29,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         ->middleware('signed');
 
     Route::middleware('auth:sanctum')->group(function () {
+        Route::post('auth/logout', [AuthController::class, 'logout']);
         Route::get('home', [HomeController::class, 'index'])->name('home');
         Route::get('catalog/categories', [CatalogController::class, 'categories']);
         Route::get('catalog/design-options', [CatalogController::class, 'designOptions']);

@@ -16,6 +16,7 @@ Design and user collection endpoints accept `page` and `per_page` (default 20, m
 | ------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | POST   | `/auth/request-otp`                                | `{ flow: "login" or "register", name: string or null, countryCode: "+91", mobileNumber: "9876543210" }` | `{ message: "OTP sent successfully." }`                                           |
 | POST   | `/auth/verify-otp`                                 | Same fields plus `{ code: "1234" }`                                                                     | `{ user: User, accessToken: string }`                                             |
+| POST   | `/auth/logout`                                     | Bearer token; no request body                                                                              | Current access token revoked                                                      |
 | GET    | `/users/me`                                        | Bearer token                                                                                            | `User`                                                                            |
 | POST   | `/users/me`                                        | Multipart `name`, optional `image`, optional `removeImage`                                               | Updated `User`                                                                    |
 | PATCH  | `/users/me`                                        | JSON `{ name: string }`                                                                                  | Updated `User`                                                                    |
@@ -58,7 +59,8 @@ type DesignRequest = {
     machineTypeId: string;
     categoryId: string;
     designTypes: Array<{
-        typeId: string;
+        typeId?: string; // Catalog type. Send either this or customTypeName.
+        customTypeName?: string; // Saved only for this design; not added to the catalog.
         details: {
             nameOrNumber: string;
             stitchCount: number;

@@ -140,7 +140,9 @@ class DesignPresenter
                 ->values()
                 ->map(fn ($variant) => [
                     'typeId' => $variant->type?->public_id,
-                    'typeName' => $variant->type?->name,
+                    'typeName' => $variant->type?->name ?? $variant->custom_type_name,
+                    'customTypeName' => $variant->custom_type_name,
+                    'isCustom' => $variant->design_type_id === null,
                     'details' => [
                         'nameOrNumber' => $variant->name_or_number,
                         'stitchCount' => $variant->stitch_count,

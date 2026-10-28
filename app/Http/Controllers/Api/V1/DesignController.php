@@ -257,7 +257,8 @@ class DesignController extends Controller
             'fileUri' => ['required_without:files', 'nullable', 'string'],
             'typeId' => ['required_without:designTypes', 'nullable', 'string', 'max:120'],
             'designTypes' => ['required_without:typeId', 'array', 'min:1', 'max:20'],
-            'designTypes.*.typeId' => ['required', 'string', 'distinct', 'max:120'],
+            'designTypes.*.typeId' => ['nullable', 'string', 'max:120'],
+            'designTypes.*.customTypeName' => ['nullable', 'string', 'min:1', 'max:120'],
             'designTypes.*.details' => ['required', 'array'],
             'designTypes.*.details.nameOrNumber' => ['required', 'string', 'max:120'],
             'designTypes.*.details.stitchCount' => ['required', 'integer', 'min:0'],
@@ -288,16 +289,48 @@ class DesignController extends Controller
             'files.*.uri' => ['required_with:files', 'string', 'max:2048'],
         ]);
 
-        $selectedTypeId = $validated['designTypes'][0]['typeId'] ?? $validated['typeId'];
+        $catalogTypeIds = collect($validated['designTypes'] ?? [])
+            ->pluck('typeId')
+            ->filter()
+            ->values();
+        $customTypeNames = collect($validated['designTypes'] ?? [])
+            ->pluck('customTypeName')
+            ->filter()
+            ->map(fn (string $name) => mb_strtolower(trim($name)))
+            ->values();
+
+        foreach ($validated['designTypes'] ?? [] as $index => $designType) {
+            $hasCatalogType = filled($designType['typeId'] ?? null);
+            $hasCustomType = filled($designType['customTypeName'] ?? null);
+
+            if ($hasCatalogType === $hasCustomType) {
+                throw ValidationException::withMessages([
+                    'designTypes.'.$index.'.customTypeName' => 'Send either typeId or customTypeName for each design type.',
+                ]);
+            }
+        }
+
+        if ($catalogTypeIds->duplicates()->isNotEmpty() || $customTypeNames->duplicates()->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'designTypes' => 'Each catalog or custom design type may only be added once.',
+            ]);
+        }
+
+        $selectedTypeId = $catalogTypeIds->first() ?? ($validated['typeId'] ?? null);
 
         try {
-            $selection = DesignTypeResolver::resolveMobileSelection(
-                $selectedTypeId,
-                $validated['categoryId'] ?? null,
-                $validated['machineTypeId'] ?? null,
-            );
+            $selection = $selectedTypeId
+                ? DesignTypeResolver::resolveMobileSelection(
+                    $selectedTypeId,
+                    $validated['categoryId'] ?? null,
+                    $validated['machineTypeId'] ?? null,
+                )
+                : DesignTypeResolver::resolveCategorySelection(
+                    (string) ($validated['categoryId'] ?? ''),
+                    $validated['machineTypeId'] ?? null,
+                );
         } catch (\InvalidArgumentException $exception) {
-            $field = isset($validated['designTypes']) ? 'designTypes.0.typeId' : 'typeId';
+            $field = isset($validated['designTypes']) && ! $selectedTypeId ? 'categoryId' : (isset($validated['designTypes']) ? 'designTypes.0.typeId' : 'typeId');
 
             throw ValidationException::withMessages([$field => $exception->getMessage()]);
         }
@@ -395,21 +428,22 @@ class DesignController extends Controller
     {
         $types = DesignType::query()
             ->with('categories')
-            ->whereIn('public_id', collect($designTypes)->pluck('typeId'))
+            ->whereIn('public_id', collect($designTypes)->pluck('typeId')->filter())
             ->where('is_active', true)
             ->get()
             ->keyBy('public_id');
 
         $variants = collect($designTypes)->map(function (array $item, int $index) use ($types, $categoryId) {
-            $type = $types->get($item['typeId']);
+            $typeId = $item['typeId'] ?? null;
+            $type = $typeId ? $types->get($typeId) : null;
 
-            if ($type === null) {
+            if ($typeId && $type === null) {
                 throw ValidationException::withMessages([
                     'designTypes.'.$index.'.typeId' => 'Selected type is invalid or inactive.',
                 ]);
             }
 
-            $belongsToCategory = $type->categories->contains(
+            $belongsToCategory = ! $typeId || $type->categories->contains(
                 fn (DesignCategory $category) => $category->public_id === $categoryId && $category->is_active,
             );
 
@@ -422,7 +456,8 @@ class DesignController extends Controller
             $details = $item['details'];
 
             return [
-                'design_type_id' => $type->id,
+                'design_type_id' => $type?->id,
+                'custom_type_name' => $typeId ? null : trim($item['customTypeName']),
                 'name_or_number' => trim($details['nameOrNumber']),
                 'stitch_count' => $details['stitchCount'],
                 'needle' => $details['needle'],
@@ -467,6 +502,7 @@ class DesignController extends Controller
     private function legacyDetailsFromVariants(array $variants): array
     {
         return collect($variants)->map(fn (array $variant) => [
+            'customTypeName' => $variant['custom_type_name'] ?? null,
             'names' => [$variant['name_or_number']],
             'stitch' => (string) $variant['stitch_count'],
             'needle' => $variant['needle'],

@@ -85,4 +85,28 @@ final class DesignTypeResolver
             'machine_type_id' => $machine->public_id,
         ];
     }
+
+    /** @return array{design_type_id: null, category_id: string, machine_type_id: string} */
+    public static function resolveCategorySelection(string $categoryId, ?string $machineTypeId): array
+    {
+        $category = DesignCategory::query()
+            ->where('public_id', $categoryId)
+            ->where('is_active', true)
+            ->first();
+
+        $machine = MachineType::query()
+            ->where('public_id', $machineTypeId)
+            ->where('is_active', true)
+            ->first();
+
+        if ($category === null || $machine === null || ! $category->machineTypes()->whereKey($machine->id)->exists()) {
+            throw new \InvalidArgumentException('The selected category is not available for this machine type.');
+        }
+
+        return [
+            'design_type_id' => null,
+            'category_id' => $category->public_id,
+            'machine_type_id' => $machine->public_id,
+        ];
+    }
 }
