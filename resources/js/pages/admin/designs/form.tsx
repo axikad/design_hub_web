@@ -143,9 +143,9 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
     };
     const toggleType = (typeId: string) => {
         const selected = data.variants.some((variant) => variant.typeId === typeId);
-        setData('variants', selected ? data.variants.filter((variant) => variant.typeId !== typeId) : [...data.variants, emptyVariant(typeId)]);
+        setData('variants', selected ? data.variants.filter((variant) => variant.typeId !== typeId) : [emptyVariant(typeId), ...data.variants]);
     };
-    const addCustomType = () => setData('variants', [...data.variants, emptyCustomVariant()]);
+    const addCustomType = () => setData('variants', [emptyCustomVariant(), ...data.variants]);
     const removeVariant = (index: number) => setData('variants', data.variants.filter((_, variantIndex) => variantIndex !== index));
     const updateVariant = (index: number, field: keyof VariantInput, value: string) => {
         setData(
@@ -261,7 +261,6 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                                 })}
                             </div>
                             <InputError message={errors.variants} />
-                            <p className="text-xs text-slate-500">Custom types are saved only with this design and are not added to the catalog.</p>
                         </div>
                         {!catalog.length ? <p className="mt-4 text-sm text-amber-700">Add active catalog options before creating designs.</p> : null}
                     </AdminFormPanel>
