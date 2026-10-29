@@ -19,11 +19,24 @@ final class MachineDesignFormConfig
             'pricing' => true,
         ];
 
+        $specificationFields = [
+            'nameOrNumber' => true,
+            'stitchCount' => true,
+            'needle' => true,
+            'area' => true,
+            'height' => true,
+            'width' => true,
+        ];
+
         return [
             ...$fields,
             'required' => [
                 ...$fields,
                 'sequenceType' => false,
+            ],
+            'specificationFields' => [
+                ...$specificationFields,
+                'required' => $specificationFields,
             ],
         ];
     }
@@ -52,6 +65,28 @@ final class MachineDesignFormConfig
             }
         }
 
+        $savedSpecificationFields = isset($config['specificationFields']) && is_array($config['specificationFields'])
+            ? $config['specificationFields']
+            : [];
+        $savedSpecificationRequired = isset($savedSpecificationFields['required']) && is_array($savedSpecificationFields['required'])
+            ? $savedSpecificationFields['required']
+            : [];
+        $legacySpecificationsRequired = $normalized['required']['designSpecifications'];
+
+        foreach (array_keys(array_filter($normalized['specificationFields'], fn ($value) => is_bool($value))) as $key) {
+            if (array_key_exists($key, $savedSpecificationFields)) {
+                $normalized['specificationFields'][$key] = (bool) $savedSpecificationFields[$key];
+            }
+
+            $normalized['specificationFields']['required'][$key] = array_key_exists($key, $savedSpecificationRequired)
+                ? (bool) $savedSpecificationRequired[$key]
+                : ($legacySpecificationsRequired && $normalized['specificationFields'][$key]);
+
+            if (! $normalized['specificationFields'][$key]) {
+                $normalized['specificationFields']['required'][$key] = false;
+            }
+        }
+
         if (! $normalized['category']) {
             $normalized['designTypes'] = false;
             $normalized['designSpecifications'] = false;
@@ -63,6 +98,9 @@ final class MachineDesignFormConfig
             $normalized['designSpecifications'] = false;
             $normalized['required']['designSpecifications'] = false;
         }
+
+        $normalized['required']['designSpecifications'] = $normalized['designSpecifications']
+            && in_array(true, $normalized['specificationFields']['required'], true);
 
         if ($normalized['required']['designSpecifications']) {
             $normalized['required']['designTypes'] = true;

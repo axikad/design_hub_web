@@ -21,8 +21,12 @@ type DesignFieldKey =
     | 'previewImages'
     | 'stitchFiles'
     | 'pricing';
+type SpecificationFieldKey = 'nameOrNumber' | 'stitchCount' | 'needle' | 'area' | 'height' | 'width';
 type DesignFormConfig = Record<DesignFieldKey, boolean> & {
     required: Record<DesignFieldKey, boolean>;
+    specificationFields: Record<SpecificationFieldKey, boolean> & {
+        required: Record<SpecificationFieldKey, boolean>;
+    };
 };
 type MachineForm = {
     id: string;
@@ -54,6 +58,14 @@ const designFieldOptions: { key: DesignFieldKey; label: string; description: str
     { key: 'stitchFiles', label: 'Stitch files', description: 'Upload machine files for the design.' },
     { key: 'pricing', label: 'Pricing', description: 'Set a selling price for the design.' },
 ];
+const specificationFieldOptions: { key: SpecificationFieldKey; label: string }[] = [
+    { key: 'nameOrNumber', label: 'Name or number' },
+    { key: 'stitchCount', label: 'Stitch count' },
+    { key: 'needle', label: 'Needle' },
+    { key: 'area', label: 'Area (mm)' },
+    { key: 'height', label: 'Height (mm)' },
+    { key: 'width', label: 'Width (mm)' },
+];
 
 export default function AdminMachineForm({ machine, nextSortOrder, defaultDesignFormConfig }: Props) {
     const editing = Boolean(machine?.id);
@@ -75,17 +87,58 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
     });
 
     const toggleDesignField = (key: DesignFieldKey, enabled: boolean) => {
+        const specificationsRequired = Object.values(data.designFormConfig.specificationFields.required).some(Boolean);
+
         setData('designFormConfig', {
             ...data.designFormConfig,
             [key]: enabled,
             required: {
                 ...data.designFormConfig.required,
                 ...(!enabled ? { [key]: false } : {}),
+                ...(key === 'designSpecifications' && enabled ? { designSpecifications: specificationsRequired } : {}),
                 ...(key === 'category' && !enabled ? { designTypes: false, designSpecifications: false } : {}),
                 ...(key === 'designTypes' && !enabled ? { designSpecifications: false } : {}),
             },
             ...(key === 'category' && !enabled ? { designTypes: false, designSpecifications: false } : {}),
             ...(key === 'designTypes' && !enabled ? { designSpecifications: false } : {}),
+        });
+    };
+
+    const toggleSpecificationField = (key: SpecificationFieldKey, enabled: boolean) => {
+        const nextRequired = {
+            ...data.designFormConfig.specificationFields.required,
+            ...(!enabled ? { [key]: false } : {}),
+        };
+
+        setData('designFormConfig', {
+            ...data.designFormConfig,
+            required: {
+                ...data.designFormConfig.required,
+                designSpecifications: data.designFormConfig.designSpecifications && Object.values(nextRequired).some(Boolean),
+            },
+            specificationFields: {
+                ...data.designFormConfig.specificationFields,
+                [key]: enabled,
+                required: nextRequired,
+            },
+        });
+    };
+
+    const toggleSpecificationRequired = (key: SpecificationFieldKey, required: boolean) => {
+        const nextRequired = { ...data.designFormConfig.specificationFields.required, [key]: required };
+
+        setData('designFormConfig', {
+            ...data.designFormConfig,
+            required: {
+                ...data.designFormConfig.required,
+                category: required ? true : data.designFormConfig.required.category,
+                designTypes: required ? true : data.designFormConfig.required.designTypes,
+                designSpecifications: Object.values(nextRequired).some(Boolean),
+            },
+            specificationFields: {
+                ...data.designFormConfig.specificationFields,
+                required: nextRequired,
+            },
         });
     };
 
@@ -234,32 +287,64 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
                     >
                         <div className="space-y-3">
                             {designFieldOptions.map((option) => (
-                                <div
-                                    key={option.key}
-                                    className={`grid gap-4 rounded-xl border border-slate-200 p-4 sm:grid-cols-[1fr_auto_auto] sm:items-center dark:border-slate-700 ${
-                                        designFieldDisabled(option.key) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-                                    }`}
-                                >
-                                    <span>
-                                        <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">{option.label}</span>
-                                        <span className="mt-1 block text-xs text-slate-500">{option.description}</span>
-                                    </span>
-                                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
-                                        <Checkbox
-                                            checked={data.designFormConfig[option.key]}
-                                            disabled={designFieldDisabled(option.key)}
-                                            onCheckedChange={(value) => toggleDesignField(option.key, value === true)}
-                                        />
-                                        Show field
-                                    </label>
-                                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
-                                        <Checkbox
-                                            checked={data.designFormConfig.required[option.key]}
-                                            disabled={designFieldDisabled(option.key) || !data.designFormConfig[option.key]}
-                                            onCheckedChange={(value) => toggleRequiredField(option.key, value === true)}
-                                        />
-                                        Required
-                                    </label>
+                                <div key={option.key} className="space-y-2">
+                                    <div
+                                        className={`grid gap-4 rounded-xl border border-slate-200 p-4 sm:grid-cols-[1fr_auto_auto] sm:items-center dark:border-slate-700 ${
+                                            designFieldDisabled(option.key) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+                                        }`}
+                                    >
+                                        <span>
+                                            <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">{option.label}</span>
+                                            <span className="mt-1 block text-xs text-slate-500">{option.description}</span>
+                                        </span>
+                                        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                                            <Checkbox
+                                                checked={data.designFormConfig[option.key]}
+                                                disabled={designFieldDisabled(option.key)}
+                                                onCheckedChange={(value) => toggleDesignField(option.key, value === true)}
+                                            />
+                                            Show field
+                                        </label>
+                                        {option.key === 'designSpecifications' ? (
+                                            <span className="text-xs font-medium text-slate-500">Configure fields below</span>
+                                        ) : (
+                                            <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                                                <Checkbox
+                                                    checked={data.designFormConfig.required[option.key]}
+                                                    disabled={designFieldDisabled(option.key) || !data.designFormConfig[option.key]}
+                                                    onCheckedChange={(value) => toggleRequiredField(option.key, value === true)}
+                                                />
+                                                Required
+                                            </label>
+                                        )}
+                                    </div>
+                                    {option.key === 'designSpecifications' && data.designFormConfig.designSpecifications ? (
+                                        <div className="ml-4 space-y-2 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 dark:border-indigo-900 dark:bg-indigo-950/20">
+                                            {specificationFieldOptions.map((field) => (
+                                                <div
+                                                    key={field.key}
+                                                    className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 sm:grid-cols-[1fr_auto_auto] sm:items-center dark:border-slate-700 dark:bg-slate-900"
+                                                >
+                                                    <span className="text-sm font-medium">{field.label}</span>
+                                                    <label className="flex cursor-pointer items-center gap-2 text-sm">
+                                                        <Checkbox
+                                                            checked={data.designFormConfig.specificationFields[field.key]}
+                                                            onCheckedChange={(value) => toggleSpecificationField(field.key, value === true)}
+                                                        />
+                                                        Show field
+                                                    </label>
+                                                    <label className="flex cursor-pointer items-center gap-2 text-sm">
+                                                        <Checkbox
+                                                            checked={data.designFormConfig.specificationFields.required[field.key]}
+                                                            disabled={!data.designFormConfig.specificationFields[field.key]}
+                                                            onCheckedChange={(value) => toggleSpecificationRequired(field.key, value === true)}
+                                                        />
+                                                        Required
+                                                    </label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : null}
                                 </div>
                             ))}
                         </div>

@@ -46,6 +46,22 @@ class MachineManagementTest extends TestCase
                     'stitchFiles' => false,
                     'pricing' => true,
                 ],
+                'specificationFields' => [
+                    'nameOrNumber' => true,
+                    'stitchCount' => true,
+                    'needle' => false,
+                    'area' => true,
+                    'height' => true,
+                    'width' => true,
+                    'required' => [
+                        'nameOrNumber' => true,
+                        'stitchCount' => false,
+                        'needle' => false,
+                        'area' => false,
+                        'height' => true,
+                        'width' => true,
+                    ],
+                ],
             ],
         ])->assertRedirect(route('admin.machines.index'));
 
@@ -63,9 +79,12 @@ class MachineManagementTest extends TestCase
         $this->assertFalse($config['stitchFiles']);
         $this->assertTrue($config['designFileType']);
         $this->assertTrue($config['previewImages']);
-        $this->assertFalse($config['required']['designSpecifications']);
+        $this->assertTrue($config['required']['designSpecifications']);
         $this->assertFalse($config['required']['previewImages']);
         $this->assertTrue($config['required']['designFileType']);
+        $this->assertFalse($config['specificationFields']['needle']);
+        $this->assertFalse($config['specificationFields']['required']['stitchCount']);
+        $this->assertTrue($config['specificationFields']['required']['height']);
     }
 
     public function test_admin_can_upload_remove_and_expose_a_machine_image_in_the_catalog_api(): void

@@ -48,7 +48,9 @@ class MachineDesignFormConfigApiTest extends TestCase
             ->assertJsonPath('data.0.designFormConfig.required.machineType', false)
             ->assertJsonPath('data.0.designFormConfig.required.category', true)
             ->assertJsonPath('data.0.designFormConfig.required.stitchFiles', false)
-            ->assertJsonPath('data.0.designFormConfig.required.previewImages', true);
+            ->assertJsonPath('data.0.designFormConfig.required.previewImages', true)
+            ->assertJsonPath('data.0.designFormConfig.specificationFields.height', true)
+            ->assertJsonPath('data.0.designFormConfig.specificationFields.required.height', true);
     }
 
     public function test_visible_fields_can_be_optional_for_a_machine(): void
@@ -153,6 +155,22 @@ class MachineDesignFormConfigApiTest extends TestCase
             'design_form_config' => [
                 'machineType' => false,
                 'stitchFiles' => false,
+                'specificationFields' => [
+                    'nameOrNumber' => true,
+                    'stitchCount' => false,
+                    'needle' => true,
+                    'area' => false,
+                    'height' => true,
+                    'width' => false,
+                    'required' => [
+                        'nameOrNumber' => true,
+                        'stitchCount' => false,
+                        'needle' => false,
+                        'area' => false,
+                        'height' => false,
+                        'width' => false,
+                    ],
+                ],
             ],
         ]);
         $machineType = MachineType::query()->create([
@@ -207,11 +225,6 @@ class MachineDesignFormConfigApiTest extends TestCase
                 'typeId' => $designType->public_id,
                 'details' => [
                     'nameOrNumber' => 'Pallu 101',
-                    'stitchCount' => 12000,
-                    'needle' => 8,
-                    'area' => 100,
-                    'height' => 10,
-                    'width' => 10,
                 ],
             ]],
             'designFileTypeId' => $fileType->public_id,
@@ -228,5 +241,13 @@ class MachineDesignFormConfigApiTest extends TestCase
             ->assertJsonPath('data.designFileTypeId', $fileType->public_id)
             ->assertJsonPath('data.hasFile', false)
             ->assertJsonPath('data.designTypes.0.typeId', $designType->public_id);
+
+        $variant = Design::query()->firstOrFail()->variants()->firstOrFail();
+        $this->assertSame('Pallu 101', $variant->name_or_number);
+        $this->assertSame(0, $variant->stitch_count);
+        $this->assertSame(0, $variant->needle);
+        $this->assertEquals(0, $variant->area);
+        $this->assertEquals(0, $variant->height);
+        $this->assertEquals(0, $variant->width);
     }
 }

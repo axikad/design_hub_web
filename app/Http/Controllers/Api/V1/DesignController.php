@@ -252,6 +252,8 @@ class DesignController extends Controller
         $machine = $this->resolvePayloadMachine($request, $existingDesign);
         $config = $machine?->normalizedDesignFormConfig() ?? MachineDesignFormConfig::defaults();
         $required = $config['required'];
+        $specificationFields = $config['specificationFields'];
+        $specificationRequired = $specificationFields['required'];
 
         $validated = $request->validate([
             'machineId' => ['sometimes', 'nullable', 'string', Rule::exists('machines', 'public_id')->where('is_active', true)],
@@ -272,13 +274,13 @@ class DesignController extends Controller
             'designTypes.*.typeId' => ['nullable', 'string', 'max:120'],
             'designTypes.*.customTypeName' => ['nullable', 'string', 'min:1', 'max:120'],
             'designTypes.*.details' => [$config['designSpecifications'] && $required['designSpecifications'] ? 'required' : 'sometimes', 'array'],
-            'designTypes.*.details.nameOrNumber' => [$config['designSpecifications'] && $required['designSpecifications'] ? 'required' : 'sometimes', 'string', 'max:120'],
-            'designTypes.*.details.stitchCount' => [$config['designSpecifications'] && $required['designSpecifications'] ? 'required' : 'sometimes', 'integer', 'min:0'],
-            'designTypes.*.details.needle' => [$config['designSpecifications'] && $required['designSpecifications'] ? 'required' : 'sometimes', 'integer', 'min:0'],
+            'designTypes.*.details.nameOrNumber' => [$this->specificationRule($config, $specificationFields, $specificationRequired, 'nameOrNumber'), 'string', 'max:120'],
+            'designTypes.*.details.stitchCount' => [$this->specificationRule($config, $specificationFields, $specificationRequired, 'stitchCount'), 'integer', 'min:0'],
+            'designTypes.*.details.needle' => [$this->specificationRule($config, $specificationFields, $specificationRequired, 'needle'), 'integer', 'min:0'],
             'designTypes.*.details.sequenceType' => ['sometimes', 'numeric', 'min:0', 'max:9999999999.99'],
-            'designTypes.*.details.area' => [$config['designSpecifications'] && $required['designSpecifications'] ? 'required' : 'sometimes', 'numeric', 'min:0', 'max:9999999999.99'],
-            'designTypes.*.details.height' => [$config['designSpecifications'] && $required['designSpecifications'] ? 'required' : 'sometimes', 'numeric', 'min:0', 'max:9999999999.99'],
-            'designTypes.*.details.width' => [$config['designSpecifications'] && $required['designSpecifications'] ? 'required' : 'sometimes', 'numeric', 'min:0', 'max:9999999999.99'],
+            'designTypes.*.details.area' => [$this->specificationRule($config, $specificationFields, $specificationRequired, 'area'), 'numeric', 'min:0', 'max:9999999999.99'],
+            'designTypes.*.details.height' => [$this->specificationRule($config, $specificationFields, $specificationRequired, 'height'), 'numeric', 'min:0', 'max:9999999999.99'],
+            'designTypes.*.details.width' => [$this->specificationRule($config, $specificationFields, $specificationRequired, 'width'), 'numeric', 'min:0', 'max:9999999999.99'],
             'designFileTypeId' => [
                 $config['designFileType'] && $required['designFileType'] ? 'required' : 'nullable',
                 'string',
@@ -402,7 +404,7 @@ class DesignController extends Controller
             [$variants, $details] = $this->resolveDesignTypeVariants(
                 $validated['designTypes'],
                 $selection['category_id'],
-                $config['designSpecifications'],
+                $config['designSpecifications'] ? $specificationFields : null,
                 $validated['title'] ?? null,
             );
         } elseif ($config['designTypes'] && filled($validated['typeId'] ?? null)) {
@@ -609,10 +611,19 @@ class DesignController extends Controller
         ];
     }
 
+    private function specificationRule(array $config, array $fields, array $required, string $key): string
+    {
+        if (! $config['designSpecifications'] || ! $fields[$key]) {
+            return 'exclude';
+        }
+
+        return $required[$key] ? 'required' : 'sometimes';
+    }
+
     private function resolveDesignTypeVariants(
         array $designTypes,
         string $categoryId,
-        bool $withSpecifications = true,
+        ?array $specificationFields = null,
         ?string $fallbackTitle = null,
     ): array {
         $types = DesignType::query()
@@ -622,7 +633,7 @@ class DesignController extends Controller
             ->get()
             ->keyBy('public_id');
 
-        $variants = collect($designTypes)->map(function (array $item, int $index) use ($types, $categoryId, $withSpecifications, $fallbackTitle) {
+        $variants = collect($designTypes)->map(function (array $item, int $index) use ($types, $categoryId, $specificationFields, $fallbackTitle) {
             $typeId = $item['typeId'] ?? null;
             $type = $typeId ? $types->get($typeId) : null;
 
@@ -643,18 +654,20 @@ class DesignController extends Controller
             }
 
             $details = $item['details'] ?? [];
-            $hasSpecifications = $withSpecifications && $details !== [];
+            $hasSpecifications = $specificationFields !== null && $details !== [];
             $fallbackName = trim((string) ($fallbackTitle ?: ($type?->name ?? $item['customTypeName'] ?? 'Design')));
 
             return [
                 'design_type_id' => $type?->id,
                 'custom_type_name' => $typeId ? null : trim($item['customTypeName']),
-                'name_or_number' => $hasSpecifications ? trim((string) ($details['nameOrNumber'] ?? $fallbackName)) : $fallbackName,
-                'stitch_count' => $hasSpecifications ? ($details['stitchCount'] ?? 0) : 0,
-                'needle' => $hasSpecifications ? ($details['needle'] ?? 0) : 0,
-                'area' => $hasSpecifications ? ($details['area'] ?? 0) : 0,
-                'height' => $hasSpecifications ? ($details['height'] ?? 0) : 0,
-                'width' => $hasSpecifications ? ($details['width'] ?? 0) : 0,
+                'name_or_number' => $hasSpecifications && $specificationFields['nameOrNumber']
+                    ? trim((string) ($details['nameOrNumber'] ?? $fallbackName))
+                    : $fallbackName,
+                'stitch_count' => $hasSpecifications && $specificationFields['stitchCount'] ? ($details['stitchCount'] ?? 0) : 0,
+                'needle' => $hasSpecifications && $specificationFields['needle'] ? ($details['needle'] ?? 0) : 0,
+                'area' => $hasSpecifications && $specificationFields['area'] ? ($details['area'] ?? 0) : 0,
+                'height' => $hasSpecifications && $specificationFields['height'] ? ($details['height'] ?? 0) : 0,
+                'width' => $hasSpecifications && $specificationFields['width'] ? ($details['width'] ?? 0) : 0,
                 'sort_order' => $index,
             ];
         })->values()->all();

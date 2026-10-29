@@ -161,6 +161,20 @@ class MachineAdminController extends Controller
             'designFormConfig.required.previewImages' => ['sometimes', 'boolean'],
             'designFormConfig.required.stitchFiles' => ['sometimes', 'boolean'],
             'designFormConfig.required.pricing' => ['sometimes', 'boolean'],
+            'designFormConfig.specificationFields' => ['sometimes', 'array'],
+            'designFormConfig.specificationFields.nameOrNumber' => ['sometimes', 'boolean'],
+            'designFormConfig.specificationFields.stitchCount' => ['sometimes', 'boolean'],
+            'designFormConfig.specificationFields.needle' => ['sometimes', 'boolean'],
+            'designFormConfig.specificationFields.area' => ['sometimes', 'boolean'],
+            'designFormConfig.specificationFields.height' => ['sometimes', 'boolean'],
+            'designFormConfig.specificationFields.width' => ['sometimes', 'boolean'],
+            'designFormConfig.specificationFields.required' => ['sometimes', 'array'],
+            'designFormConfig.specificationFields.required.nameOrNumber' => ['sometimes', 'boolean'],
+            'designFormConfig.specificationFields.required.stitchCount' => ['sometimes', 'boolean'],
+            'designFormConfig.specificationFields.required.needle' => ['sometimes', 'boolean'],
+            'designFormConfig.specificationFields.required.area' => ['sometimes', 'boolean'],
+            'designFormConfig.specificationFields.required.height' => ['sometimes', 'boolean'],
+            'designFormConfig.specificationFields.required.width' => ['sometimes', 'boolean'],
         ]);
 
         return [
