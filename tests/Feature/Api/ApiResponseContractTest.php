@@ -338,6 +338,7 @@ class ApiResponseContractTest extends TestCase
             'designFileTypeId' => 'emb',
             'showPrice' => true,
             'pricePaise' => 19900,
+            'sequenceType' => 4.5,
             'designTypes' => [
                 [
                     'typeId' => 'neckline',
@@ -367,7 +368,6 @@ class ApiResponseContractTest extends TestCase
                         'nameOrNumber' => 'Panel 303',
                         'stitchCount' => 7000,
                         'needle' => 7,
-                        'sequenceType' => 4.5,
                         'area' => 20,
                         'height' => 5,
                         'width' => 8,
@@ -395,7 +395,9 @@ class ApiResponseContractTest extends TestCase
             ->assertJsonPath('data.designTypes.2.typeId', null)
             ->assertJsonPath('data.designTypes.2.customTypeName', 'Custom Panel')
             ->assertJsonPath('data.designTypes.2.isCustom', true)
-            ->assertJsonPath('data.designTypes.2.details.sequenceType', '4.50');
+            ->assertJsonPath('data.sequenceType', '4.50')
+            ->assertJsonPath('data.measurementUnit', 'mm')
+            ->assertJsonMissingPath('data.designTypes.2.details.sequenceType');
 
         $designId = $response->json('data.id');
         $this->assertDatabaseCount('design_variants', 3);

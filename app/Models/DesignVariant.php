@@ -14,7 +14,6 @@ class DesignVariant extends Model
         'name_or_number',
         'stitch_count',
         'needle',
-        'sequence_type',
         'area',
         'height',
         'width',
@@ -26,7 +25,6 @@ class DesignVariant extends Model
         return [
             'stitch_count' => 'integer',
             'needle' => 'integer',
-            'sequence_type' => 'decimal:2',
             'area' => 'decimal:2',
             'height' => 'decimal:2',
             'width' => 'decimal:2',

@@ -104,6 +104,7 @@ class DesignController extends Controller
                 'price_paise' => $validated['pricePaise'],
                 'size' => $validated['size'],
                 'color' => $validated['color'],
+                'sequence_type' => $validated['sequenceType'],
                 'preview_path' => $validated['preview_path'],
                 'stitch_path' => $validated['stitch_path'],
                 'file_name' => $validated['fileName'],
@@ -153,6 +154,7 @@ class DesignController extends Controller
                 'price_paise' => $validated['pricePaise'],
                 'size' => $validated['size'],
                 'color' => $validated['color'],
+                'sequence_type' => $validated['sequenceType'],
                 'preview_path' => $validated['preview_path'],
                 'stitch_path' => $validated['stitch_path'],
                 'file_name' => $validated['fileName'],
@@ -251,6 +253,7 @@ class DesignController extends Controller
             'publishDate' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
             'title' => ['required_without:designTypes', 'nullable', 'string', 'min:1', 'max:120'],
             'pricePaise' => ['required', 'integer', 'min:100', 'max:100000000'],
+            'sequenceType' => ['sometimes', 'numeric', 'min:0', 'max:9999999999.99'],
             'size' => ['required_without:designTypes', 'nullable', 'string', 'max:120'],
             'color' => ['sometimes', 'nullable', 'string', 'max:120'],
             'imageUri' => ['required_without:images', 'nullable', 'string'],
@@ -294,6 +297,14 @@ class DesignController extends Controller
             ->pluck('typeId')
             ->filter()
             ->values();
+        $legacySequenceType = collect($validated['designTypes'] ?? [])
+            ->map(fn (array $designType) => data_get($designType, 'details.sequenceType'))
+            ->first(fn ($value) => $value !== null);
+        $sequenceType = $validated['sequenceType']
+            ?? $existingDesign?->sequence_type
+            ?? $legacySequenceType
+            ?? data_get($validated, 'details.0.sequenceType')
+            ?? 0;
         $customTypeNames = collect($validated['designTypes'] ?? [])
             ->pluck('customTypeName')
             ->filter()
@@ -391,6 +402,12 @@ class DesignController extends Controller
             );
         }
 
+        $details = collect($details)->map(function (array $detail) {
+            unset($detail['sequenceType']);
+
+            return $detail;
+        })->values()->all();
+
         $firstVariant = $variants[0] ?? [
             'name_or_number' => trim($validated['title']),
             'height' => 0,
@@ -417,6 +434,7 @@ class DesignController extends Controller
             'files' => $files,
             'title' => $firstVariant['name_or_number'],
             'pricePaise' => $validated['pricePaise'],
+            'sequenceType' => $sequenceType,
             'size' => $summarySize,
             'color' => trim($validated['color'] ?? ''),
             'preview_path' => $images[0]['path'],
@@ -462,7 +480,6 @@ class DesignController extends Controller
                 'name_or_number' => trim($details['nameOrNumber']),
                 'stitch_count' => $details['stitchCount'],
                 'needle' => $details['needle'],
-                'sequence_type' => $details['sequenceType'] ?? 0,
                 'area' => $details['area'],
                 'height' => $details['height'],
                 'width' => $details['width'],
@@ -479,7 +496,6 @@ class DesignController extends Controller
             'names' => [$validated['title']],
             'stitch' => '0',
             'needle' => 0,
-            'sequenceType' => 0,
             'area' => $validated['size'],
             'height' => '0',
             'width' => '0',
@@ -490,7 +506,6 @@ class DesignController extends Controller
             'name_or_number' => trim($detail['names'][0] ?? $validated['title']),
             'stitch_count' => is_numeric($detail['stitch'] ?? null) ? (int) $detail['stitch'] : 0,
             'needle' => (int) ($detail['needle'] ?? 0),
-            'sequence_type' => is_numeric($detail['sequenceType'] ?? null) ? $detail['sequenceType'] : 0,
             'area' => is_numeric($detail['area'] ?? null) ? $detail['area'] : 0,
             'height' => is_numeric($detail['height'] ?? null) ? $detail['height'] : 0,
             'width' => is_numeric($detail['width'] ?? null) ? $detail['width'] : 0,
@@ -507,7 +522,6 @@ class DesignController extends Controller
             'names' => [$variant['name_or_number']],
             'stitch' => (string) $variant['stitch_count'],
             'needle' => $variant['needle'],
-            'sequenceType' => (string) $variant['sequence_type'],
             'area' => (string) $variant['area'],
             'height' => (string) $variant['height'],
             'width' => (string) $variant['width'],

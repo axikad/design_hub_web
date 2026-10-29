@@ -64,6 +64,7 @@ type User = {
 type DesignRequest = {
     machineTypeId: string;
     categoryId: string;
+    sequenceType: number; // Common to the complete design; millimetres (mm).
     designTypes: Array<{
         typeId?: string; // Catalog type. Send either this or customTypeName.
         customTypeName?: string; // Saved only for this design; not added to the catalog.
@@ -71,10 +72,9 @@ type DesignRequest = {
             nameOrNumber: string;
             stitchCount: number;
             needle: number;
-            sequenceType: number; // millimetres (mm)
-            area: number;
-            height: number;
-            width: number;
+            area: number; // mm
+            height: number; // mm
+            width: number; // mm
         };
     }>;
     designFileTypeId: string; // Compatible ID returned for the selected machine
@@ -95,6 +95,7 @@ type Design = DesignRequest & {
     machineId: string | null; // Derived by the backend from machineTypeId
     createdAt: string; // ISO 8601
     ownerKey: string | null; // countryCode + mobileNumber, e.g. +919876543210
+    measurementUnit: "mm";
 };
 
 type ImageSearchResult = Design & {

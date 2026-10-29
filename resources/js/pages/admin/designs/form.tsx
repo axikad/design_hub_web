@@ -23,7 +23,6 @@ type VariantInput = {
     nameOrNumber: string;
     stitchCount: string;
     needle: string;
-    sequenceType: string;
     area: string;
     height: string;
     width: string;
@@ -35,6 +34,7 @@ type DesignForm = {
     machineTypeId?: string | null;
     categoryId?: string | null;
     designFileTypeId?: string | null;
+    sequenceType?: string;
     priceRupees: string;
     variants?: VariantInput[];
     images?: { name: string; uri: string; thumbnailUri?: string | null }[];
@@ -56,7 +56,6 @@ const emptyVariant = (typeId: string): VariantInput => ({
     nameOrNumber: '',
     stitchCount: '0',
     needle: '0',
-    sequenceType: '0',
     area: '0',
     height: '0',
     width: '0',
@@ -89,6 +88,7 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
         machineTypeId: initialMachineType?.id ?? '',
         categoryId: initialCategory?.id ?? '',
         designFileTypeId: initialFileType?.id ?? '',
+        sequenceType: design?.sequenceType?.toString() ?? '0',
         priceRupees: design?.priceRupees ?? '',
         variants: design?.variants?.length
             ? design.variants.map((variant) => ({
@@ -96,7 +96,6 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                   customTypeName: variant.customTypeName ?? '',
                   stitchCount: variant.stitchCount.toString(),
                   needle: variant.needle.toString(),
-                  sequenceType: variant.sequenceType.toString(),
                   area: variant.area.toString(),
                   height: variant.height.toString(),
                   width: variant.width.toString(),
@@ -266,6 +265,25 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                     </AdminFormPanel>
 
                     <AdminFormPanel
+                        title="Design measurement"
+                        description="This sequence value applies once to the complete design."
+                        icon={Layers3}
+                    >
+                        <div className="max-w-xs">
+                            <VariantField
+                                label="Sequence type"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                suffix="mm"
+                                value={data.sequenceType}
+                                onChange={(value) => setData('sequenceType', value)}
+                                error={errors.sequenceType}
+                            />
+                        </div>
+                    </AdminFormPanel>
+
+                    <AdminFormPanel
                         title="Design type specifications"
                         description="Enter separate specifications for every catalog or custom design type."
                         icon={Layers3}
@@ -320,20 +338,11 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                                                 error={fieldError('needle')}
                                             />
                                             <VariantField
-                                                label="Sequence type"
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                suffix="mm"
-                                                value={variant.sequenceType}
-                                                onChange={(value) => updateVariant(index, 'sequenceType', value)}
-                                                error={fieldError('sequenceType')}
-                                            />
-                                            <VariantField
                                                 label="Area"
                                                 type="number"
                                                 min="0"
                                                 step="0.01"
+                                                suffix="mm"
                                                 value={variant.area}
                                                 onChange={(value) => updateVariant(index, 'area', value)}
                                                 error={fieldError('area')}
@@ -343,6 +352,7 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                                                 type="number"
                                                 min="0"
                                                 step="0.01"
+                                                suffix="mm"
                                                 value={variant.height}
                                                 onChange={(value) => updateVariant(index, 'height', value)}
                                                 error={fieldError('height')}
@@ -352,6 +362,7 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                                                 type="number"
                                                 min="0"
                                                 step="0.01"
+                                                suffix="mm"
                                                 value={variant.width}
                                                 onChange={(value) => updateVariant(index, 'width', value)}
                                                 error={fieldError('width')}

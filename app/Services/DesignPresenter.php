@@ -39,8 +39,10 @@ class DesignPresenter
             'showPrice' => $design->show_price,
             'publishDate' => $design->publish_date?->format('Y-m-d'),
             'pricePaise' => $design->price_paise,
+            'sequenceType' => $design->sequence_type,
+            'measurementUnit' => 'mm',
             'designTypes' => $this->designTypes($design),
-            'details' => $design->details ?? $this->legacyDetails($design),
+            'details' => $this->detailsWithoutSequenceType($design->details ?? $this->legacyDetails($design)),
             'images' => $images,
             'files' => $files,
             'size' => $design->size,
@@ -125,7 +127,6 @@ class DesignPresenter
             'names' => [$design->title],
             'stitch' => '',
             'needle' => 0,
-            'sequenceType' => 0,
             'area' => $design->size,
             'height' => '',
             'width' => '',
@@ -147,7 +148,6 @@ class DesignPresenter
                         'nameOrNumber' => $variant->name_or_number,
                         'stitchCount' => $variant->stitch_count,
                         'needle' => $variant->needle,
-                        'sequenceType' => $variant->sequence_type,
                         'area' => $variant->area,
                         'height' => $variant->height,
                         'width' => $variant->width,
@@ -168,12 +168,20 @@ class DesignPresenter
                 'nameOrNumber' => $details['names'][0] ?? $design->title,
                 'stitchCount' => is_numeric($details['stitch'] ?? null) ? (int) $details['stitch'] : 0,
                 'needle' => (int) ($details['needle'] ?? 0),
-                'sequenceType' => $details['sequenceType'] ?? 0,
                 'area' => $details['area'] ?? 0,
                 'height' => $details['height'] ?? 0,
                 'width' => $details['width'] ?? 0,
             ],
         ]];
+    }
+
+    private function detailsWithoutSequenceType(array $details): array
+    {
+        return collect($details)->map(function (array $detail) {
+            unset($detail['sequenceType']);
+
+            return $detail;
+        })->values()->all();
     }
 
     public function signedStitchDownload(Design $design): ?array

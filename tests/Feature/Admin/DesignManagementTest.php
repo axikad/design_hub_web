@@ -39,6 +39,7 @@ class DesignManagementTest extends TestCase
             'categoryId' => $category->public_id,
             'designFileTypeId' => $fileType->public_id,
             'priceRupees' => '299.00',
+            'sequenceType' => 5.5,
             'variants' => [
                 [
                     'typeId' => $type->public_id,
@@ -64,7 +65,6 @@ class DesignManagementTest extends TestCase
                     'nameOrNumber' => 'Sleeve 103',
                     'stitchCount' => 6000,
                     'needle' => 6,
-                    'sequenceType' => 5.5,
                     'area' => 18,
                     'height' => 4,
                     'width' => 7,
@@ -88,6 +88,7 @@ class DesignManagementTest extends TestCase
             'category_id' => $category->public_id,
             'title' => 'Pallu 101',
             'file_name' => 'original.emb',
+            'sequence_type' => 5.5,
         ]);
         $this->assertDatabaseHas('design_variants', [
             'design_type_id' => $type->id,
@@ -103,7 +104,6 @@ class DesignManagementTest extends TestCase
             'design_type_id' => null,
             'custom_type_name' => 'Custom Sleeve',
             'name_or_number' => 'Sleeve 103',
-            'sequence_type' => 5.5,
         ]);
         $createdDesign = Design::query()->where('title', 'Pallu 101')->firstOrFail();
         $this->assertCount(3, $createdDesign->variants);
@@ -129,6 +129,7 @@ class DesignManagementTest extends TestCase
             'categoryId' => $category->public_id,
             'designFileTypeId' => $fileType->public_id,
             'priceRupees' => '299.00',
+            'sequenceType' => 5.5,
             'variants' => [[
                 'typeId' => $type->public_id,
                 'nameOrNumber' => 'Invalid selection',
@@ -199,6 +200,7 @@ class DesignManagementTest extends TestCase
             'categoryId' => $category->public_id,
             'designFileTypeId' => $fileType->public_id,
             'priceRupees' => '349.00',
+            'sequenceType' => 7.25,
             'variants' => [[
                 'typeId' => $secondType->public_id,
                 'nameOrNumber' => 'New border',
