@@ -98,6 +98,30 @@ class CatalogController extends Controller
         return ApiResponse::data($machineTypes->values(), message: 'Machine types retrieved successfully.');
     }
 
+    public function machineCategories(string $machineId)
+    {
+        $machine = Machine::query()
+            ->where('public_id', $machineId)
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        $categories = DesignCategory::query()
+            ->where('is_active', true)
+            ->whereHas('machineTypes', fn ($query) => $query
+                ->where('machine_types.machine_id', $machine->id)
+                ->where('machine_types.is_active', true))
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (DesignCategory $category) => [
+                'id' => $category->public_id,
+                'name' => $category->name,
+                'machineId' => $machine->public_id,
+            ]);
+
+        return ApiResponse::data($categories->values(), message: 'Machine categories retrieved successfully.');
+    }
+
     public function machineTypeCategories(string $machineTypeId)
     {
         $machineType = MachineType::query()
@@ -149,6 +173,10 @@ class CatalogController extends Controller
                     ->where('is_active', true)
                     ->orderBy('sort_order')
                     ->orderBy('name'),
+                'machineTypes.categories' => fn ($query) => $query
+                    ->where('design_categories.is_active', true)
+                    ->orderBy('design_categories.sort_order')
+                    ->orderBy('design_categories.name'),
                 'designFileTypes' => fn ($query) => $query
                     ->where('design_file_types.is_active', true)
                     ->orderBy('design_file_types.sort_order')
@@ -194,6 +222,11 @@ class CatalogController extends Controller
                 'imageUri' => $machine->imageUrl(),
                 'designFormConfig' => $machine->normalizedDesignFormConfig(),
                 'machineTypeIds' => $machine->machineTypes->pluck('public_id')->values(),
+                'categoryIds' => $machine->machineTypes
+                    ->flatMap->categories
+                    ->pluck('public_id')
+                    ->unique()
+                    ->values(),
                 'designFileTypeIds' => $machine->designFileTypes->pluck('public_id')->values(),
             ])->values(),
             'machineTypes' => $machineTypes->map(fn (MachineType $machine) => [

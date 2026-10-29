@@ -46,11 +46,11 @@ class MachineManagementTest extends TestCase
 
         $config = Machine::query()->where('name', 'Embroidery')->firstOrFail()->normalizedDesignFormConfig();
         $this->assertFalse($config['machineType']);
-        $this->assertFalse($config['category']);
-        $this->assertFalse($config['designTypes']);
-        $this->assertFalse($config['designSpecifications']);
+        $this->assertTrue($config['category']);
+        $this->assertTrue($config['designTypes']);
+        $this->assertTrue($config['designSpecifications']);
         $this->assertFalse($config['stitchFiles']);
-        $this->assertFalse($config['designFileType']);
+        $this->assertTrue($config['designFileType']);
         $this->assertTrue($config['previewImages']);
     }
 

@@ -14,7 +14,6 @@ use App\Services\DesignImageMatchingService;
 use App\Services\PurchaseAccessService;
 use App\Services\UploadService;
 use App\Support\ApiResponse;
-use App\Support\DesignTypeResolver;
 use App\Support\MachineDesignFormConfig;
 use App\Support\Pagination;
 use Illuminate\Http\Request;
@@ -520,74 +519,85 @@ class DesignController extends Controller
     /** @return array{design_type_id: int|null, category_id: string|null, machine_type_id: string|null} */
     private function resolveMachineSelection(array $validated, Machine $machine, array $config, $catalogTypeIds): array
     {
-        if (! $config['machineType']) {
-            return [
-                'design_type_id' => null,
-                'category_id' => null,
-                'machine_type_id' => null,
-            ];
-        }
+        $machineType = null;
 
-        $machineType = MachineType::query()
-            ->where('public_id', $validated['machineTypeId'])
-            ->where('is_active', true)
-            ->first();
+        if ($config['machineType']) {
+            $machineType = MachineType::query()
+                ->where('public_id', $validated['machineTypeId'])
+                ->where('is_active', true)
+                ->first();
 
-        if ($machineType === null || $machineType->machine_id !== $machine->id) {
-            throw ValidationException::withMessages([
-                'machineTypeId' => 'The selected machine type does not belong to this machine.',
-            ]);
+            if ($machineType === null || $machineType->machine_id !== $machine->id) {
+                throw ValidationException::withMessages([
+                    'machineTypeId' => 'The selected machine type does not belong to this machine.',
+                ]);
+            }
         }
 
         if (! $config['category']) {
             return [
                 'design_type_id' => null,
                 'category_id' => null,
-                'machine_type_id' => $machineType->public_id,
+                'machine_type_id' => $machineType?->public_id,
             ];
         }
 
+        $category = DesignCategory::query()
+            ->where('public_id', $validated['categoryId'])
+            ->where('is_active', true)
+            ->first();
+
+        $categoryIsCompatible = $category !== null && ($machineType !== null
+            ? $category->machineTypes()->whereKey($machineType->id)->exists()
+            : $category->machineTypes()
+                ->where('machine_types.machine_id', $machine->id)
+                ->where('machine_types.is_active', true)
+                ->exists());
+
+        if (! $categoryIsCompatible) {
+            throw ValidationException::withMessages([
+                'categoryId' => $machineType !== null
+                    ? 'The selected category is not available for this machine type.'
+                    : 'The selected category is not available for this machine.',
+            ]);
+        }
+
         if (! $config['designTypes']) {
-            $category = DesignCategory::query()
-                ->where('public_id', $validated['categoryId'])
-                ->where('is_active', true)
-                ->first();
-
-            if ($category === null || ! $category->machineTypes()->whereKey($machineType->id)->exists()) {
-                throw ValidationException::withMessages([
-                    'categoryId' => 'The selected category is not available for this machine type.',
-                ]);
-            }
-
             return [
                 'design_type_id' => null,
                 'category_id' => $category->public_id,
-                'machine_type_id' => $machineType->public_id,
+                'machine_type_id' => $machineType?->public_id,
             ];
         }
 
         $selectedTypeId = $catalogTypeIds->first() ?? ($validated['typeId'] ?? null);
+        $designTypeId = null;
 
-        try {
-            $selection = $selectedTypeId
-                ? DesignTypeResolver::resolveMobileSelection(
-                    $selectedTypeId,
-                    $validated['categoryId'],
-                    $machineType->public_id,
-                )
-                : DesignTypeResolver::resolveCategorySelection(
-                    $validated['categoryId'],
-                    $machineType->public_id,
-                );
-        } catch (\InvalidArgumentException $exception) {
-            $field = isset($validated['designTypes']) && ! $selectedTypeId
-                ? 'categoryId'
-                : (isset($validated['designTypes']) ? 'designTypes.0.typeId' : 'typeId');
+        if ($selectedTypeId !== null && $selectedTypeId !== $category->public_id) {
+            $selectedType = DesignType::query()
+                ->where('public_id', $selectedTypeId)
+                ->where('is_active', true)
+                ->whereHas('categories', fn ($query) => $query
+                    ->where('design_categories.id', $category->id)
+                    ->where('design_categories.is_active', true))
+                ->first();
 
-            throw ValidationException::withMessages([$field => $exception->getMessage()]);
+            if ($selectedType === null) {
+                $field = isset($validated['designTypes']) ? 'designTypes.0.typeId' : 'typeId';
+
+                throw ValidationException::withMessages([
+                    $field => 'The selected type does not belong to this category.',
+                ]);
+            }
+
+            $designTypeId = $selectedType->id;
         }
 
-        return $selection;
+        return [
+            'design_type_id' => $designTypeId,
+            'category_id' => $category->public_id,
+            'machine_type_id' => $machineType?->public_id,
+        ];
     }
 
     private function resolveDesignTypeVariants(

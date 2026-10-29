@@ -76,12 +76,13 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
         setData('designFormConfig', {
             ...data.designFormConfig,
             [key]: enabled,
-            ...(key === 'machineType' && !enabled ? { category: false, designTypes: false, designSpecifications: false } : {}),
             ...(key === 'category' && !enabled ? { designTypes: false, designSpecifications: false } : {}),
             ...(key === 'designTypes' && !enabled ? { designSpecifications: false } : {}),
-            ...(key === 'stitchFiles' && !enabled ? { designFileType: false } : {}),
         });
     };
+
+    const designFieldDisabled = (key: keyof DesignFormConfig) =>
+        (key === 'designTypes' && !data.designFormConfig.category) || (key === 'designSpecifications' && !data.designFormConfig.designTypes);
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
@@ -213,10 +214,13 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
                             {designFieldOptions.map((option) => (
                                 <label
                                     key={option.key}
-                                    className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700"
+                                    className={`flex items-start gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700 ${
+                                        designFieldDisabled(option.key) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+                                    }`}
                                 >
                                     <Checkbox
                                         checked={data.designFormConfig[option.key]}
+                                        disabled={designFieldDisabled(option.key)}
                                         onCheckedChange={(value) => toggleDesignField(option.key, value === true)}
                                         className="mt-0.5"
                                     />

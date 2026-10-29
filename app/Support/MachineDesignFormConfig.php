@@ -31,12 +31,6 @@ final class MachineDesignFormConfig
             }
         }
 
-        if (! $normalized['machineType']) {
-            $normalized['category'] = false;
-            $normalized['designTypes'] = false;
-            $normalized['designSpecifications'] = false;
-        }
-
         if (! $normalized['category']) {
             $normalized['designTypes'] = false;
             $normalized['designSpecifications'] = false;
@@ -44,10 +38,6 @@ final class MachineDesignFormConfig
 
         if (! $normalized['designTypes']) {
             $normalized['designSpecifications'] = false;
-        }
-
-        if (! $normalized['stitchFiles']) {
-            $normalized['designFileType'] = false;
         }
 
         return $normalized;
