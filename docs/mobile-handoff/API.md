@@ -62,10 +62,12 @@ type User = {
     selectedMachines: Array<{ id: string; name: string; imageUri: string | null }>;
 };
 type DesignRequest = {
-    machineTypeId: string;
-    categoryId: string;
-    sequenceType: number; // Common to the complete design; millimetres (mm).
-    designTypes: Array<{
+    machineId: string; // Always send the selected machine.
+    machineTypeId?: string; // Required only when designFormConfig.machineType is true.
+    categoryId?: string; // Required only when designFormConfig.category is true.
+    title?: string; // Required when design specifications are disabled.
+    sequenceType?: number; // Used only when enabled; common design value in millimetres (mm).
+    designTypes?: Array<{
         typeId?: string; // Catalog type. Send either this or customTypeName.
         customTypeName?: string; // Saved only for this design; not added to the catalog.
         details: {
@@ -77,12 +79,23 @@ type DesignRequest = {
             width: number; // mm
         };
     }>;
-    designFileTypeId: string; // Compatible ID returned for the selected machine
+    designFileTypeId?: string; // Required only when designFormConfig.designFileType is true.
     showPrice: boolean;
     publishDate?: string; // YYYY-MM-DD; defaults to today in marketplace timezone
-    pricePaise: number; // INR integer paise; 100..100000000
-    images: Array<{ name: string; uri: string }>;
-    files: Array<{ name: string; uri: string; displayName?: string }>;
+    pricePaise?: number; // Required only when designFormConfig.pricing is true.
+    images?: Array<{ name: string; uri: string }>;
+    files?: Array<{ name: string; uri: string; displayName?: string }>;
+};
+type DesignFormConfig = {
+    machineType: boolean;
+    category: boolean;
+    designTypes: boolean;
+    designSpecifications: boolean;
+    sequenceType: boolean;
+    designFileType: boolean;
+    previewImages: boolean;
+    stitchFiles: boolean;
+    pricing: boolean;
 };
 type Design = DesignRequest & {
     id: string;
@@ -172,9 +185,9 @@ Optional home parameters are `sliderLimit` (maximum 10), `sectionLimit` (maximum
 
 Tomorrow designs use `publishDate` and are excluded from latest and category listings until their publish date.
 
-Clients send only `machineTypeId` when creating or updating a design. The backend derives and returns `machineId`, so clients do not need to submit duplicate machine data. After selecting a machine, load its compatible formats from `/catalog/machines/:machineId/design-file-types` (or `/catalog/design-file-types?machineId=...`). The backend rejects a `designFileTypeId` that is not connected to the selected machine.
+Clients should send `machineId` when creating or updating a design. Older requests can still be resolved from `machineTypeId` when that field is enabled. After selecting a machine, load its compatible formats from `/catalog/machines/:machineId/design-file-types` (or `/catalog/design-file-types?machineId=...`). The backend rejects a `designFileTypeId` that is not connected to the selected machine.
 
-Every machine returned by `/catalog/machines` and `/catalog/design-options` includes `imageUri`. It is an absolute public image URL when an admin uploaded a machine image, otherwise `null`. Mobile clients should display the image when present and use their existing machine placeholder/icon when it is null.
+Every machine returned by `/auth/register/machines`, `/users/me/machines`, `/catalog/machines`, and `/catalog/design-options` includes `imageUri` and `designFormConfig`. Build the create/edit form from those booleans. Disabled fields must be hidden and omitted from the request; backend validation follows the same configuration. Existing machines default to all fields enabled. `imageUri` is an absolute public image URL when an admin uploaded a machine image, otherwise `null`.
 
 Catalog selection uses two levels. `categoryId` is the main product group and every `designTypes[].typeId` is a selected placement/type with its own specifications:
 

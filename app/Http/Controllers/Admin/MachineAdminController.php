@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Machine;
 use App\Services\SortOrderService;
+use App\Support\MachineDesignFormConfig;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -53,6 +54,7 @@ class MachineAdminController extends Controller
         return Inertia::render('admin/machines/form', [
             'machine' => null,
             'nextSortOrder' => $this->sortOrder->nextPosition(Machine::class),
+            'defaultDesignFormConfig' => MachineDesignFormConfig::defaults(),
         ]);
     }
 
@@ -79,8 +81,10 @@ class MachineAdminController extends Controller
                 'imageUri' => $model->imageUrl(),
                 'isActive' => $model->is_active,
                 'sortOrder' => $model->sort_order,
+                'designFormConfig' => $model->normalizedDesignFormConfig(),
             ],
             'nextSortOrder' => $this->sortOrder->nextPosition(Machine::class),
+            'defaultDesignFormConfig' => MachineDesignFormConfig::defaults(),
         ]);
     }
 
@@ -137,12 +141,23 @@ class MachineAdminController extends Controller
             'sortOrder' => ['nullable', 'integer', 'min:1', 'max:9999'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'removeImage' => ['nullable', 'boolean'],
+            'designFormConfig' => ['sometimes', 'array'],
+            'designFormConfig.machineType' => ['required_with:designFormConfig', 'boolean'],
+            'designFormConfig.category' => ['required_with:designFormConfig', 'boolean'],
+            'designFormConfig.designTypes' => ['required_with:designFormConfig', 'boolean'],
+            'designFormConfig.designSpecifications' => ['required_with:designFormConfig', 'boolean'],
+            'designFormConfig.sequenceType' => ['required_with:designFormConfig', 'boolean'],
+            'designFormConfig.designFileType' => ['required_with:designFormConfig', 'boolean'],
+            'designFormConfig.previewImages' => ['required_with:designFormConfig', 'boolean'],
+            'designFormConfig.stitchFiles' => ['required_with:designFormConfig', 'boolean'],
+            'designFormConfig.pricing' => ['required_with:designFormConfig', 'boolean'],
         ]);
 
         return [
             'name' => trim($validated['name']),
             'is_active' => $request->boolean('isActive', true),
             'sort_order' => isset($validated['sortOrder']) ? (int) $validated['sortOrder'] : null,
+            'design_form_config' => MachineDesignFormConfig::normalize($validated['designFormConfig'] ?? null),
         ];
     }
 

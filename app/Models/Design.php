@@ -17,6 +17,7 @@ class Design extends Model
         'user_id',
         'design_type_id',
         'design_file_type_id',
+        'machine_id',
         'machine_type_id',
         'category_id',
         'show_price',
@@ -82,6 +83,11 @@ class Design extends Model
         return $this->belongsTo(MachineType::class, 'machine_type_id', 'public_id');
     }
 
+    public function machine(): BelongsTo
+    {
+        return $this->belongsTo(Machine::class);
+    }
+
     public function purchases(): HasMany
     {
         return $this->hasMany(Purchase::class);
@@ -123,10 +129,18 @@ class Design extends Model
             return $query;
         }
 
-        return $query->whereHas(
-            'machineType.machine',
-            fn ($machineQuery) => $machineQuery->whereIn('machines.public_id', $machineIds),
-        );
+        return $query->where(function ($machineFilter) use ($machineIds) {
+            $machineFilter
+                ->whereHas('machine', fn ($machineQuery) => $machineQuery->whereIn('machines.public_id', $machineIds))
+                ->orWhere(function ($legacyQuery) use ($machineIds) {
+                    $legacyQuery
+                        ->whereNull('machine_id')
+                        ->whereHas(
+                            'machineType.machine',
+                            fn ($machineQuery) => $machineQuery->whereIn('machines.public_id', $machineIds),
+                        );
+                });
+        });
     }
 
     protected function displayName(): Attribute

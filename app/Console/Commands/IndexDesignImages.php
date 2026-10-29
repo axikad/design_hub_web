@@ -16,7 +16,7 @@ class IndexDesignImages extends Command
     {
         $query = Design::query()
             ->listed()
-            ->with('machineType.machine')
+            ->with(['machine', 'machineType.machine'])
             ->when($this->option('design'), fn ($builder, $id) => $builder->where('public_id', $id));
 
         $total = (clone $query)->count();

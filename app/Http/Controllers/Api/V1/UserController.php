@@ -255,6 +255,7 @@ class UserController extends Controller
                 'id' => $machine->public_id,
                 'name' => $machine->name,
                 'imageUri' => $machine->imageUrl(),
+                'designFormConfig' => $machine->normalizedDesignFormConfig(),
                 'selected' => $selectedIds->contains($machine->public_id),
             ]);
 

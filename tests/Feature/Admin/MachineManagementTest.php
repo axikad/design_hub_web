@@ -25,6 +25,17 @@ class MachineManagementTest extends TestCase
             'name' => 'Embroidery',
             'isActive' => true,
             'sortOrder' => 1,
+            'designFormConfig' => [
+                'machineType' => false,
+                'category' => true,
+                'designTypes' => true,
+                'designSpecifications' => true,
+                'sequenceType' => false,
+                'designFileType' => true,
+                'previewImages' => true,
+                'stitchFiles' => false,
+                'pricing' => true,
+            ],
         ])->assertRedirect(route('admin.machines.index'));
 
         $this->assertDatabaseHas('machines', [
@@ -32,6 +43,15 @@ class MachineManagementTest extends TestCase
             'is_active' => true,
             'sort_order' => 1,
         ]);
+
+        $config = Machine::query()->where('name', 'Embroidery')->firstOrFail()->normalizedDesignFormConfig();
+        $this->assertFalse($config['machineType']);
+        $this->assertFalse($config['category']);
+        $this->assertFalse($config['designTypes']);
+        $this->assertFalse($config['designSpecifications']);
+        $this->assertFalse($config['stitchFiles']);
+        $this->assertFalse($config['designFileType']);
+        $this->assertTrue($config['previewImages']);
     }
 
     public function test_admin_can_upload_remove_and_expose_a_machine_image_in_the_catalog_api(): void

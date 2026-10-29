@@ -8,21 +8,52 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Cpu, ImageIcon, LoaderCircle, Save, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Cpu, ImageIcon, LoaderCircle, Save, SlidersHorizontal, Trash2, Upload } from 'lucide-react';
 import { type ChangeEvent, type FormEventHandler, useRef, useState } from 'react';
 
-type MachineForm = { id: string; name: string; imageUri: string | null; isActive: boolean; sortOrder: number };
-type Props = { machine: MachineForm | null; nextSortOrder: number };
+type DesignFormConfig = {
+    machineType: boolean;
+    category: boolean;
+    designTypes: boolean;
+    designSpecifications: boolean;
+    sequenceType: boolean;
+    designFileType: boolean;
+    previewImages: boolean;
+    stitchFiles: boolean;
+    pricing: boolean;
+};
+type MachineForm = {
+    id: string;
+    name: string;
+    imageUri: string | null;
+    isActive: boolean;
+    sortOrder: number;
+    designFormConfig: DesignFormConfig;
+};
+type Props = { machine: MachineForm | null; nextSortOrder: number; defaultDesignFormConfig: DesignFormConfig };
 type MachineFormData = {
     name: string;
     image: File | null;
     removeImage: boolean;
     isActive: boolean;
     sortOrder: number;
+    designFormConfig: DesignFormConfig;
     _method: 'post' | 'put';
 };
 
-export default function AdminMachineForm({ machine, nextSortOrder }: Props) {
+const designFieldOptions: { key: keyof DesignFormConfig; label: string; description: string }[] = [
+    { key: 'machineType', label: 'Machine type', description: 'Require a machine type selection.' },
+    { key: 'category', label: 'Category', description: 'Require a compatible category.' },
+    { key: 'designTypes', label: 'Design types', description: 'Allow catalog and custom design types.' },
+    { key: 'designSpecifications', label: 'Design type specifications', description: 'Collect stitch count, needle, area, height and width.' },
+    { key: 'sequenceType', label: 'Sequence type', description: 'Collect the common sequence measurement in mm.' },
+    { key: 'designFileType', label: 'Design file type', description: 'Require EMB, DST, DHB or another configured format.' },
+    { key: 'previewImages', label: 'Preview images', description: 'Require at least one preview image.' },
+    { key: 'stitchFiles', label: 'Stitch files', description: 'Require at least one uploaded machine file.' },
+    { key: 'pricing', label: 'Pricing', description: 'Require a selling price for the design.' },
+];
+
+export default function AdminMachineForm({ machine, nextSortOrder, defaultDesignFormConfig }: Props) {
     const editing = Boolean(machine?.id);
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Overview', href: '/dashboard' },
@@ -37,8 +68,20 @@ export default function AdminMachineForm({ machine, nextSortOrder }: Props) {
         removeImage: false,
         isActive: machine?.isActive ?? true,
         sortOrder: machine?.sortOrder ?? nextSortOrder,
+        designFormConfig: machine?.designFormConfig ?? defaultDesignFormConfig,
         _method: editing ? 'put' : 'post',
     });
+
+    const toggleDesignField = (key: keyof DesignFormConfig, enabled: boolean) => {
+        setData('designFormConfig', {
+            ...data.designFormConfig,
+            [key]: enabled,
+            ...(key === 'machineType' && !enabled ? { category: false, designTypes: false, designSpecifications: false } : {}),
+            ...(key === 'category' && !enabled ? { designTypes: false, designSpecifications: false } : {}),
+            ...(key === 'designTypes' && !enabled ? { designSpecifications: false } : {}),
+            ...(key === 'stitchFiles' && !enabled ? { designFileType: false } : {}),
+        });
+    };
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
@@ -159,6 +202,32 @@ export default function AdminMachineForm({ machine, nextSortOrder }: Props) {
                                 <InputError message={errors.image} />
                             </div>
                         </div>
+                    </AdminFormPanel>
+
+                    <AdminFormPanel
+                        title="Design creation fields"
+                        description="Choose which fields are used when a design is created for this machine."
+                        icon={SlidersHorizontal}
+                    >
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            {designFieldOptions.map((option) => (
+                                <label
+                                    key={option.key}
+                                    className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700"
+                                >
+                                    <Checkbox
+                                        checked={data.designFormConfig[option.key]}
+                                        onCheckedChange={(value) => toggleDesignField(option.key, value === true)}
+                                        className="mt-0.5"
+                                    />
+                                    <span>
+                                        <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">{option.label}</span>
+                                        <span className="mt-1 block text-xs text-slate-500">{option.description}</span>
+                                    </span>
+                                </label>
+                            ))}
+                        </div>
+                        <InputError message={errors.designFormConfig} />
                     </AdminFormPanel>
 
                     <div className="flex justify-end gap-3">

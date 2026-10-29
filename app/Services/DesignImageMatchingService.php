@@ -83,7 +83,7 @@ class DesignImageMatchingService
 
     public function syncDesign(Design $design): void
     {
-        $design->loadMissing('machineType.machine');
+        $design->loadMissing(['machine', 'machineType.machine']);
         $oldPointIds = $design->imageFingerprints()->whereNotNull('vector_id')->pluck('vector_id')->all();
 
         try {
@@ -120,7 +120,7 @@ class DesignImageMatchingService
                         'payload' => [
                             'design_id' => $design->public_id,
                             'image_index' => $index,
-                            'machine_id' => $design->machineType?->machine?->public_id,
+                            'machine_id' => $design->machine?->public_id ?? $design->machineType?->machine?->public_id,
                             'machine_type_id' => $design->machine_type_id,
                             'category_id' => $design->category_id,
                             'listed' => $design->deleted_at === null,
@@ -244,10 +244,15 @@ class DesignImageMatchingService
                 $designQuery->listed()
                     ->when($filters['categoryId'] ?? null, fn ($query, $id) => $query->where('category_id', $id))
                     ->when($filters['machineTypeId'] ?? null, fn ($query, $id) => $query->where('machine_type_id', $id))
-                    ->when($filters['machineId'] ?? null, fn ($query, $id) => $query->whereHas(
-                        'machineType.machine',
-                        fn ($machineQuery) => $machineQuery->where('public_id', $id),
-                    ));
+                    ->when($filters['machineId'] ?? null, fn ($query, $id) => $query->where(function ($machineFilter) use ($id) {
+                        $machineFilter
+                            ->whereHas('machine', fn ($machineQuery) => $machineQuery->where('public_id', $id))
+                            ->orWhere(function ($legacyQuery) use ($id) {
+                                $legacyQuery
+                                    ->whereNull('machine_id')
+                                    ->whereHas('machineType.machine', fn ($machineQuery) => $machineQuery->where('public_id', $id));
+                            });
+                    }));
             })
             ->when($ignoreDesignId, fn ($builder) => $builder->where('design_id', '!=', $ignoreDesignId));
 

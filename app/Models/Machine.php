@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\MachineDesignFormConfig;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,11 +11,11 @@ use Illuminate\Support\Str;
 
 class Machine extends Model
 {
-    protected $fillable = ['public_id', 'name', 'image_path', 'is_active', 'sort_order'];
+    protected $fillable = ['public_id', 'name', 'image_path', 'design_form_config', 'is_active', 'sort_order'];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean', 'sort_order' => 'integer'];
+        return ['design_form_config' => 'array', 'is_active' => 'boolean', 'sort_order' => 'integer'];
     }
 
     protected static function booted(): void
@@ -29,6 +30,17 @@ class Machine extends Model
     public function machineTypes(): HasMany
     {
         return $this->hasMany(MachineType::class);
+    }
+
+    public function designs(): HasMany
+    {
+        return $this->hasMany(Design::class);
+    }
+
+    /** @return array<string, bool> */
+    public function normalizedDesignFormConfig(): array
+    {
+        return MachineDesignFormConfig::normalize($this->design_form_config);
     }
 
     public function imageUrl(): ?string

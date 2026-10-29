@@ -59,7 +59,7 @@ class DesignAdminController extends Controller
 
         $designs = Design::query()
             ->listed()
-            ->with(['owner', 'type.category', 'machineType.machine', 'fileType'])
+            ->with(['owner', 'type.category', 'machine', 'machineType.machine', 'fileType'])
             ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search) {
                 $searchQuery
                     ->where('title', 'like', "%{$search}%")
@@ -70,10 +70,15 @@ class DesignAdminController extends Controller
                         ->orWhere('mobile_number', 'like', "%{$search}%"));
             }))
             ->when($ownerId !== '', fn ($query) => $query->whereHas('owner', fn ($ownerQuery) => $ownerQuery->where('public_id', $ownerId)))
-            ->when($machineId !== '', fn ($query) => $query->whereHas(
-                'machineType.machine',
-                fn ($machineQuery) => $machineQuery->where('public_id', $machineId),
-            ))
+            ->when($machineId !== '', fn ($query) => $query->where(function ($machineFilter) use ($machineId) {
+                $machineFilter
+                    ->whereHas('machine', fn ($machineQuery) => $machineQuery->where('public_id', $machineId))
+                    ->orWhere(function ($legacyQuery) use ($machineId) {
+                        $legacyQuery
+                            ->whereNull('machine_id')
+                            ->whereHas('machineType.machine', fn ($machineQuery) => $machineQuery->where('public_id', $machineId));
+                    });
+            }))
             ->when($fileTypeId !== '', fn ($query) => $query->whereHas('fileType', fn ($fileTypeQuery) => $fileTypeQuery->where('public_id', $fileTypeId)))
             ->latest('created_at')
             ->paginate(20)
@@ -151,7 +156,7 @@ class DesignAdminController extends Controller
         $matches = collect($matches);
         $designs = Design::query()
             ->listed()
-            ->with(['owner', 'type.category', 'machineType.machine', 'fileType'])
+            ->with(['owner', 'type.category', 'machine', 'machineType.machine', 'fileType'])
             ->whereIn('public_id', $matches->pluck('designId'))
             ->get()
             ->keyBy('public_id');
@@ -181,7 +186,7 @@ class DesignAdminController extends Controller
 
         return array_merge($presented, [
             'ownerName' => $design->owner?->name,
-            'machineName' => $design->machineType?->machine?->name,
+            'machineName' => $design->machine?->name ?? $design->machineType?->machine?->name,
             'machineTypeName' => $design->machineType?->name,
             'thumbnailUri' => $presented['images'][0]['thumbnailUri'] ?? $presented['imageUri'],
         ]);
@@ -213,6 +218,7 @@ class DesignAdminController extends Controller
                 'user_id' => $owner->id,
                 'design_type_id' => $validated['designTypeId'],
                 'design_file_type_id' => $validated['designFileTypeId'],
+                'machine_id' => $validated['machineDbId'],
                 'machine_type_id' => $validated['machineTypeId'],
                 'category_id' => $validated['categoryId'],
                 'title' => $validated['title'],
@@ -242,7 +248,7 @@ class DesignAdminController extends Controller
     {
         $model = Design::query()
             ->listed()
-            ->with(['owner', 'type.category', 'fileType', 'machineType.machine', 'variants.type'])
+            ->with(['owner', 'type.category', 'fileType', 'machine', 'machineType.machine', 'variants.type'])
             ->where('public_id', $design)
             ->firstOrFail();
 
@@ -254,7 +260,7 @@ class DesignAdminController extends Controller
                 'ownerId' => $model->owner?->public_id,
                 'categoryId' => $model->category_id ?? $model->type?->category?->public_id,
                 'machineTypeId' => $model->machine_type_id,
-                'machineId' => $model->machineType?->machine?->public_id,
+                'machineId' => $model->machine?->public_id ?? $model->machineType?->machine?->public_id,
                 'designFileTypeId' => $model->fileType?->public_id,
                 'sequenceType' => $model->sequence_type,
                 'priceRupees' => $model->price_paise !== null ? number_format($model->price_paise / 100, 2, '.', '') : '',
@@ -308,6 +314,7 @@ class DesignAdminController extends Controller
                 'user_id' => $owner->id,
                 'design_type_id' => $validated['designTypeId'],
                 'design_file_type_id' => $validated['designFileTypeId'],
+                'machine_id' => $validated['machineDbId'],
                 'machine_type_id' => $validated['machineTypeId'],
                 'category_id' => $validated['categoryId'],
                 'title' => $validated['title'],
@@ -504,6 +511,7 @@ class DesignAdminController extends Controller
             'ownerId' => $validated['ownerId'],
             'designTypeId' => $selection['design_type_id'],
             'designFileTypeId' => $fileType->id,
+            'machineDbId' => $machineType->machine_id,
             'machineTypeId' => $selection['machine_type_id'],
             'categoryId' => $selection['category_id'],
             'title' => $firstVariant['name_or_number'],
@@ -639,6 +647,7 @@ class DesignAdminController extends Controller
             ->map(fn (Machine $machine) => [
                 'id' => $machine->public_id,
                 'name' => $machine->name,
+                'designFormConfig' => $machine->normalizedDesignFormConfig(),
                 'machineTypes' => $machine->machineTypes->map(fn (MachineType $machineType) => [
                     'id' => $machineType->public_id,
                     'name' => $machineType->name,

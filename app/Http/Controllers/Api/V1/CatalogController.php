@@ -71,6 +71,7 @@ class CatalogController extends Controller
                 'id' => $machine->public_id,
                 'name' => $machine->name,
                 'imageUri' => $machine->imageUrl(),
+                'designFormConfig' => $machine->normalizedDesignFormConfig(),
             ]);
 
         return ApiResponse::data($machines->values(), message: 'Machines retrieved successfully.');
@@ -191,6 +192,7 @@ class CatalogController extends Controller
                 'id' => $machine->public_id,
                 'name' => $machine->name,
                 'imageUri' => $machine->imageUrl(),
+                'designFormConfig' => $machine->normalizedDesignFormConfig(),
                 'machineTypeIds' => $machine->machineTypes->pluck('public_id')->values(),
                 'designFileTypeIds' => $machine->designFileTypes->pluck('public_id')->values(),
             ])->values(),
