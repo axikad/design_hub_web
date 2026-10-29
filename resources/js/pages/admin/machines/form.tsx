@@ -11,16 +11,18 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, Cpu, ImageIcon, LoaderCircle, Save, SlidersHorizontal, Trash2, Upload } from 'lucide-react';
 import { type ChangeEvent, type FormEventHandler, useRef, useState } from 'react';
 
-type DesignFormConfig = {
-    machineType: boolean;
-    category: boolean;
-    designTypes: boolean;
-    designSpecifications: boolean;
-    sequenceType: boolean;
-    designFileType: boolean;
-    previewImages: boolean;
-    stitchFiles: boolean;
-    pricing: boolean;
+type DesignFieldKey =
+    | 'machineType'
+    | 'category'
+    | 'designTypes'
+    | 'designSpecifications'
+    | 'sequenceType'
+    | 'designFileType'
+    | 'previewImages'
+    | 'stitchFiles'
+    | 'pricing';
+type DesignFormConfig = Record<DesignFieldKey, boolean> & {
+    required: Record<DesignFieldKey, boolean>;
 };
 type MachineForm = {
     id: string;
@@ -41,16 +43,16 @@ type MachineFormData = {
     _method: 'post' | 'put';
 };
 
-const designFieldOptions: { key: keyof DesignFormConfig; label: string; description: string }[] = [
-    { key: 'machineType', label: 'Machine type', description: 'Require a machine type selection.' },
-    { key: 'category', label: 'Category', description: 'Require a compatible category.' },
+const designFieldOptions: { key: DesignFieldKey; label: string; description: string }[] = [
+    { key: 'machineType', label: 'Machine type', description: 'Select a machine type for the design.' },
+    { key: 'category', label: 'Category', description: 'Select a compatible category.' },
     { key: 'designTypes', label: 'Design types', description: 'Allow catalog and custom design types.' },
     { key: 'designSpecifications', label: 'Design type specifications', description: 'Collect stitch count, needle, area, height and width.' },
     { key: 'sequenceType', label: 'Sequence type', description: 'Collect the common sequence measurement in mm.' },
-    { key: 'designFileType', label: 'Design file type', description: 'Require EMB, DST, DHB or another configured format.' },
-    { key: 'previewImages', label: 'Preview images', description: 'Require at least one preview image.' },
-    { key: 'stitchFiles', label: 'Stitch files', description: 'Require at least one uploaded machine file.' },
-    { key: 'pricing', label: 'Pricing', description: 'Require a selling price for the design.' },
+    { key: 'designFileType', label: 'Design file type', description: 'Select EMB, DST, DHB or another configured format.' },
+    { key: 'previewImages', label: 'Preview images', description: 'Upload preview images for the design.' },
+    { key: 'stitchFiles', label: 'Stitch files', description: 'Upload machine files for the design.' },
+    { key: 'pricing', label: 'Pricing', description: 'Set a selling price for the design.' },
 ];
 
 export default function AdminMachineForm({ machine, nextSortOrder, defaultDesignFormConfig }: Props) {
@@ -72,16 +74,36 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
         _method: editing ? 'put' : 'post',
     });
 
-    const toggleDesignField = (key: keyof DesignFormConfig, enabled: boolean) => {
+    const toggleDesignField = (key: DesignFieldKey, enabled: boolean) => {
         setData('designFormConfig', {
             ...data.designFormConfig,
             [key]: enabled,
+            required: {
+                ...data.designFormConfig.required,
+                ...(!enabled ? { [key]: false } : {}),
+                ...(key === 'category' && !enabled ? { designTypes: false, designSpecifications: false } : {}),
+                ...(key === 'designTypes' && !enabled ? { designSpecifications: false } : {}),
+            },
             ...(key === 'category' && !enabled ? { designTypes: false, designSpecifications: false } : {}),
             ...(key === 'designTypes' && !enabled ? { designSpecifications: false } : {}),
         });
     };
 
-    const designFieldDisabled = (key: keyof DesignFormConfig) =>
+    const toggleRequiredField = (key: DesignFieldKey, required: boolean) => {
+        setData('designFormConfig', {
+            ...data.designFormConfig,
+            required: {
+                ...data.designFormConfig.required,
+                [key]: required,
+                ...(key === 'category' && !required ? { designTypes: false, designSpecifications: false } : {}),
+                ...(key === 'designTypes' && !required ? { designSpecifications: false } : {}),
+                ...(key === 'designTypes' && required ? { category: true } : {}),
+                ...(key === 'designSpecifications' && required ? { category: true, designTypes: true } : {}),
+            },
+        });
+    };
+
+    const designFieldDisabled = (key: DesignFieldKey) =>
         (key === 'designTypes' && !data.designFormConfig.category) || (key === 'designSpecifications' && !data.designFormConfig.designTypes);
 
     const submit: FormEventHandler = (event) => {
@@ -210,25 +232,35 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
                         description="Choose which fields are used when a design is created for this machine."
                         icon={SlidersHorizontal}
                     >
-                        <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-3">
                             {designFieldOptions.map((option) => (
-                                <label
+                                <div
                                     key={option.key}
-                                    className={`flex items-start gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700 ${
+                                    className={`grid gap-4 rounded-xl border border-slate-200 p-4 sm:grid-cols-[1fr_auto_auto] sm:items-center dark:border-slate-700 ${
                                         designFieldDisabled(option.key) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
                                     }`}
                                 >
-                                    <Checkbox
-                                        checked={data.designFormConfig[option.key]}
-                                        disabled={designFieldDisabled(option.key)}
-                                        onCheckedChange={(value) => toggleDesignField(option.key, value === true)}
-                                        className="mt-0.5"
-                                    />
                                     <span>
                                         <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">{option.label}</span>
                                         <span className="mt-1 block text-xs text-slate-500">{option.description}</span>
                                     </span>
-                                </label>
+                                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                                        <Checkbox
+                                            checked={data.designFormConfig[option.key]}
+                                            disabled={designFieldDisabled(option.key)}
+                                            onCheckedChange={(value) => toggleDesignField(option.key, value === true)}
+                                        />
+                                        Show field
+                                    </label>
+                                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                                        <Checkbox
+                                            checked={data.designFormConfig.required[option.key]}
+                                            disabled={designFieldDisabled(option.key) || !data.designFormConfig[option.key]}
+                                            onCheckedChange={(value) => toggleRequiredField(option.key, value === true)}
+                                        />
+                                        Required
+                                    </label>
+                                </div>
                             ))}
                         </div>
                         <InputError message={errors.designFormConfig} />

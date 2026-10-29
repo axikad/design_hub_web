@@ -64,8 +64,8 @@ type User = {
 };
 type DesignRequest = {
     machineId: string; // Always send the selected machine.
-    machineTypeId?: string; // Required only when designFormConfig.machineType is true.
-    categoryId?: string; // Required only when designFormConfig.category is true.
+    machineTypeId?: string; // Show when machineType is true; require when required.machineType is true.
+    categoryId?: string; // Show when category is true; require when required.category is true.
     title?: string; // Required when design specifications are disabled.
     sequenceType?: number; // Used only when enabled; common design value in millimetres (mm).
     designTypes?: Array<{
@@ -80,10 +80,10 @@ type DesignRequest = {
             width: number; // mm
         };
     }>;
-    designFileTypeId?: string; // Required only when designFormConfig.designFileType is true.
+    designFileTypeId?: string; // Show when designFileType is true; require when required.designFileType is true.
     showPrice: boolean;
     publishDate?: string; // YYYY-MM-DD; defaults to today in marketplace timezone
-    pricePaise?: number; // Required only when designFormConfig.pricing is true.
+    pricePaise?: number; // Show when pricing is true; require when required.pricing is true.
     images?: Array<{ name: string; uri: string }>;
     files?: Array<{ name: string; uri: string; displayName?: string }>;
 };
@@ -188,7 +188,7 @@ Tomorrow designs use `publishDate` and are excluded from latest and category lis
 
 Clients should send `machineId` when creating or updating a design. Older requests can still be resolved from `machineTypeId` when that field is enabled. After selecting a machine, load its compatible formats from `/catalog/machines/:machineId/design-file-types` (or `/catalog/design-file-types?machineId=...`). The backend rejects a `designFileTypeId` that is not connected to the selected machine.
 
-Every machine returned by `/auth/register/machines`, `/users/me/machines`, `/catalog/machines`, and `/catalog/design-options` includes `imageUri` and `designFormConfig`. Build the create/edit form from those booleans. Disabled fields must be hidden and omitted from the request; backend validation follows the same configuration. Existing machines default to all fields enabled. `imageUri` is an absolute public image URL when an admin uploaded a machine image, otherwise `null`.
+Every machine returned by `/auth/register/machines`, `/users/me/machines`, `/catalog/machines`, and `/catalog/design-options` includes `imageUri` and `designFormConfig`. Build the create/edit form from its top-level visibility booleans. The nested `designFormConfig.required` object contains matching booleans that decide whether each visible field is mandatory. Hidden fields must be omitted from the request; backend validation follows the same configuration. Existing machines keep their previous behaviour: enabled fields are required until an admin changes them. `imageUri` is an absolute public image URL when an admin uploaded a machine image, otherwise `null`.
 
 `machineType`, `designFileType`, and `stitchFiles` are independent switches. When `machineType` is disabled but `category` is enabled, load the combined category list from `/catalog/machines/:machineId/categories` and omit `machineTypeId`. `designTypes` depends on `category`, while `designSpecifications` depends on `designTypes`. A design file type is filtered by `machineId` and can remain enabled even when stitch-file upload is disabled.
 

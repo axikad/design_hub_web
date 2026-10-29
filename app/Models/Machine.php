@@ -37,7 +37,7 @@ class Machine extends Model
         return $this->hasMany(Design::class);
     }
 
-    /** @return array<string, bool> */
+    /** @return array<string, bool|array<string, bool>> */
     public function normalizedDesignFormConfig(): array
     {
         return MachineDesignFormConfig::normalize($this->design_form_config);

@@ -44,7 +44,57 @@ class MachineDesignFormConfigApiTest extends TestCase
             ->assertJsonPath('data.0.designFormConfig.designSpecifications', true)
             ->assertJsonPath('data.0.designFormConfig.stitchFiles', false)
             ->assertJsonPath('data.0.designFormConfig.designFileType', true)
-            ->assertJsonPath('data.0.designFormConfig.previewImages', true);
+            ->assertJsonPath('data.0.designFormConfig.previewImages', true)
+            ->assertJsonPath('data.0.designFormConfig.required.machineType', false)
+            ->assertJsonPath('data.0.designFormConfig.required.category', true)
+            ->assertJsonPath('data.0.designFormConfig.required.stitchFiles', false)
+            ->assertJsonPath('data.0.designFormConfig.required.previewImages', true);
+    }
+
+    public function test_visible_fields_can_be_optional_for_a_machine(): void
+    {
+        $machine = Machine::query()->create([
+            'public_id' => 'optional-fields-machine',
+            'name' => 'Optional Fields Machine',
+            'is_active' => true,
+            'sort_order' => 1,
+            'design_form_config' => [
+                'machineType' => true,
+                'category' => true,
+                'designTypes' => true,
+                'designSpecifications' => true,
+                'sequenceType' => true,
+                'designFileType' => true,
+                'previewImages' => true,
+                'stitchFiles' => true,
+                'pricing' => true,
+                'required' => array_fill_keys([
+                    'machineType',
+                    'category',
+                    'designTypes',
+                    'designSpecifications',
+                    'sequenceType',
+                    'designFileType',
+                    'previewImages',
+                    'stitchFiles',
+                    'pricing',
+                ], false),
+            ],
+        ]);
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/designs', [
+            'machineId' => $machine->public_id,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.machineId', $machine->public_id)
+            ->assertJsonPath('data.machineTypeId', null)
+            ->assertJsonPath('data.categoryId', null)
+            ->assertJsonPath('data.pricePaise', 0)
+            ->assertJsonCount(0, 'data.designTypes')
+            ->assertJsonCount(0, 'data.images')
+            ->assertJsonCount(0, 'data.files');
     }
 
     public function test_design_can_be_created_with_only_fields_enabled_for_its_machine(): void

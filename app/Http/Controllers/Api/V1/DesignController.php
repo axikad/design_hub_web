@@ -251,35 +251,36 @@ class DesignController extends Controller
     {
         $machine = $this->resolvePayloadMachine($request, $existingDesign);
         $config = $machine?->normalizedDesignFormConfig() ?? MachineDesignFormConfig::defaults();
+        $required = $config['required'];
 
         $validated = $request->validate([
             'machineId' => ['sometimes', 'nullable', 'string', Rule::exists('machines', 'public_id')->where('is_active', true)],
-            'machineTypeId' => [$config['machineType'] ? 'required' : 'nullable', 'string', 'max:120'],
-            'categoryId' => [$config['category'] ? 'required' : 'nullable', 'string', 'max:120'],
+            'machineTypeId' => [$config['machineType'] && $required['machineType'] ? 'required' : 'nullable', 'string', 'max:120'],
+            'categoryId' => [$config['category'] && $required['category'] ? 'required' : 'nullable', 'string', 'max:120'],
             'showPrice' => ['sometimes', 'boolean'],
             'publishDate' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
             'title' => [$config['designSpecifications'] ? 'nullable' : 'required', 'string', 'min:1', 'max:120'],
-            'pricePaise' => [$config['pricing'] ? 'required' : 'nullable', 'integer', 'min:'.($config['pricing'] ? 100 : 0), 'max:100000000'],
-            'sequenceType' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'pricePaise' => [$config['pricing'] && $required['pricing'] ? 'required' : 'nullable', 'integer', 'min:'.($config['pricing'] ? 100 : 0), 'max:100000000'],
+            'sequenceType' => [$config['sequenceType'] && $required['sequenceType'] ? 'required' : 'sometimes', 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'size' => ['sometimes', 'nullable', 'string', 'max:120'],
             'color' => ['sometimes', 'nullable', 'string', 'max:120'],
-            'imageUri' => [$config['previewImages'] ? 'required_without:images' : 'sometimes', 'nullable', 'string'],
-            'fileName' => [$config['stitchFiles'] ? 'required_without:files' : 'sometimes', 'nullable', 'string', 'max:255'],
-            'fileUri' => [$config['stitchFiles'] ? 'required_without:files' : 'sometimes', 'nullable', 'string'],
-            'typeId' => [$config['designTypes'] ? 'required_without:designTypes' : 'sometimes', 'nullable', 'string', 'max:120'],
-            'designTypes' => [$config['designTypes'] ? 'required_without:typeId' : 'sometimes', 'nullable', 'array', 'min:1', 'max:20'],
+            'imageUri' => [$config['previewImages'] && $required['previewImages'] ? 'required_without:images' : 'sometimes', 'nullable', 'string'],
+            'fileName' => [$config['stitchFiles'] && $required['stitchFiles'] ? 'required_without:files' : 'sometimes', 'nullable', 'string', 'max:255'],
+            'fileUri' => [$config['stitchFiles'] && $required['stitchFiles'] ? 'required_without:files' : 'sometimes', 'nullable', 'string'],
+            'typeId' => [$config['designTypes'] && $required['designTypes'] ? 'required_without:designTypes' : 'sometimes', 'nullable', 'string', 'max:120'],
+            'designTypes' => [$config['designTypes'] && $required['designTypes'] ? 'required_without:typeId' : 'sometimes', 'nullable', 'array', 'min:1', 'max:20'],
             'designTypes.*.typeId' => ['nullable', 'string', 'max:120'],
             'designTypes.*.customTypeName' => ['nullable', 'string', 'min:1', 'max:120'],
-            'designTypes.*.details' => [$config['designSpecifications'] ? 'required' : 'sometimes', 'array'],
-            'designTypes.*.details.nameOrNumber' => [$config['designSpecifications'] ? 'required' : 'sometimes', 'string', 'max:120'],
-            'designTypes.*.details.stitchCount' => [$config['designSpecifications'] ? 'required' : 'sometimes', 'integer', 'min:0'],
-            'designTypes.*.details.needle' => [$config['designSpecifications'] ? 'required' : 'sometimes', 'integer', 'min:0'],
+            'designTypes.*.details' => [$config['designSpecifications'] && $required['designSpecifications'] ? 'required' : 'sometimes', 'array'],
+            'designTypes.*.details.nameOrNumber' => [$config['designSpecifications'] && $required['designSpecifications'] ? 'required' : 'sometimes', 'string', 'max:120'],
+            'designTypes.*.details.stitchCount' => [$config['designSpecifications'] && $required['designSpecifications'] ? 'required' : 'sometimes', 'integer', 'min:0'],
+            'designTypes.*.details.needle' => [$config['designSpecifications'] && $required['designSpecifications'] ? 'required' : 'sometimes', 'integer', 'min:0'],
             'designTypes.*.details.sequenceType' => ['sometimes', 'numeric', 'min:0', 'max:9999999999.99'],
-            'designTypes.*.details.area' => [$config['designSpecifications'] ? 'required' : 'sometimes', 'numeric', 'min:0', 'max:9999999999.99'],
-            'designTypes.*.details.height' => [$config['designSpecifications'] ? 'required' : 'sometimes', 'numeric', 'min:0', 'max:9999999999.99'],
-            'designTypes.*.details.width' => [$config['designSpecifications'] ? 'required' : 'sometimes', 'numeric', 'min:0', 'max:9999999999.99'],
+            'designTypes.*.details.area' => [$config['designSpecifications'] && $required['designSpecifications'] ? 'required' : 'sometimes', 'numeric', 'min:0', 'max:9999999999.99'],
+            'designTypes.*.details.height' => [$config['designSpecifications'] && $required['designSpecifications'] ? 'required' : 'sometimes', 'numeric', 'min:0', 'max:9999999999.99'],
+            'designTypes.*.details.width' => [$config['designSpecifications'] && $required['designSpecifications'] ? 'required' : 'sometimes', 'numeric', 'min:0', 'max:9999999999.99'],
             'designFileTypeId' => [
-                $config['designFileType'] ? 'required' : 'nullable',
+                $config['designFileType'] && $required['designFileType'] ? 'required' : 'nullable',
                 'string',
                 Rule::exists('design_file_types', 'public_id')->where('is_active', true),
             ],
@@ -360,25 +361,27 @@ class DesignController extends Controller
         $files = [];
 
         try {
-            if ($config['previewImages']) {
+            $imageAttachments = $validated['images'] ?? (filled($validated['imageUri'] ?? null) ? [[
+                'name' => basename(parse_url($validated['imageUri'], PHP_URL_PATH) ?: 'preview.jpg'),
+                'uri' => $validated['imageUri'],
+            ]] : []);
+            if ($config['previewImages'] && $imageAttachments !== []) {
                 $images = $this->resolveAttachments(
                     $request,
-                    $validated['images'] ?? [[
-                        'name' => basename(parse_url($validated['imageUri'], PHP_URL_PATH) ?: 'preview.jpg'),
-                        'uri' => $validated['imageUri'],
-                    ]],
+                    $imageAttachments,
                     'photo',
                     'images',
                 );
             }
 
-            if ($config['stitchFiles']) {
+            $fileAttachments = $validated['files'] ?? (filled($validated['fileUri'] ?? null) ? [[
+                'name' => $validated['fileName'] ?? basename(parse_url($validated['fileUri'], PHP_URL_PATH) ?: 'design.dst'),
+                'uri' => $validated['fileUri'],
+            ]] : []);
+            if ($config['stitchFiles'] && $fileAttachments !== []) {
                 $files = $this->resolveAttachments(
                     $request,
-                    $validated['files'] ?? [[
-                        'name' => $validated['fileName'],
-                        'uri' => $validated['fileUri'],
-                    ]],
+                    $fileAttachments,
                     'stitch',
                     'files',
                 );
@@ -387,11 +390,11 @@ class DesignController extends Controller
             throw ValidationException::withMessages(['imageUri' => $exception->getMessage()]);
         }
 
-        if ($config['previewImages'] && $images === []) {
+        if ($config['previewImages'] && $required['previewImages'] && $images === []) {
             throw ValidationException::withMessages(['imageUri' => 'At least one preview image is required.']);
         }
 
-        if ($config['stitchFiles'] && $files === []) {
+        if ($config['stitchFiles'] && $required['stitchFiles'] && $files === []) {
             throw ValidationException::withMessages(['fileUri' => 'At least one stitch file is required.']);
         }
 
@@ -402,7 +405,7 @@ class DesignController extends Controller
                 $config['designSpecifications'],
                 $validated['title'] ?? null,
             );
-        } elseif ($config['designTypes']) {
+        } elseif ($config['designTypes'] && filled($validated['typeId'] ?? null)) {
             [$variants, $details] = $this->resolveLegacyVariant(
                 $validated,
                 $selection['design_type_id'],
@@ -444,7 +447,7 @@ class DesignController extends Controller
             'images' => $images,
             'files' => $files,
             'title' => $firstVariant['name_or_number'],
-            'pricePaise' => $config['pricing'] ? $validated['pricePaise'] : 0,
+            'pricePaise' => $config['pricing'] ? ($validated['pricePaise'] ?? 0) : 0,
             'sequenceType' => $config['sequenceType'] ? $sequenceType : 0,
             'size' => $summarySize,
             'color' => trim($validated['color'] ?? ''),
@@ -521,7 +524,7 @@ class DesignController extends Controller
     {
         $machineType = null;
 
-        if ($config['machineType']) {
+        if ($config['machineType'] && filled($validated['machineTypeId'] ?? null)) {
             $machineType = MachineType::query()
                 ->where('public_id', $validated['machineTypeId'])
                 ->where('is_active', true)
@@ -534,7 +537,13 @@ class DesignController extends Controller
             }
         }
 
-        if (! $config['category']) {
+        if (! $config['category'] || blank($validated['categoryId'] ?? null)) {
+            if ($config['designTypes'] && ($catalogTypeIds->isNotEmpty() || filled($validated['typeId'] ?? null))) {
+                throw ValidationException::withMessages([
+                    'categoryId' => 'Select a category before adding design types.',
+                ]);
+            }
+
             return [
                 'design_type_id' => null,
                 'category_id' => null,
@@ -634,17 +643,18 @@ class DesignController extends Controller
             }
 
             $details = $item['details'] ?? [];
+            $hasSpecifications = $withSpecifications && $details !== [];
             $fallbackName = trim((string) ($fallbackTitle ?: ($type?->name ?? $item['customTypeName'] ?? 'Design')));
 
             return [
                 'design_type_id' => $type?->id,
                 'custom_type_name' => $typeId ? null : trim($item['customTypeName']),
-                'name_or_number' => $withSpecifications ? trim($details['nameOrNumber']) : $fallbackName,
-                'stitch_count' => $withSpecifications ? $details['stitchCount'] : 0,
-                'needle' => $withSpecifications ? $details['needle'] : 0,
-                'area' => $withSpecifications ? $details['area'] : 0,
-                'height' => $withSpecifications ? $details['height'] : 0,
-                'width' => $withSpecifications ? $details['width'] : 0,
+                'name_or_number' => $hasSpecifications ? trim((string) ($details['nameOrNumber'] ?? $fallbackName)) : $fallbackName,
+                'stitch_count' => $hasSpecifications ? ($details['stitchCount'] ?? 0) : 0,
+                'needle' => $hasSpecifications ? ($details['needle'] ?? 0) : 0,
+                'area' => $hasSpecifications ? ($details['area'] ?? 0) : 0,
+                'height' => $hasSpecifications ? ($details['height'] ?? 0) : 0,
+                'width' => $hasSpecifications ? ($details['width'] ?? 0) : 0,
                 'sort_order' => $index,
             ];
         })->values()->all();

@@ -151,6 +151,16 @@ class MachineAdminController extends Controller
             'designFormConfig.previewImages' => ['required_with:designFormConfig', 'boolean'],
             'designFormConfig.stitchFiles' => ['required_with:designFormConfig', 'boolean'],
             'designFormConfig.pricing' => ['required_with:designFormConfig', 'boolean'],
+            'designFormConfig.required' => ['sometimes', 'array'],
+            'designFormConfig.required.machineType' => ['sometimes', 'boolean'],
+            'designFormConfig.required.category' => ['sometimes', 'boolean'],
+            'designFormConfig.required.designTypes' => ['sometimes', 'boolean'],
+            'designFormConfig.required.designSpecifications' => ['sometimes', 'boolean'],
+            'designFormConfig.required.sequenceType' => ['sometimes', 'boolean'],
+            'designFormConfig.required.designFileType' => ['sometimes', 'boolean'],
+            'designFormConfig.required.previewImages' => ['sometimes', 'boolean'],
+            'designFormConfig.required.stitchFiles' => ['sometimes', 'boolean'],
+            'designFormConfig.required.pricing' => ['sometimes', 'boolean'],
         ]);
 
         return [
