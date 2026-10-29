@@ -146,6 +146,44 @@ class DesignManagementTest extends TestCase
         $this->assertDatabaseMissing('designs', ['title' => 'Invalid selection']);
     }
 
+    public function test_admin_can_create_a_design_with_only_fields_enabled_for_the_machine(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $admin = User::factory()->superAdmin()->create();
+        $owner = User::factory()->create();
+        $machine = Machine::query()->create([
+            'name' => 'Simple Machine',
+            'design_form_config' => [
+                'machineType' => false,
+                'category' => false,
+                'designTypes' => false,
+                'designSpecifications' => false,
+                'sequenceType' => false,
+                'designFileType' => false,
+                'previewImages' => false,
+                'stitchFiles' => false,
+                'pricing' => false,
+            ],
+        ]);
+
+        $this->actingAs($admin)->post('/admin/designs', [
+            'ownerId' => $owner->public_id,
+            'machineId' => $machine->public_id,
+        ])->assertRedirect(route('admin.designs.index'));
+
+        $design = Design::query()->firstOrFail();
+        $this->assertSame($machine->id, $design->machine_id);
+        $this->assertNull($design->machine_type_id);
+        $this->assertNull($design->category_id);
+        $this->assertNull($design->design_file_type_id);
+        $this->assertSame('Untitled design', $design->title);
+        $this->assertSame(0, $design->price_paise);
+        $this->assertNull($design->preview_path);
+        $this->assertNull($design->stitch_path);
+        $this->assertCount(0, $design->variants);
+    }
+
     public function test_admin_can_replace_design_type_variants_when_editing(): void
     {
         Storage::fake('public');

@@ -15,7 +15,22 @@ type OwnerOption = { id: string; label: string };
 type TypeOption = { id: string; name: string };
 type CategoryOption = { id: string; name: string; types: TypeOption[] };
 type MachineTypeOption = { id: string; name: string; categories: CategoryOption[] };
-type MachineOption = { id: string; name: string; machineTypes: MachineTypeOption[] };
+type DesignFieldKey =
+    | 'machineType'
+    | 'category'
+    | 'designTypes'
+    | 'designSpecifications'
+    | 'sequenceType'
+    | 'designFileType'
+    | 'previewImages'
+    | 'stitchFiles'
+    | 'pricing';
+type SpecificationFieldKey = 'nameOrNumber' | 'stitchCount' | 'needle' | 'area' | 'height' | 'width';
+type DesignFormConfig = Record<DesignFieldKey, boolean> & {
+    required: Record<DesignFieldKey, boolean>;
+    specificationFields: Record<SpecificationFieldKey, boolean> & { required: Record<SpecificationFieldKey, boolean> };
+};
+type MachineOption = { id: string; name: string; designFormConfig: DesignFormConfig; machineTypes: MachineTypeOption[] };
 type FileTypeOption = { id: string; name: string; extension: string; machineIds: string[] };
 type VariantInput = {
     typeId: string;
@@ -47,6 +62,8 @@ type Props = {
     fileTypes: FileTypeOption[];
 };
 
+const uniqueCategories = (categories: CategoryOption[]) => Array.from(new Map(categories.map((category) => [category.id, category])).values());
+
 const selectClass = 'h-11 rounded-xl border-slate-200 dark:border-slate-700';
 const inputClass = 'h-11 rounded-xl border-slate-200 focus-visible:border-indigo-500 dark:border-slate-700';
 
@@ -70,9 +87,15 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
     const initialMachine =
         catalog.find((machine) => machine.id === design?.machineId || machine.machineTypes.some((type) => type.id === design?.machineTypeId)) ??
         catalog[0];
-    const initialMachineType = initialMachine?.machineTypes.find((type) => type.id === design?.machineTypeId) ?? initialMachine?.machineTypes[0];
+    const initialConfig = initialMachine?.designFormConfig;
+    const initialMachineType = initialConfig?.machineType
+        ? (initialMachine?.machineTypes.find((type) => type.id === design?.machineTypeId) ?? initialMachine?.machineTypes[0])
+        : undefined;
+    const initialCategories = initialConfig?.machineType
+        ? (initialMachineType?.categories ?? [])
+        : uniqueCategories(initialMachine?.machineTypes.flatMap((type) => type.categories) ?? []);
     const initialCategory =
-        initialMachineType?.categories.find((category) => category.id === design?.categoryId) ?? initialMachineType?.categories[0];
+        initialCategories.find((category) => category.id === design?.categoryId) ?? (initialConfig?.category ? initialCategories[0] : undefined);
     const initialType = initialCategory?.types[0];
     const initialFileTypes = fileTypes.filter((fileType) => fileType.machineIds.includes(initialMachine?.id ?? ''));
     const initialFileType = initialFileTypes.find((fileType) => fileType.id === design?.designFileTypeId) ?? initialFileTypes[0];
@@ -100,40 +123,50 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                   height: variant.height.toString(),
                   width: variant.width.toString(),
               }))
-            : initialType
+            : initialConfig?.designTypes && initialType
               ? [emptyVariant(initialType.id)]
               : [],
         previewImages: [] as File[],
         stitchFiles: [] as File[],
     });
     const { data, setData, post, processing, errors } = form;
-    const machineTypes = catalog.find((machine) => machine.id === data.machineId)?.machineTypes ?? [];
-    const categories = machineTypes.find((type) => type.id === data.machineTypeId)?.categories ?? [];
+    const selectedMachine = catalog.find((machine) => machine.id === data.machineId) ?? catalog[0];
+    const config = selectedMachine?.designFormConfig;
+    const machineTypes = selectedMachine?.machineTypes ?? [];
+    const categories = config?.machineType
+        ? (machineTypes.find((type) => type.id === data.machineTypeId)?.categories ?? [])
+        : uniqueCategories(machineTypes.flatMap((type) => type.categories));
     const types = categories.find((category) => category.id === data.categoryId)?.types ?? [];
     const availableFileTypes = fileTypes.filter((fileType) => fileType.machineIds.includes(data.machineId));
 
     const selectMachine = (machineId: string) => {
-        const machineType = catalog.find((machine) => machine.id === machineId)?.machineTypes[0];
-        const category = machineType?.categories[0];
+        const machine = catalog.find((item) => item.id === machineId);
+        const machineConfig = machine?.designFormConfig;
+        const machineType = machineConfig?.machineType ? machine?.machineTypes[0] : undefined;
+        const availableCategories = machineConfig?.machineType
+            ? (machineType?.categories ?? [])
+            : uniqueCategories(machine?.machineTypes.flatMap((type) => type.categories) ?? []);
+        const category = machineConfig?.category ? availableCategories[0] : undefined;
         const typeId = category?.types[0]?.id;
         const fileTypeId = fileTypes.find((fileType) => fileType.machineIds.includes(machineId))?.id ?? '';
         setData((current) => ({
             ...current,
             machineId,
-            machineTypeId: machineType?.id ?? '',
+            machineTypeId: machineConfig?.machineType ? (machineType?.id ?? '') : '',
             categoryId: category?.id ?? '',
-            variants: typeId ? [emptyVariant(typeId)] : [],
-            designFileTypeId: fileTypeId,
+            variants: machineConfig?.designTypes && typeId ? [emptyVariant(typeId)] : [],
+            designFileTypeId: machineConfig?.designFileType ? fileTypeId : '',
+            sequenceType: machineConfig?.sequenceType ? current.sequenceType : '',
         }));
     };
     const selectMachineType = (machineTypeId: string) => {
-        const category = machineTypes.find((type) => type.id === machineTypeId)?.categories[0];
+        const category = config?.category ? machineTypes.find((type) => type.id === machineTypeId)?.categories[0] : undefined;
         const typeId = category?.types[0]?.id;
         setData((current) => ({
             ...current,
             machineTypeId,
             categoryId: category?.id ?? '',
-            variants: typeId ? [emptyVariant(typeId)] : [],
+            variants: config?.designTypes && typeId ? [emptyVariant(typeId)] : [],
         }));
     };
     const selectCategory = (categoryId: string) => {
@@ -145,7 +178,11 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
         setData('variants', selected ? data.variants.filter((variant) => variant.typeId !== typeId) : [emptyVariant(typeId), ...data.variants]);
     };
     const addCustomType = () => setData('variants', [emptyCustomVariant(), ...data.variants]);
-    const removeVariant = (index: number) => setData('variants', data.variants.filter((_, variantIndex) => variantIndex !== index));
+    const removeVariant = (index: number) =>
+        setData(
+            'variants',
+            data.variants.filter((_, variantIndex) => variantIndex !== index),
+        );
     const updateVariant = (index: number, field: keyof VariantInput, value: string) => {
         setData(
             'variants',
@@ -165,10 +202,10 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
         processing ||
         !owners.length ||
         !catalog.length ||
-        !machineTypes.length ||
-        !categories.length ||
-        !data.variants.length ||
-        !availableFileTypes.length;
+        Boolean(config?.required.machineType && !data.machineTypeId) ||
+        Boolean(config?.required.category && !data.categoryId) ||
+        Boolean(config?.required.designTypes && !data.variants.length) ||
+        Boolean(config?.required.designFileType && !availableFileTypes.length);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -213,273 +250,326 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                     >
                         <div className="grid gap-5 sm:grid-cols-3">
                             <SelectField label="Machine" value={data.machineId} onChange={selectMachine} options={catalog} error={errors.machineId} />
-                            <SelectField
-                                key={`machine-type-${data.machineId}`}
-                                label="Machine type"
-                                value={data.machineTypeId}
-                                onChange={selectMachineType}
-                                options={machineTypes}
-                                error={errors.machineTypeId}
-                                disabled={!machineTypes.length}
-                            />
-                            <SelectField
-                                key={`category-${data.machineTypeId}`}
-                                label="Category"
-                                value={data.categoryId}
-                                onChange={selectCategory}
-                                options={categories}
-                                error={errors.categoryId}
-                                disabled={!categories.length}
-                            />
+                            {config?.machineType ? (
+                                <SelectField
+                                    key={`machine-type-${data.machineId}`}
+                                    label="Machine type"
+                                    value={data.machineTypeId}
+                                    onChange={selectMachineType}
+                                    options={machineTypes}
+                                    error={errors.machineTypeId}
+                                    disabled={!machineTypes.length}
+                                />
+                            ) : null}
+                            {config?.category ? (
+                                <SelectField
+                                    key={`category-${data.machineId}-${data.machineTypeId}`}
+                                    label="Category"
+                                    value={data.categoryId}
+                                    onChange={selectCategory}
+                                    options={categories}
+                                    error={errors.categoryId}
+                                    disabled={!categories.length}
+                                />
+                            ) : null}
                         </div>
-                        <div className="mt-5 grid gap-2">
-                            <div className="flex items-center justify-between gap-3">
-                                <Label>Design types</Label>
-                                <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={addCustomType}>
-                                    <Plus className="size-4" /> Add custom type
-                                </Button>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                                {types.map((type) => {
-                                    const selected = data.variants.some((variant) => variant.typeId === type.id);
+                        {config?.designTypes ? (
+                            <div className="mt-5 grid gap-2">
+                                <div className="flex items-center justify-between gap-3">
+                                    <Label>Design types</Label>
+                                    <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={addCustomType}>
+                                        <Plus className="size-4" /> Add custom type
+                                    </Button>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {types.map((type) => {
+                                        const selected = data.variants.some((variant) => variant.typeId === type.id);
 
-                                    return (
-                                        <button
-                                            key={type.id}
-                                            type="button"
-                                            onClick={() => toggleType(type.id)}
-                                            className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                                                selected
-                                                    ? 'border-indigo-600 bg-indigo-600 text-white'
-                                                    : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
-                                            }`}
-                                        >
-                                            {type.name}
-                                        </button>
-                                    );
-                                })}
+                                        return (
+                                            <button
+                                                key={type.id}
+                                                type="button"
+                                                onClick={() => toggleType(type.id)}
+                                                className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                                                    selected
+                                                        ? 'border-indigo-600 bg-indigo-600 text-white'
+                                                        : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+                                                }`}
+                                            >
+                                                {type.name}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <InputError message={errors.variants} />
                             </div>
-                            <InputError message={errors.variants} />
-                        </div>
+                        ) : null}
                         {!catalog.length ? <p className="mt-4 text-sm text-amber-700">Add active catalog options before creating designs.</p> : null}
                     </AdminFormPanel>
 
-                    <AdminFormPanel
-                        title="Design measurement"
-                        description="This sequence value applies once to the complete design."
-                        icon={Layers3}
-                    >
-                        <div className="max-w-xs">
-                            <VariantField
-                                label="Sequence type"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                suffix="mm"
-                                value={data.sequenceType}
-                                onChange={(value) => setData('sequenceType', value)}
-                                error={errors.sequenceType}
-                            />
-                        </div>
-                    </AdminFormPanel>
-
-                    <AdminFormPanel
-                        title="Design type specifications"
-                        description="Enter separate specifications for every catalog or custom design type."
-                        icon={Layers3}
-                    >
-                        <div className="space-y-4">
-                            {data.variants.map((variant, index) => {
-                                const type = types.find((option) => option.id === variant.typeId);
-                                const isCustom = !variant.typeId;
-                                const fieldError = (field: keyof VariantInput) => (errors as Record<string, string>)[`variants.${index}.${field}`];
-
-                                return (
-                                    <div key={`${variant.typeId || 'custom'}-${index}`} className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
-                                        <div className="mb-4 flex items-center justify-between gap-3">
-                                            <h3 className="font-semibold text-slate-900 dark:text-white">
-                                                {type?.name || variant.customTypeName || 'Custom design type'}
-                                            </h3>
-                                            {isCustom ? (
-                                                <Button type="button" variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => removeVariant(index)}>
-                                                    <Trash2 className="size-4" /> Remove
-                                                </Button>
-                                            ) : null}
-                                        </div>
-                                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                            {isCustom ? (
-                                                <VariantField
-                                                    label="Custom design type name"
-                                                    value={variant.customTypeName}
-                                                    onChange={(value) => updateVariant(index, 'customTypeName', value)}
-                                                    error={fieldError('customTypeName')}
-                                                />
-                                            ) : null}
-                                            <VariantField
-                                                label="Name or number"
-                                                value={variant.nameOrNumber}
-                                                onChange={(value) => updateVariant(index, 'nameOrNumber', value)}
-                                                error={fieldError('nameOrNumber')}
-                                            />
-                                            <VariantField
-                                                label="Stitch count"
-                                                type="number"
-                                                min="0"
-                                                value={variant.stitchCount}
-                                                onChange={(value) => updateVariant(index, 'stitchCount', value)}
-                                                error={fieldError('stitchCount')}
-                                            />
-                                            <VariantField
-                                                label="Needle"
-                                                type="number"
-                                                min="0"
-                                                value={variant.needle}
-                                                onChange={(value) => updateVariant(index, 'needle', value)}
-                                                error={fieldError('needle')}
-                                            />
-                                            <VariantField
-                                                label="Area"
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                suffix="mm"
-                                                value={variant.area}
-                                                onChange={(value) => updateVariant(index, 'area', value)}
-                                                error={fieldError('area')}
-                                            />
-                                            <VariantField
-                                                label="Height"
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                suffix="mm"
-                                                value={variant.height}
-                                                onChange={(value) => updateVariant(index, 'height', value)}
-                                                error={fieldError('height')}
-                                            />
-                                            <VariantField
-                                                label="Width"
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                suffix="mm"
-                                                value={variant.width}
-                                                onChange={(value) => updateVariant(index, 'width', value)}
-                                                error={fieldError('width')}
-                                            />
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </AdminFormPanel>
-
-                    <AdminFormPanel title="Pricing and format" description="Set the design file format and marketplace price." icon={Tag}>
-                        <div className="grid gap-5 sm:grid-cols-2">
-                            <div className="grid gap-2">
-                                <Label htmlFor="priceRupees">Price (INR)</Label>
-                                <Input
-                                    id="priceRupees"
+                    {config?.sequenceType ? (
+                        <AdminFormPanel
+                            title="Design measurement"
+                            description="This sequence value applies once to the complete design."
+                            icon={Layers3}
+                        >
+                            <div className="max-w-xs">
+                                <VariantField
+                                    label="Sequence type"
                                     type="number"
+                                    min="0"
                                     step="0.01"
-                                    min="1"
-                                    value={data.priceRupees}
-                                    onChange={(event) => setData('priceRupees', event.target.value)}
-                                    required
-                                    className={inputClass}
+                                    suffix="mm"
+                                    value={data.sequenceType}
+                                    onChange={(value) => setData('sequenceType', value)}
+                                    error={errors.sequenceType}
+                                    required={config.required.sequenceType}
                                 />
-                                <InputError message={errors.priceRupees} />
                             </div>
-                            <SelectField
-                                label="File type"
-                                value={data.designFileTypeId}
-                                onChange={(value) => setData('designFileTypeId', value)}
-                                options={availableFileTypes.map((item) => ({ ...item, name: `${item.name} (.${item.extension})` }))}
-                                error={errors.designFileTypeId}
-                                disabled={!availableFileTypes.length}
-                            />
-                            {!availableFileTypes.length ? (
-                                <p className="text-sm text-amber-700">No active file type is connected to this machine.</p>
+                        </AdminFormPanel>
+                    ) : null}
+
+                    {config?.designSpecifications && data.variants.length ? (
+                        <AdminFormPanel
+                            title="Design type specifications"
+                            description="Enter separate specifications for every catalog or custom design type."
+                            icon={Layers3}
+                        >
+                            <div className="space-y-4">
+                                {data.variants.map((variant, index) => {
+                                    const type = types.find((option) => option.id === variant.typeId);
+                                    const isCustom = !variant.typeId;
+                                    const fieldError = (field: keyof VariantInput) =>
+                                        (errors as Record<string, string>)[`variants.${index}.${field}`];
+
+                                    return (
+                                        <div
+                                            key={`${variant.typeId || 'custom'}-${index}`}
+                                            className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700"
+                                        >
+                                            <div className="mb-4 flex items-center justify-between gap-3">
+                                                <h3 className="font-semibold text-slate-900 dark:text-white">
+                                                    {type?.name || variant.customTypeName || 'Custom design type'}
+                                                </h3>
+                                                {isCustom ? (
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-red-600 hover:text-red-700"
+                                                        onClick={() => removeVariant(index)}
+                                                    >
+                                                        <Trash2 className="size-4" /> Remove
+                                                    </Button>
+                                                ) : null}
+                                            </div>
+                                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                                {isCustom ? (
+                                                    <VariantField
+                                                        label="Custom design type name"
+                                                        value={variant.customTypeName}
+                                                        onChange={(value) => updateVariant(index, 'customTypeName', value)}
+                                                        error={fieldError('customTypeName')}
+                                                    />
+                                                ) : null}
+                                                {config.specificationFields.nameOrNumber ? (
+                                                    <VariantField
+                                                        label="Name or number"
+                                                        value={variant.nameOrNumber}
+                                                        onChange={(value) => updateVariant(index, 'nameOrNumber', value)}
+                                                        error={fieldError('nameOrNumber')}
+                                                        required={config.specificationFields.required.nameOrNumber}
+                                                    />
+                                                ) : null}
+                                                {config.specificationFields.stitchCount ? (
+                                                    <VariantField
+                                                        label="Stitch count"
+                                                        type="number"
+                                                        min="0"
+                                                        value={variant.stitchCount}
+                                                        onChange={(value) => updateVariant(index, 'stitchCount', value)}
+                                                        error={fieldError('stitchCount')}
+                                                        required={config.specificationFields.required.stitchCount}
+                                                    />
+                                                ) : null}
+                                                {config.specificationFields.needle ? (
+                                                    <VariantField
+                                                        label="Needle"
+                                                        type="number"
+                                                        min="0"
+                                                        value={variant.needle}
+                                                        onChange={(value) => updateVariant(index, 'needle', value)}
+                                                        error={fieldError('needle')}
+                                                        required={config.specificationFields.required.needle}
+                                                    />
+                                                ) : null}
+                                                {config.specificationFields.area ? (
+                                                    <VariantField
+                                                        label="Area"
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        suffix="mm"
+                                                        value={variant.area}
+                                                        onChange={(value) => updateVariant(index, 'area', value)}
+                                                        error={fieldError('area')}
+                                                        required={config.specificationFields.required.area}
+                                                    />
+                                                ) : null}
+                                                {config.specificationFields.height ? (
+                                                    <VariantField
+                                                        label="Height"
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        suffix="mm"
+                                                        value={variant.height}
+                                                        onChange={(value) => updateVariant(index, 'height', value)}
+                                                        error={fieldError('height')}
+                                                        required={config.specificationFields.required.height}
+                                                    />
+                                                ) : null}
+                                                {config.specificationFields.width ? (
+                                                    <VariantField
+                                                        label="Width"
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        suffix="mm"
+                                                        value={variant.width}
+                                                        onChange={(value) => updateVariant(index, 'width', value)}
+                                                        error={fieldError('width')}
+                                                        required={config.specificationFields.required.width}
+                                                    />
+                                                ) : null}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </AdminFormPanel>
+                    ) : null}
+
+                    {config?.pricing || config?.designFileType ? (
+                        <AdminFormPanel title="Pricing and format" description="Set the enabled marketplace pricing and format fields." icon={Tag}>
+                            <div className="grid gap-5 sm:grid-cols-2">
+                                {config?.pricing ? (
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="priceRupees">Price (INR)</Label>
+                                        <Input
+                                            id="priceRupees"
+                                            type="number"
+                                            step="0.01"
+                                            min="1"
+                                            value={data.priceRupees}
+                                            onChange={(event) => setData('priceRupees', event.target.value)}
+                                            required={config.required.pricing}
+                                            className={inputClass}
+                                        />
+                                        <InputError message={errors.priceRupees} />
+                                    </div>
+                                ) : null}
+                                {config?.designFileType ? (
+                                    <SelectField
+                                        label="File type"
+                                        value={data.designFileTypeId}
+                                        onChange={(value) => setData('designFileTypeId', value)}
+                                        options={availableFileTypes.map((item) => ({ ...item, name: `${item.name} (.${item.extension})` }))}
+                                        error={errors.designFileTypeId}
+                                        disabled={!availableFileTypes.length}
+                                    />
+                                ) : null}
+                                {config?.designFileType && !availableFileTypes.length ? (
+                                    <p className="text-sm text-amber-700">No active file type is connected to this machine.</p>
+                                ) : null}
+                            </div>
+                        </AdminFormPanel>
+                    ) : null}
+
+                    {config?.previewImages || config?.stitchFiles ? (
+                        <div className="grid gap-5 lg:grid-cols-2">
+                            {config?.previewImages ? (
+                                <AdminFormPanel
+                                    title="Preview images"
+                                    description={
+                                        editing
+                                            ? 'Select new images only when you want to replace all current preview images.'
+                                            : 'Upload up to 20 marketplace preview images.'
+                                    }
+                                    icon={ImageIcon}
+                                >
+                                    {design?.images?.length ? (
+                                        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                            {design.images.map((image, index) => (
+                                                <div key={`${image.name}-${index}`} className="min-w-0">
+                                                    <img
+                                                        src={image.thumbnailUri ?? image.uri}
+                                                        alt={image.name}
+                                                        className="h-28 w-full rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                                                    />
+                                                    <p className="mt-1 truncate text-xs text-slate-500" title={image.name}>
+                                                        {image.name}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : null}
+                                    <Input
+                                        id="previewImages"
+                                        type="file"
+                                        multiple
+                                        accept="image/jpeg,image/png,image/webp"
+                                        required={!editing && config.required.previewImages}
+                                        onChange={(event) => setData('previewImages', Array.from(event.target.files ?? []))}
+                                        className={inputClass}
+                                    />
+                                    {data.previewImages.length ? (
+                                        <ul className="mt-3 space-y-1 text-xs text-slate-500">
+                                            {data.previewImages.map((image, index) => (
+                                                <li key={`${image.name}-${index}`} className="truncate">
+                                                    {image.name}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : null}
+                                    <p className="mt-2 text-xs text-slate-500">Maximum 20 images, 5 MB per image.</p>
+                                    <InputError message={errors.previewImages} className="mt-2" />
+                                </AdminFormPanel>
+                            ) : null}
+                            {config?.stitchFiles ? (
+                                <AdminFormPanel
+                                    title="Stitch files"
+                                    description={
+                                        editing
+                                            ? 'Select new files only when you want to replace all current stitch files.'
+                                            : 'Upload up to 20 downloadable stitch files.'
+                                    }
+                                    icon={FileArchive}
+                                >
+                                    {editing && design?.files?.length ? (
+                                        <div className="mb-4 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/70">
+                                            <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Current files</p>
+                                            <ul className="space-y-1 text-sm text-slate-700 dark:text-slate-200">
+                                                {design.files.map((file, index) => (
+                                                    <li key={`${file.name}-${index}`}>{file.name}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ) : null}
+                                    <Input
+                                        id="stitchFiles"
+                                        type="file"
+                                        multiple
+                                        required={!editing && config.required.stitchFiles}
+                                        onChange={(event) => setData('stitchFiles', Array.from(event.target.files ?? []))}
+                                        className={inputClass}
+                                    />
+                                    <p className="mt-2 text-xs text-slate-500">Maximum 20 files, 5 MB per file.</p>
+                                    <InputError message={errors.stitchFiles} className="mt-2" />
+                                </AdminFormPanel>
                             ) : null}
                         </div>
-                    </AdminFormPanel>
-
-                    <div className="grid gap-5 lg:grid-cols-2">
-                        <AdminFormPanel
-                            title="Preview images"
-                            description={
-                                editing
-                                    ? 'Select new images only when you want to replace all current preview images.'
-                                    : 'Upload up to 20 marketplace preview images.'
-                            }
-                            icon={ImageIcon}
-                        >
-                            {design?.images?.length ? (
-                                <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                                    {design.images.map((image, index) => (
-                                        <div key={`${image.name}-${index}`} className="min-w-0">
-                                            <img
-                                                src={image.thumbnailUri ?? image.uri}
-                                                alt={image.name}
-                                                className="h-28 w-full rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700"
-                                            />
-                                            <p className="mt-1 truncate text-xs text-slate-500" title={image.name}>
-                                                {image.name}
-                                            </p>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : null}
-                            <Input
-                                id="previewImages"
-                                type="file"
-                                multiple
-                                accept="image/jpeg,image/png,image/webp"
-                                onChange={(event) => setData('previewImages', Array.from(event.target.files ?? []))}
-                                className={inputClass}
-                            />
-                            {data.previewImages.length ? (
-                                <ul className="mt-3 space-y-1 text-xs text-slate-500">
-                                    {data.previewImages.map((image, index) => (
-                                        <li key={`${image.name}-${index}`} className="truncate">
-                                            {image.name}
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : null}
-                            <p className="mt-2 text-xs text-slate-500">Maximum 20 images, 5 MB per image.</p>
-                            <InputError message={errors.previewImages} className="mt-2" />
-                        </AdminFormPanel>
-                        <AdminFormPanel
-                            title="Stitch files"
-                            description={
-                                editing
-                                    ? 'Select new files only when you want to replace all current stitch files.'
-                                    : 'Upload up to 20 downloadable stitch files.'
-                            }
-                            icon={FileArchive}
-                        >
-                            {editing && design?.files?.length ? (
-                                <div className="mb-4 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/70">
-                                    <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Current files</p>
-                                    <ul className="space-y-1 text-sm text-slate-700 dark:text-slate-200">
-                                        {design.files.map((file, index) => (
-                                            <li key={`${file.name}-${index}`}>{file.name}</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            ) : null}
-                            <Input
-                                id="stitchFiles"
-                                type="file"
-                                multiple
-                                onChange={(event) => setData('stitchFiles', Array.from(event.target.files ?? []))}
-                                className={inputClass}
-                            />
-                            <p className="mt-2 text-xs text-slate-500">Maximum 20 files, 5 MB per file.</p>
-                            <InputError message={errors.stitchFiles} className="mt-2" />
-                        </AdminFormPanel>
-                    </div>
+                    ) : null}
 
                     <div className="flex justify-end gap-3">
                         <Button variant="outline" asChild className="rounded-xl">
@@ -535,9 +625,10 @@ type VariantFieldProps = {
     min?: string;
     step?: string;
     suffix?: string;
+    required?: boolean;
 };
 
-function VariantField({ label, value, onChange, error, type = 'text', min, step, suffix }: VariantFieldProps) {
+function VariantField({ label, value, onChange, error, type = 'text', min, step, suffix, required = true }: VariantFieldProps) {
     return (
         <div className="grid gap-2">
             <Label>{label}</Label>
@@ -549,7 +640,7 @@ function VariantField({ label, value, onChange, error, type = 'text', min, step,
                     value={value}
                     onChange={(event) => onChange(event.target.value)}
                     placeholder={type === 'number' ? '0' : 'Enter name or number'}
-                    required
+                    required={required}
                     className={`${inputClass} ${suffix ? 'pr-14' : ''}`}
                 />
                 {suffix ? (

@@ -13,7 +13,6 @@ use App\Models\MachineType;
 use App\Models\User;
 use App\Services\DesignImageMatchingService;
 use App\Services\DesignPresenter;
-use App\Support\DesignTypeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -208,10 +207,10 @@ class DesignAdminController extends Controller
 
         $owner = User::query()->where('public_id', $validated['ownerId'])->firstOrFail();
 
-        $previewImages = $this->storePreviewImages($request, $owner);
-        $previewPath = $previewImages[0]['path'];
-        $stitchFiles = $this->storeStitchFiles($request, $owner);
-        $firstStitchFile = $stitchFiles[0];
+        $previewImages = $validated['previewImagesEnabled'] ? $this->storePreviewImages($request, $owner) : [];
+        $previewPath = $previewImages[0]['path'] ?? null;
+        $stitchFiles = $validated['stitchFilesEnabled'] ? $this->storeStitchFiles($request, $owner) : [];
+        $firstStitchFile = $stitchFiles[0] ?? null;
 
         $design = DB::transaction(function () use ($owner, $validated, $previewImages, $previewPath, $stitchFiles, $firstStitchFile) {
             $design = Design::query()->create([
@@ -230,8 +229,8 @@ class DesignAdminController extends Controller
                 'images' => $previewImages,
                 'files' => $stitchFiles,
                 'preview_path' => $previewPath,
-                'stitch_path' => $firstStitchFile['path'],
-                'file_name' => $firstStitchFile['name'],
+                'stitch_path' => $firstStitchFile['path'] ?? null,
+                'file_name' => $firstStitchFile['name'] ?? null,
             ]);
 
             $design->variants()->createMany($validated['variants']);
@@ -288,26 +287,32 @@ class DesignAdminController extends Controller
         $owner = User::query()->where('public_id', $validated['ownerId'])->firstOrFail();
 
         $previewImages = $this->existingPreviewImages($model);
-        if ($request->hasFile('previewImages') || $request->hasFile('previewImage')) {
+        if ($validated['previewImagesEnabled'] && ($request->hasFile('previewImages') || $request->hasFile('previewImage'))) {
             Storage::disk('public')->delete(collect($previewImages)->pluck('path')->filter()->unique()->all());
             $previewImages = $this->storePreviewImages($request, $owner);
         }
 
         $previewPath = $previewImages[0]['path'] ?? null;
 
+        if ($validated['previewImagesEnabled'] && $validated['previewImagesRequired'] && $previewImages === []) {
+            throw ValidationException::withMessages([
+                'previewImages' => 'Upload at least one preview image.',
+            ]);
+        }
+
         $stitchFiles = $this->existingStitchFiles($model);
-        if ($request->hasFile('stitchFiles')) {
+        if ($validated['stitchFilesEnabled'] && $request->hasFile('stitchFiles')) {
             Storage::disk('local')->delete(collect($stitchFiles)->pluck('path')->filter()->unique()->all());
             $stitchFiles = $this->storeStitchFiles($request, $owner);
         }
 
-        if ($stitchFiles === []) {
+        if ($validated['stitchFilesEnabled'] && $validated['stitchFilesRequired'] && $stitchFiles === []) {
             throw ValidationException::withMessages([
                 'stitchFiles' => 'Upload at least one stitch file.',
             ]);
         }
 
-        $firstStitchFile = $stitchFiles[0];
+        $firstStitchFile = $stitchFiles[0] ?? null;
 
         DB::transaction(function () use ($model, $owner, $validated, $previewImages, $previewPath, $stitchFiles, $firstStitchFile) {
             $model->update([
@@ -326,8 +331,8 @@ class DesignAdminController extends Controller
                 'images' => $previewImages,
                 'files' => $stitchFiles,
                 'preview_path' => $previewPath,
-                'stitch_path' => $firstStitchFile['path'],
-                'file_name' => $firstStitchFile['name'],
+                'stitch_path' => $firstStitchFile['path'] ?? null,
+                'file_name' => $firstStitchFile['name'] ?? null,
             ]);
 
             $model->variants()->delete();
@@ -366,44 +371,57 @@ class DesignAdminController extends Controller
     /** @return array<string, mixed> */
     private function validateDesign(Request $request, bool $creating): array
     {
+        $machineInput = $request->validate([
+            'machineId' => ['required', 'string', Rule::exists('machines', 'public_id')->where('is_active', true)],
+        ]);
+        $machine = Machine::query()
+            ->where('public_id', $machineInput['machineId'])
+            ->where('is_active', true)
+            ->firstOrFail();
+        $config = $machine->normalizedDesignFormConfig();
+        $required = $config['required'];
+        $specificationFields = $config['specificationFields'];
+        $specificationRequired = $specificationFields['required'];
+
         $rules = [
             'ownerId' => ['required', 'string', Rule::exists('users', 'public_id')],
             'machineId' => ['required', 'string', Rule::exists('machines', 'public_id')->where('is_active', true)],
-            'machineTypeId' => ['required', 'string', Rule::exists('machine_types', 'public_id')->where('is_active', true)],
-            'categoryId' => ['required', 'string', Rule::exists('design_categories', 'public_id')->where('is_active', true)],
-            'designFileTypeId' => ['required', 'string', Rule::exists('design_file_types', 'public_id')->where('is_active', true)],
-            'priceRupees' => ['required', 'numeric', 'min:1', 'max:1000000'],
-            'sequenceType' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
-            'variants' => ['required', 'array', 'min:1'],
+            'machineTypeId' => [$config['machineType'] && $required['machineType'] ? 'required' : 'nullable', 'string', Rule::exists('machine_types', 'public_id')->where('is_active', true)],
+            'categoryId' => [$config['category'] && $required['category'] ? 'required' : 'nullable', 'string', Rule::exists('design_categories', 'public_id')->where('is_active', true)],
+            'designFileTypeId' => [$config['designFileType'] && $required['designFileType'] ? 'required' : 'nullable', 'string', Rule::exists('design_file_types', 'public_id')->where('is_active', true)],
+            'priceRupees' => [$config['pricing'] && $required['pricing'] ? 'required' : 'nullable', 'numeric', 'min:1', 'max:1000000'],
+            'sequenceType' => [$config['sequenceType'] && $required['sequenceType'] ? 'required' : 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'variants' => [$config['designTypes'] && $required['designTypes'] ? 'required' : 'nullable', 'array', 'min:1'],
             'variants.*.typeId' => ['nullable', 'string', 'max:120'],
             'variants.*.customTypeName' => ['nullable', 'string', 'min:1', 'max:120'],
-            'variants.*.nameOrNumber' => ['required', 'string', 'min:1', 'max:120'],
-            'variants.*.stitchCount' => ['required', 'integer', 'min:0'],
-            'variants.*.needle' => ['required', 'integer', 'min:0'],
-            'variants.*.area' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
-            'variants.*.height' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
-            'variants.*.width' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
-            'previewImages' => [$creating ? 'required_without:previewImage' : 'nullable', 'array', 'min:1', 'max:20'],
+            'variants.*.nameOrNumber' => [$this->adminSpecificationRule($config, $specificationFields, $specificationRequired, 'nameOrNumber'), 'string', 'min:1', 'max:120'],
+            'variants.*.stitchCount' => [$this->adminSpecificationRule($config, $specificationFields, $specificationRequired, 'stitchCount'), 'integer', 'min:0'],
+            'variants.*.needle' => [$this->adminSpecificationRule($config, $specificationFields, $specificationRequired, 'needle'), 'integer', 'min:0'],
+            'variants.*.area' => [$this->adminSpecificationRule($config, $specificationFields, $specificationRequired, 'area'), 'numeric', 'min:0', 'max:9999999999.99'],
+            'variants.*.height' => [$this->adminSpecificationRule($config, $specificationFields, $specificationRequired, 'height'), 'numeric', 'min:0', 'max:9999999999.99'],
+            'variants.*.width' => [$this->adminSpecificationRule($config, $specificationFields, $specificationRequired, 'width'), 'numeric', 'min:0', 'max:9999999999.99'],
+            'previewImages' => [$creating && $config['previewImages'] && $required['previewImages'] ? 'required_without:previewImage' : 'nullable', 'array', 'min:1', 'max:20'],
             'previewImages.*' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'previewImage' => [$creating ? 'required_without:previewImages' : 'nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'stitchFiles' => [$creating ? 'required' : 'nullable', 'array', 'min:1', 'max:20'],
+            'previewImage' => [$creating && $config['previewImages'] && $required['previewImages'] ? 'required_without:previewImages' : 'nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'stitchFiles' => [$creating && $config['stitchFiles'] && $required['stitchFiles'] ? 'required' : 'nullable', 'array', 'min:1', 'max:20'],
             'stitchFiles.*' => ['required', 'file', 'max:5120'],
         ];
 
         $validated = $request->validate($rules);
-        $pricePaise = (int) round(((float) $validated['priceRupees']) * 100);
+        $variantsInput = $config['designTypes'] ? ($validated['variants'] ?? []) : [];
+        $pricePaise = $config['pricing'] ? (int) round(((float) ($validated['priceRupees'] ?? 0)) * 100) : 0;
 
-        $catalogTypeIds = collect($validated['variants'])
+        $catalogTypeIds = collect($variantsInput)
             ->pluck('typeId')
             ->filter()
             ->values();
-        $customTypeNames = collect($validated['variants'])
+        $customTypeNames = collect($variantsInput)
             ->pluck('customTypeName')
             ->filter()
             ->map(fn (string $name) => mb_strtolower(trim($name)))
             ->values();
 
-        foreach ($validated['variants'] as $index => $variant) {
+        foreach ($variantsInput as $index => $variant) {
             $hasCatalogType = filled($variant['typeId'] ?? null);
             $hasCustomType = filled($variant['customTypeName'] ?? null);
 
@@ -420,27 +438,34 @@ class DesignAdminController extends Controller
             ]);
         }
 
-        if ($pricePaise < 100 || $pricePaise > 100000000) {
+        if ($config['pricing'] && isset($validated['priceRupees']) && ($pricePaise < 100 || $pricePaise > 100000000)) {
             throw ValidationException::withMessages([
                 'priceRupees' => 'Price must be between ₹1 and ₹10,00,000.',
             ]);
         }
 
-        try {
-            $selection = $catalogTypeIds->isNotEmpty()
-                ? DesignTypeResolver::resolveMobileSelection(
-                    $catalogTypeIds->first(),
-                    $validated['categoryId'],
-                    $validated['machineTypeId'],
-                )
-                : DesignTypeResolver::resolveCategorySelection(
-                    $validated['categoryId'],
-                    $validated['machineTypeId'],
-                );
-        } catch (\InvalidArgumentException $exception) {
-            throw ValidationException::withMessages([
-                'categoryId' => $exception->getMessage(),
-            ]);
+        $machineType = null;
+        if ($config['machineType'] && filled($validated['machineTypeId'] ?? null)) {
+            $machineType = MachineType::query()->where('public_id', $validated['machineTypeId'])->where('is_active', true)->first();
+            if ($machineType === null || $machineType->machine_id !== $machine->id) {
+                throw ValidationException::withMessages(['machineTypeId' => 'The selected machine type does not belong to this machine.']);
+            }
+        }
+
+        $category = null;
+        if ($config['category'] && filled($validated['categoryId'] ?? null)) {
+            $category = DesignCategory::query()->where('public_id', $validated['categoryId'])->where('is_active', true)->first();
+            $categoryIsCompatible = $category !== null && ($machineType !== null
+                ? $category->machineTypes()->whereKey($machineType->id)->exists()
+                : $category->machineTypes()->where('machine_types.machine_id', $machine->id)->where('machine_types.is_active', true)->exists());
+
+            if (! $categoryIsCompatible) {
+                throw ValidationException::withMessages(['categoryId' => 'The selected category is not available for this machine.']);
+            }
+        }
+
+        if ($catalogTypeIds->isNotEmpty() && $category === null) {
+            throw ValidationException::withMessages(['categoryId' => 'Select a category before adding design types.']);
         }
 
         $types = DesignType::query()
@@ -450,7 +475,7 @@ class DesignAdminController extends Controller
             ->get()
             ->keyBy('public_id');
 
-        foreach ($validated['variants'] as $index => $variant) {
+        foreach ($variantsInput as $index => $variant) {
             if (! filled($variant['typeId'] ?? null)) {
                 continue;
             }
@@ -458,7 +483,7 @@ class DesignAdminController extends Controller
             $type = $types->get($variant['typeId']);
 
             $belongsToCategory = $type?->categories->contains(
-                fn (DesignCategory $category) => $category->public_id === $validated['categoryId'] && $category->is_active,
+                fn (DesignCategory $typeCategory) => $typeCategory->id === $category?->id && $typeCategory->is_active,
             );
 
             if ($type === null || ! $belongsToCategory) {
@@ -468,55 +493,45 @@ class DesignAdminController extends Controller
             }
         }
 
-        $machineType = MachineType::query()
-            ->with('machine')
-            ->where('public_id', $selection['machine_type_id'])
-            ->firstOrFail();
+        $fileType = $config['designFileType'] && filled($validated['designFileTypeId'] ?? null)
+            ? DesignFileType::query()->where('public_id', $validated['designFileTypeId'])->where('is_active', true)->first()
+            : null;
 
-        if ($machineType->machine?->public_id !== $validated['machineId']) {
-            throw ValidationException::withMessages([
-                'machineTypeId' => 'The selected machine type does not belong to this machine.',
-            ]);
-        }
-
-        $fileType = DesignFileType::query()
-            ->where('public_id', $validated['designFileTypeId'])
-            ->where('is_active', true)
-            ->firstOrFail();
-
-        if (! $fileType->machines()->where('machines.id', $machineType->machine_id)->exists()) {
+        if ($fileType !== null && ! $fileType->machines()->where('machines.id', $machine->id)->exists()) {
             throw ValidationException::withMessages([
                 'designFileTypeId' => 'The selected file type is not available for this machine.',
             ]);
         }
 
-        $variants = collect($validated['variants'])->map(function (array $variant, int $index) use ($types) {
+        $variants = collect($variantsInput)->map(function (array $variant, int $index) use ($types, $config, $specificationFields) {
             $typeId = $variant['typeId'] ?? null;
+            $fallbackName = trim((string) ($types->get($typeId)?->name ?? $variant['customTypeName'] ?? 'Design'));
 
             return [
                 'design_type_id' => $typeId ? $types->get($typeId)?->id : null,
                 'custom_type_name' => $typeId ? null : trim($variant['customTypeName']),
-                'name_or_number' => trim($variant['nameOrNumber']),
-                'stitch_count' => (int) $variant['stitchCount'],
-                'needle' => (int) $variant['needle'],
-                'area' => $variant['area'],
-                'height' => $variant['height'],
-                'width' => $variant['width'],
+                'name_or_number' => $config['designSpecifications'] && $specificationFields['nameOrNumber']
+                    ? trim((string) ($variant['nameOrNumber'] ?? $fallbackName)) : $fallbackName,
+                'stitch_count' => $config['designSpecifications'] && $specificationFields['stitchCount'] ? (int) ($variant['stitchCount'] ?? 0) : 0,
+                'needle' => $config['designSpecifications'] && $specificationFields['needle'] ? (int) ($variant['needle'] ?? 0) : 0,
+                'area' => $config['designSpecifications'] && $specificationFields['area'] ? ($variant['area'] ?? 0) : 0,
+                'height' => $config['designSpecifications'] && $specificationFields['height'] ? ($variant['height'] ?? 0) : 0,
+                'width' => $config['designSpecifications'] && $specificationFields['width'] ? ($variant['width'] ?? 0) : 0,
                 'sort_order' => $index,
             ];
         })->values();
-        $firstVariant = $variants->first();
+        $firstVariant = $variants->first() ?? ['name_or_number' => 'Untitled design', 'height' => 0, 'width' => 0];
 
         return [
             'ownerId' => $validated['ownerId'],
-            'designTypeId' => $selection['design_type_id'],
-            'designFileTypeId' => $fileType->id,
-            'machineDbId' => $machineType->machine_id,
-            'machineTypeId' => $selection['machine_type_id'],
-            'categoryId' => $selection['category_id'],
+            'designTypeId' => $variants->first()['design_type_id'] ?? null,
+            'designFileTypeId' => $fileType?->id,
+            'machineDbId' => $machine->id,
+            'machineTypeId' => $machineType?->public_id,
+            'categoryId' => $category?->public_id,
             'title' => $firstVariant['name_or_number'],
             'pricePaise' => $pricePaise,
-            'sequenceType' => $validated['sequenceType'],
+            'sequenceType' => $config['sequenceType'] ? ($validated['sequenceType'] ?? 0) : 0,
             'size' => $firstVariant['height'].' Ã— '.$firstVariant['width'],
             'variants' => $variants->all(),
             'details' => $variants->map(fn (array $variant) => [
@@ -528,7 +543,20 @@ class DesignAdminController extends Controller
                 'height' => (string) $variant['height'],
                 'width' => (string) $variant['width'],
             ])->all(),
+            'previewImagesEnabled' => $config['previewImages'],
+            'previewImagesRequired' => $required['previewImages'],
+            'stitchFilesEnabled' => $config['stitchFiles'],
+            'stitchFilesRequired' => $required['stitchFiles'],
         ];
+    }
+
+    private function adminSpecificationRule(array $config, array $fields, array $required, string $key): string
+    {
+        if (! $config['designSpecifications'] || ! $fields[$key]) {
+            return 'exclude';
+        }
+
+        return $required[$key] ? 'required' : 'nullable';
     }
 
     /** @return list<array<string, string|int>> */
