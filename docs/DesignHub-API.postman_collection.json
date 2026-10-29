@@ -197,6 +197,24 @@
             "name": "Authentication",
             "item": [
                 {
+                    "name": "Registration Machines",
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/auth/register/machines",
+                        "description": "Load the full active machine list before registration. No Bearer token is required."
+                    },
+                    "response": []
+                },
+                {
                     "name": "Request OTP (Register)",
                     "event": [
                         {
@@ -228,7 +246,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"flow\": \"register\",\n  \"name\": \"{{user_name}}\",\n  \"countryCode\": \"{{country_code}}\",\n  \"mobileNumber\": \"{{mobile_number}}\"\n}"
+                            "raw": "{\n  \"flow\": \"register\",\n  \"name\": \"{{user_name}}\",\n  \"countryCode\": \"{{country_code}}\",\n  \"mobileNumber\": \"{{mobile_number}}\",\n  \"machineIds\": [\"{{machine_id}}\"]\n}"
                         },
                         "url": "{{base_url}}/auth/request-otp"
                     },
@@ -525,7 +543,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"flow\": \"register\",\n  \"name\": \"{{user_name}}\",\n  \"countryCode\": \"{{country_code}}\",\n  \"mobileNumber\": \"{{mobile_number}}\",\n  \"code\": \"{{otp_code}}\"\n}"
+                            "raw": "{\n  \"flow\": \"register\",\n  \"name\": \"{{user_name}}\",\n  \"countryCode\": \"{{country_code}}\",\n  \"mobileNumber\": \"{{mobile_number}}\",\n  \"machineIds\": [\"{{machine_id}}\"],\n  \"code\": \"{{otp_code}}\"\n}"
                         },
                         "url": "{{base_url}}/auth/verify-otp",
                         "description": "Set `otp_code` to the four-digit code from `storage/logs/laravel.log` in local development. A successful response automatically saves the Bearer token."

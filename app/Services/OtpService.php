@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Machine;
 use App\Models\OtpChallenge;
 use App\Models\Role;
 use App\Models\User;
@@ -12,8 +13,13 @@ use Illuminate\Support\Str;
 
 class OtpService
 {
-    public function request(string $flow, ?string $name, string $countryCode, string $mobileNumber): void
-    {
+    public function request(
+        string $flow,
+        ?string $name,
+        string $countryCode,
+        string $mobileNumber,
+        array $machineIds = [],
+    ): void {
         $phoneKey = PhoneNormalizer::key($countryCode, $mobileNumber);
         if ($phoneKey === null) {
             throw new \InvalidArgumentException('Enter a valid mobile number.');
@@ -52,6 +58,7 @@ class OtpService
             'phone_key' => $phoneKey,
             'flow' => $flow,
             'name' => $flow === 'register' ? trim((string) $name) : null,
+            'machine_ids' => $flow === 'register' ? array_values($machineIds) : null,
             'code_hash' => Hash::make($code),
             'expires_at' => now()->addMinutes((int) config('designhub.otp_ttl_minutes')),
             'last_sent_at' => now(),
@@ -62,8 +69,14 @@ class OtpService
         }
     }
 
-    public function verify(string $flow, ?string $name, string $countryCode, string $mobileNumber, string $code): User
-    {
+    public function verify(
+        string $flow,
+        ?string $name,
+        string $countryCode,
+        string $mobileNumber,
+        string $code,
+        array $machineIds = [],
+    ): User {
         $phoneKey = PhoneNormalizer::key($countryCode, $mobileNumber);
         if ($phoneKey === null) {
             throw new \InvalidArgumentException('Enter a valid mobile number.');
@@ -98,12 +111,19 @@ class OtpService
 
         if ($flow === 'register') {
             $this->validateRegistrationName($name ?? $challenge->name);
+            $requestedMachineIds = collect($challenge->machine_ids ?? [])->sort()->values();
+            $verifiedMachineIds = collect($machineIds)->sort()->values();
+
+            if ($requestedMachineIds->isEmpty() || $requestedMachineIds->all() !== $verifiedMachineIds->all()) {
+                throw new \InvalidArgumentException('Selected machines do not match the registration request. Request a new OTP.');
+            }
+
             $marketplaceRole = Role::query()->firstOrCreate(
                 ['slug' => 'marketplace_user'],
                 ['name' => 'Marketplace User'],
             );
 
-            return User::query()->create([
+            $user = User::query()->create([
                 'role_id' => $marketplaceRole->id,
                 'name' => trim((string) ($name ?? $challenge->name)),
                 'country_code' => $countryCode,
@@ -112,6 +132,14 @@ class OtpService
                 'email' => null,
                 'password' => null,
             ]);
+
+            $machineDatabaseIds = Machine::query()
+                ->whereIn('public_id', $verifiedMachineIds)
+                ->where('is_active', true)
+                ->pluck('id');
+            $user->machines()->sync($machineDatabaseIds);
+
+            return $user->load('machines');
         }
 
         $user = User::query()->where('phone_key', $phoneKey)->first();

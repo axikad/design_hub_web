@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::post('auth/request-otp', [AuthController::class, 'requestOtp']);
     Route::post('auth/verify-otp', [AuthController::class, 'verifyOtp']);
+    Route::get('auth/register/machines', [AuthController::class, 'registrationMachines']);
 
     Route::post('payments/webhook', [PaymentController::class, 'webhook']);
 

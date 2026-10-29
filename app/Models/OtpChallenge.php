@@ -10,6 +10,7 @@ class OtpChallenge extends Model
         'phone_key',
         'flow',
         'name',
+        'machine_ids',
         'code_hash',
         'attempts',
         'expires_at',
@@ -20,6 +21,7 @@ class OtpChallenge extends Model
     protected function casts(): array
     {
         return [
+            'machine_ids' => 'array',
             'expires_at' => 'datetime',
             'consumed_at' => 'datetime',
             'last_sent_at' => 'datetime',

@@ -6,6 +6,7 @@ use App\Models\Design;
 use App\Models\DesignCategory;
 use App\Models\DesignFileType;
 use App\Models\DesignType;
+use App\Models\Machine;
 use App\Models\Role;
 use App\Models\Upload;
 use App\Models\User;
@@ -72,6 +73,12 @@ class ApiResponseContractTest extends TestCase
     public function test_explicit_static_otp_can_be_used_for_a_production_test_environment(): void
     {
         $this->seed(RoleAndPermissionSeeder::class);
+        $machine = Machine::query()->create([
+            'public_id' => 'embroidery',
+            'name' => 'Embroidery',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
 
         config([
             'app.env' => 'production',
@@ -85,6 +92,7 @@ class ApiResponseContractTest extends TestCase
             'name' => 'Rajvi',
             'countryCode' => '+91',
             'mobileNumber' => '9054632726',
+            'machineIds' => [$machine->public_id],
         ];
 
         $this->postJson('/api/v1/auth/request-otp', $payload)->assertOk();
@@ -96,12 +104,47 @@ class ApiResponseContractTest extends TestCase
             ->assertJsonPath('data.user.role.slug', 'marketplace_user')
             ->assertJsonPath('data.user.permissions.0', 'designs.read')
             ->assertJsonPath('data.user.permissions.1', 'designs.create')
+            ->assertJsonPath('data.user.selectedMachineIds.0', 'embroidery')
             ->assertJsonStructure(['data' => ['accessToken']]);
 
         $this->assertDatabaseHas('users', [
             'phone_key' => '+919054632726',
             'role_id' => Role::query()->where('slug', 'marketplace_user')->value('id'),
         ]);
+        $this->assertDatabaseHas('machine_user', [
+            'user_id' => User::query()->where('phone_key', '+919054632726')->value('id'),
+            'machine_id' => $machine->id,
+        ]);
+    }
+
+    public function test_registration_machine_list_is_public_and_machine_selection_is_required(): void
+    {
+        Machine::query()->create([
+            'public_id' => 'embroidery',
+            'name' => 'Embroidery',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        Machine::query()->create([
+            'public_id' => 'hidden-machine',
+            'name' => 'Hidden machine',
+            'is_active' => false,
+            'sort_order' => 2,
+        ]);
+
+        $this->getJson('/api/v1/auth/register/machines')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', 'embroidery');
+
+        $this->postJson('/api/v1/auth/request-otp', [
+            'flow' => 'register',
+            'name' => 'Rajvi',
+            'countryCode' => '+91',
+            'mobileNumber' => '9054632726',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonStructure(['errors' => ['machineIds']]);
     }
 
     public function test_missing_resources_use_the_standard_not_found_response(): void
