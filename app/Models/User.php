@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -89,6 +90,14 @@ class User extends Authenticatable
         return $this->hasMany(FolderPurchase::class, 'buyer_id');
     }
 
+    public function machines(): BelongsToMany
+    {
+        return $this->belongsToMany(Machine::class)
+            ->withTimestamps()
+            ->orderBy('machines.sort_order')
+            ->orderBy('machines.name');
+    }
+
     public function isSuperAdmin(): bool
     {
         $this->loadMissing('role');
@@ -123,7 +132,7 @@ class User extends Authenticatable
 
     public function toMobileArray(): array
     {
-        $this->loadMissing('role.permissions');
+        $this->loadMissing('role.permissions', 'machines');
 
         $permissions = $this->isSuperAdmin()
             ? Permission::query()->where('is_active', true)->pluck('slug')->values()->all()
@@ -148,6 +157,17 @@ class User extends Authenticatable
                 'slug' => $this->role->slug,
             ],
             'permissions' => $permissions,
+            'machineFilteringActive' => $this->machines->isNotEmpty(),
+            'selectedMachineIds' => $this->machines->pluck('public_id')->values()->all(),
+            'selectedMachines' => $this->machines
+                ->sortBy([['sort_order', 'asc'], ['name', 'asc']])
+                ->map(fn (Machine $machine) => [
+                    'id' => $machine->public_id,
+                    'name' => $machine->name,
+                    'imageUri' => $machine->imageUrl(),
+                ])
+                ->values()
+                ->all(),
         ];
     }
 

@@ -7,10 +7,12 @@ use App\Http\Resources\DesignResource;
 use App\Http\Resources\PurchaseResource;
 use App\Http\Resources\UserResource;
 use App\Models\Design;
+use App\Models\Machine;
 use App\Models\OtpChallenge;
 use App\Models\ProfileContactChallenge;
 use App\Models\Purchase;
 use App\Models\SavedDesign;
+use App\Models\User;
 use App\Services\UploadService;
 use App\Support\ApiResponse;
 use App\Support\Pagination;
@@ -65,6 +67,41 @@ class UserController extends Controller
         return ApiResponse::data(
             (new UserResource($user->fresh()))->resolve($request),
             message: 'Profile updated successfully.',
+        );
+    }
+
+    public function machinePreferences(Request $request)
+    {
+        return ApiResponse::data(
+            $this->machinePreferencePayload($request->user()),
+            message: 'Machine preferences retrieved successfully.',
+        );
+    }
+
+    public function updateMachinePreferences(Request $request)
+    {
+        $validated = $request->validate([
+            'machineIds' => ['required', 'array', 'min:1', 'max:50'],
+            'machineIds.*' => [
+                'required',
+                'string',
+                'distinct',
+                Rule::exists('machines', 'public_id')->where('is_active', true),
+            ],
+        ]);
+
+        $machineIds = Machine::query()
+            ->whereIn('public_id', $validated['machineIds'])
+            ->where('is_active', true)
+            ->pluck('id');
+
+        $user = $request->user();
+        $user->machines()->sync($machineIds);
+        $user->unsetRelation('machines');
+
+        return ApiResponse::data(
+            $this->machinePreferencePayload($user),
+            message: 'Machine preferences updated successfully.',
         );
     }
 
@@ -202,5 +239,29 @@ class UserController extends Controller
             ->delete();
 
         return ApiResponse::success('Design removed from saved designs.');
+    }
+
+    private function machinePreferencePayload(User $user): array
+    {
+        $user->loadMissing('machines:id,public_id');
+        $selectedIds = $user->machines->pluck('public_id');
+
+        $machines = Machine::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Machine $machine) => [
+                'id' => $machine->public_id,
+                'name' => $machine->name,
+                'imageUri' => $machine->imageUrl(),
+                'selected' => $selectedIds->contains($machine->public_id),
+            ]);
+
+        return [
+            'machineFilteringActive' => $selectedIds->isNotEmpty(),
+            'selectedMachineIds' => $selectedIds->values(),
+            'machines' => $machines->values(),
+        ];
     }
 }

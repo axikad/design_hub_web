@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\DesignResource;
 use App\Models\Design;
 use App\Models\DesignCategory;
+use App\Models\User;
 use App\Support\ApiResponse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -24,24 +25,26 @@ class HomeController extends Controller
         $categoryLimit = $validated['categoryLimit'] ?? 4;
         $today = now(config('designhub.marketplace_timezone'))->toDateString();
         $tomorrow = now(config('designhub.marketplace_timezone'))->addDay()->toDateString();
+        $user = $request->user();
 
-        $latestQuery = $this->designQuery()->published($today);
-        $todayQuery = $this->designQuery()->scheduledFor($today);
-        $tomorrowQuery = $this->designQuery()->scheduledFor($tomorrow);
+        $latestQuery = $this->designQuery($user)->published($today);
+        $todayQuery = $this->designQuery($user)->scheduledFor($today);
+        $tomorrowQuery = $this->designQuery($user)->scheduledFor($tomorrow);
 
         $categories = DesignCategory::query()
             ->where('is_active', true)
-            ->whereHas('designs', fn ($query) => $query->listed()->published($today))
+            ->whereHas('designs', fn ($query) => $query->listed()->published($today)->forUserMachines($user))
             ->withCount([
-                'designs as published_designs_count' => fn ($query) => $query->listed()->published($today),
+                'designs as published_designs_count' => fn ($query) => $query->listed()->published($today)->forUserMachines($user),
             ])
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get()
-            ->map(function (DesignCategory $category) use ($request, $categoryLimit, $today) {
+            ->map(function (DesignCategory $category) use ($request, $categoryLimit, $today, $user) {
                 $designs = $category->designs()
                     ->listed()
                     ->published($today)
+                    ->forUserMachines($user)
                     ->with(['owner', 'type.category', 'fileType', 'variants.type'])
                     ->orderByDesc('publish_date')
                     ->latest('created_at')
@@ -82,10 +85,11 @@ class HomeController extends Controller
         ], message: 'Home designs retrieved successfully.');
     }
 
-    private function designQuery(): Builder
+    private function designQuery(User $user): Builder
     {
         return Design::query()
             ->listed()
+            ->forUserMachines($user)
             ->with(['owner', 'type.category', 'fileType', 'variants.type'])
             ->orderByDesc('publish_date')
             ->latest('created_at');

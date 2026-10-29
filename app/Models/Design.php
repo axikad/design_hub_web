@@ -112,6 +112,21 @@ class Design extends Model
         return $query->whereDate('publish_date', $date);
     }
 
+    public function scopeForUserMachines($query, User $user)
+    {
+        $user->loadMissing('machines:id,public_id');
+        $machineIds = $user->machines->pluck('public_id');
+
+        if ($machineIds->isEmpty()) {
+            return $query;
+        }
+
+        return $query->whereHas(
+            'machineType.machine',
+            fn ($machineQuery) => $machineQuery->whereIn('machines.public_id', $machineIds),
+        );
+    }
+
     protected function displayName(): Attribute
     {
         return Attribute::get(fn () => $this->displayNameFor($this->file_name));

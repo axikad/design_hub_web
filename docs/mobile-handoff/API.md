@@ -18,6 +18,8 @@ Design and user collection endpoints accept `page` and `per_page` (default 20, m
 | POST   | `/auth/verify-otp`                                 | Same fields plus `{ code: "1234" }`                                                                     | `{ user: User, accessToken: string }`                                             |
 | POST   | `/auth/logout`                                     | Bearer token; no request body                                                                              | Current access token revoked                                                      |
 | GET    | `/users/me`                                        | Bearer token                                                                                            | `User`                                                                            |
+| GET    | `/users/me/machines`                               | Bearer token                                                                                            | All active machines with `selected`, plus selected IDs                            |
+| PUT    | `/users/me/machines`                               | `{ machineIds: ["embroidery", "air-jet-loom"] }`                                                    | Saved machine preferences                                                         |
 | POST   | `/users/me`                                        | Multipart `name`, optional `image`, optional `removeImage`                                               | Updated `User`                                                                    |
 | PATCH  | `/users/me`                                        | JSON `{ name: string }`                                                                                  | Updated `User`                                                                    |
 | POST   | `/users/me/contact/request-otp`                    | `{ type: "mobile", countryCode, mobileNumber }` or `{ type: "email", email }`                         | Masked destination and OTP expiry                                                  |
@@ -54,6 +56,9 @@ type User = {
     avatarUri: string | null;
     countryCode: string;
     mobileNumber: string;
+    machineFilteringActive: boolean;
+    selectedMachineIds: string[];
+    selectedMachines: Array<{ id: string; name: string; imageUri: string | null }>;
 };
 type DesignRequest = {
     machineTypeId: string;
@@ -194,6 +199,8 @@ Local photo/file URIs are uploaded before saving. The ordered `images` and `file
 Update the name and optional photo directly with multipart `POST /users/me`. Send `name` and optional `image` (JPG, PNG, or WebP; maximum 5 MB). If `image` is omitted, the existing photo stays unchanged. Send `removeImage=1` without an image to remove it.
 
 Email and mobile number cannot be changed directly through `/users/me`. First call `POST /users/me/contact/request-otp`, then submit the same contact value and received code to `POST /users/me/contact/verify-otp`. For mobile use `{ type: "mobile", countryCode: "+91", mobileNumber: "9876543210" }`. For email use `{ type: "email", email: "user@example.com" }`. A verified email gets `email_verified_at`; a verified mobile updates `country_code`, `mobile_number`, and normalized `phone_key` together.
+
+Machine preferences are managed with `GET /users/me/machines` and `PUT /users/me/machines`. The update request must contain at least one active machine public ID. Once saved, `/catalog/machines`, `/catalog/design-options`, `/catalog/categories`, `/home`, `/designs`, and image-search results are limited to those machines. Existing users with no saved preference keep the backward-compatible behavior and see all machines until they make a selection.
 
 Delete an authenticated account with `DELETE /users/me` and body `{ "confirmation": "DELETE" }`. The confirmation is case-sensitive. The server anonymizes personal contact data, removes the profile image and saved-design collection, revokes every API token and session, and soft-deletes the account while retaining purchase/design records required for marketplace integrity. The Super Admin account cannot use this endpoint.
 

@@ -47,6 +47,7 @@ class DesignImageSearchController extends Controller
         $designs = Design::query()
             ->listed()
             ->published()
+            ->forUserMachines($request->user())
             ->with(['owner', 'type.category', 'fileType', 'variants.type'])
             ->whereIn('public_id', $matches->pluck('designId'))
             ->get()

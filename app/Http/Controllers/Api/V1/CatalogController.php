@@ -57,10 +57,13 @@ class CatalogController extends Controller
         return ApiResponse::data($fileTypes->values(), message: 'Machine design file types retrieved successfully.');
     }
 
-    public function machines()
+    public function machines(Request $request)
     {
+        $selectedMachineIds = $this->selectedMachineIds($request);
+
         $machines = Machine::query()
             ->where('is_active', true)
+            ->when($selectedMachineIds->isNotEmpty(), fn ($query) => $query->whereIn('public_id', $selectedMachineIds))
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get()
@@ -133,10 +136,13 @@ class CatalogController extends Controller
         return ApiResponse::data($types->values(), message: 'Design types retrieved successfully.');
     }
 
-    public function designOptions()
+    public function designOptions(Request $request)
     {
+        $selectedMachineIds = $this->selectedMachineIds($request);
+
         $machines = Machine::query()
             ->where('is_active', true)
+            ->when($selectedMachineIds->isNotEmpty(), fn ($query) => $query->whereIn('public_id', $selectedMachineIds))
             ->with([
                 'machineTypes' => fn ($query) => $query
                     ->where('is_active', true)
@@ -153,6 +159,11 @@ class CatalogController extends Controller
 
         $machineTypes = MachineType::query()
             ->where('is_active', true)
+            ->when($selectedMachineIds->isNotEmpty(), fn ($query) => $query->whereHas(
+                'machine',
+                fn ($machineQuery) => $machineQuery->whereIn('public_id', $selectedMachineIds),
+            ))
+            ->with('machine')
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get(['id', 'machine_id', 'public_id', 'name']);
@@ -160,8 +171,16 @@ class CatalogController extends Controller
         $categories = DesignCategory::query()
             ->where('is_active', true)
             ->whereHas('machineTypes', fn ($query) => $query->where('machine_types.is_active', true))
+            ->when($selectedMachineIds->isNotEmpty(), fn ($query) => $query->whereHas(
+                'machineTypes.machine',
+                fn ($machineQuery) => $machineQuery->whereIn('machines.public_id', $selectedMachineIds),
+            ))
             ->with(['machineTypes' => fn ($query) => $query
                 ->where('machine_types.is_active', true)
+                ->when($selectedMachineIds->isNotEmpty(), fn ($machineTypeQuery) => $machineTypeQuery->whereHas(
+                    'machine',
+                    fn ($machineQuery) => $machineQuery->whereIn('machines.public_id', $selectedMachineIds),
+                ))
                 ->orderBy('machine_types.sort_order')])
             ->orderBy('sort_order')
             ->orderBy('name')
@@ -190,8 +209,14 @@ class CatalogController extends Controller
 
     public function categories(Request $request)
     {
+        $selectedMachineIds = $this->selectedMachineIds($request);
+
         $categories = DesignCategory::query()
             ->where('is_active', true)
+            ->when($selectedMachineIds->isNotEmpty(), fn ($query) => $query->whereHas(
+                'machineTypes.machine',
+                fn ($machineQuery) => $machineQuery->whereIn('machines.public_id', $selectedMachineIds),
+            ))
             ->with(['activeTypes' => fn ($query) => $query->orderBy('sort_order')->orderBy('name')])
             ->orderBy('sort_order')
             ->orderBy('name')
@@ -208,5 +233,13 @@ class CatalogController extends Controller
             ]);
 
         return ApiResponse::data($categories->values(), message: 'Catalog retrieved successfully.');
+    }
+
+    private function selectedMachineIds(Request $request)
+    {
+        $user = $request->user();
+        $user->loadMissing('machines:id,public_id');
+
+        return $user->machines->pluck('public_id');
     }
 }

@@ -42,4 +42,9 @@ class Machine extends Model
     {
         return $this->belongsToMany(DesignFileType::class, 'machine_design_file_type');
     }
+
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class)->withTimestamps();
+    }
 }

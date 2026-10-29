@@ -43,6 +43,7 @@ class DesignController extends Controller
 
         $designs = Design::query()
             ->listed()
+            ->forUserMachines($request->user())
             ->when(($filters['section'] ?? null) === 'today', fn ($query) => $query->scheduledFor($today))
             ->when(($filters['section'] ?? null) === 'tomorrow', fn ($query) => $query->scheduledFor($tomorrow))
             ->when(! in_array(($filters['section'] ?? null), ['today', 'tomorrow'], true), fn ($query) => $query->published($today))

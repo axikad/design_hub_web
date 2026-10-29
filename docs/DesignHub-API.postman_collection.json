@@ -850,6 +850,44 @@
                     ]
                 },
                 {
+                    "name": "Machine Preferences - List",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/users/me/machines",
+                        "description": "Returns all active machines with a selected flag. An empty selectedMachineIds list means legacy all-machine visibility."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Machine Preferences - Update",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"machineIds\": [\"embroidery\", \"air-jet-loom\"]\n}"
+                        },
+                        "url": "{{base_url}}/users/me/machines",
+                        "description": "Replaces the authenticated user's selected machines. Send at least one active machine ID."
+                    },
+                    "response": []
+                },
+                {
                     "name": "Update Profile",
                     "request": {
                         "method": "POST",
