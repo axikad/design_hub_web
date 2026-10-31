@@ -73,7 +73,7 @@ export default function AdminFoldersIndex({ folders, filters }: Props) {
             <div className="space-y-6 p-4 md:p-6">
                 <AdminPageHeader
                     title="Folders"
-                    description="Upload priced ZIP packages and manage the files extracted from each archive."
+                    description="Upload priced ZIP or RAR packages and manage the files extracted from each archive."
                     createHref={canCreate ? route('admin.folders.create') : undefined}
                     createLabel="Add folder"
                 />
@@ -95,19 +95,19 @@ export default function AdminFoldersIndex({ folders, filters }: Props) {
                             value={search}
                             onChange={(event) => setSearch(event.target.value)}
                             onClear={() => setSearch('')}
-                            placeholder="Search folder or ZIP name..."
+                            placeholder="Search folder or archive name..."
                         />
                     </AdminFilterBar>
                 </form>
 
                 <AdminTablePanel footer={<PaginationLinks paginator={folders} />}>
                     {folders.data.length === 0 ? (
-                        <AdminEmptyState icon={Archive} title="No folders found" description="Add a ZIP package to create the first folder." />
+                        <AdminEmptyState icon={Archive} title="No folders found" description="Add a ZIP or RAR package to create the first folder." />
                     ) : (
                         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                             <thead className="bg-slate-50/80 dark:bg-slate-950/60">
                                 <tr>
-                                    {['Folder', 'Price', 'Purchases', 'Revenue', 'ZIP archive', 'Files', 'Total size', 'Actions'].map((heading) => (
+                                    {['Folder', 'Price', 'Purchases', 'Revenue', 'Archive', 'Files', 'Total size', 'Actions'].map((heading) => (
                                         <th
                                             key={heading}
                                             className="px-5 py-3.5 text-left text-[11px] font-bold tracking-wider text-slate-500 uppercase"
@@ -164,7 +164,7 @@ export default function AdminFoldersIndex({ folders, filters }: Props) {
                                                 {canDelete ? (
                                                     <ConfirmDelete
                                                         title={`Delete ${folder.name}?`}
-                                                        description="The original ZIP and every extracted file will be permanently deleted."
+                                                        description="The original archive and every extracted file will be permanently deleted."
                                                         onConfirm={() => router.delete(route('admin.folders.destroy', folder.id))}
                                                     />
                                                 ) : null}

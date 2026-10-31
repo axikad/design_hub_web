@@ -16,6 +16,9 @@ return [
 
     'download_url_ttl_minutes' => 15,
 
+    // Optional absolute path/name for bsdtar (libarchive), required for RAR folder uploads.
+    'folder_archive_extractor' => env('DESIGNHUB_FOLDER_ARCHIVE_EXTRACTOR'),
+
     'image_matching' => [
         'qdrant_url' => env('DESIGNHUB_QDRANT_URL'),
         'qdrant_api_key' => env('DESIGNHUB_QDRANT_API_KEY'),

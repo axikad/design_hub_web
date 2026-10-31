@@ -12,6 +12,7 @@ use App\Support\Pagination;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class FolderController extends Controller
@@ -92,14 +93,14 @@ class FolderController extends Controller
 
         if (! $purchased) {
             return ApiResponse::error(
-                'Purchase this folder to download its ZIP file.',
+                'Purchase this folder to download its archive file.',
                 'folder_download_forbidden',
                 403,
             );
         }
 
         if (! Storage::disk('local')->exists($folder->zip_path)) {
-            return ApiResponse::error('Folder ZIP file is unavailable.', 'folder_file_unavailable', 404);
+            return ApiResponse::error('Folder archive file is unavailable.', 'folder_file_unavailable', 404);
         }
 
         $expiresAt = now()->addMinutes((int) config('designhub.download_url_ttl_minutes'));
@@ -122,7 +123,7 @@ class FolderController extends Controller
         abort_unless($disk->exists($folder->zip_path), 404);
 
         return $disk->download($folder->zip_path, $folder->zip_name, [
-            'Content-Type' => 'application/zip',
+            'Content-Type' => Str::endsWith(Str::lower($folder->zip_name), '.rar') ? 'application/vnd.rar' : 'application/zip',
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, no-store',
         ]);

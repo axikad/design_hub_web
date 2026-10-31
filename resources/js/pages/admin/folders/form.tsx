@@ -71,7 +71,7 @@ export default function AdminFolderForm({ folder }: Props) {
             <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
                 <AdminPageHeader
                     title={editing ? 'Edit folder' : 'Add folder'}
-                    description="Set the package name and price, then upload the ZIP to extract its files."
+                    description="Set the package name and price, then upload a ZIP or RAR archive to extract its files."
                     actions={
                         <Button variant="outline" asChild className="rounded-xl">
                             <Link href={route('admin.folders.index')}>
@@ -116,11 +116,11 @@ export default function AdminFolderForm({ folder }: Props) {
                     </AdminFormPanel>
 
                     <AdminFormPanel
-                        title="ZIP archive"
+                        title="Archive file"
                         description={
                             editing
-                                ? 'Leave empty to keep the current archive, or choose a ZIP to replace all extracted files.'
-                                : 'The ZIP will be validated and extracted into individual private files.'
+                                ? 'Leave empty to keep the current archive, or choose a ZIP/RAR file to replace all extracted files.'
+                                : 'The ZIP or RAR archive will be validated and extracted into individual private files.'
                         }
                         icon={Archive}
                     >
@@ -135,7 +135,7 @@ export default function AdminFolderForm({ folder }: Props) {
                         <Input
                             id="zipFile"
                             type="file"
-                            accept=".zip,application/zip"
+                            accept=".zip,.rar,application/zip,application/vnd.rar,application/x-rar-compressed"
                             required={!editing}
                             onChange={(event) => setData('zipFile', event.target.files?.[0] ?? null)}
                             className="h-11 rounded-xl border-slate-200 focus-visible:border-indigo-500 dark:border-slate-700"
@@ -174,7 +174,7 @@ export default function AdminFolderForm({ folder }: Props) {
                         </Button>
                         <Button type="submit" disabled={processing} className="rounded-xl bg-indigo-600 px-5 font-semibold hover:bg-indigo-700">
                             {processing ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}
-                            {processing ? 'Processing ZIP...' : editing ? 'Save changes' : 'Create folder'}
+                            {processing ? 'Processing archive...' : editing ? 'Save changes' : 'Create folder'}
                         </Button>
                     </div>
                 </form>

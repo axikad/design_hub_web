@@ -48,7 +48,7 @@ Design and user collection endpoints accept `page` and `per_page` (default 20, m
 | POST   | `/payments/orders`                                 | `{ folderId: string }`                                                                                  | Razorpay order using the server-side folder price                                 |
 | POST   | `/payments/verify`                                 | `{ folderId, razorpay_order_id, razorpay_payment_id, razorpay_signature }`                              | Folder payment status and purchase ID                                             |
 | GET    | `/purchases/folders/:id`                           | Bearer token                                                                                            | `{ folderId, status: "unpaid" or "pending" or "paid" }`                           |
-| POST   | `/folders/:id/download`                            | Bearer token; paid buyer only                                                                           | Temporary signed ZIP download URL                                                 |
+| POST   | `/folders/:id/download`                            | Bearer token; paid buyer only                                                                           | Temporary signed ZIP/RAR download URL                                             |
 
 ```ts
 type User = {
@@ -134,14 +134,14 @@ type Folder = {
     fileCount: number;
     totalSize: number;
     coverImageUri: string | null;
-    zipName?: string; // Detail response only
-    files?: FolderFile[]; // Detail response only, in ZIP path order
+    zipName?: string; // Detail response only; legacy key containing the ZIP or RAR archive name
+    files?: FolderFile[]; // Detail response only, in archive path order
     createdAt: string;
     updatedAt: string;
 };
 ```
 
-Folder image previews use temporary signed URLs and can be displayed directly without a Bearer header. Non-image files intentionally return `previewUri: null`. To buy a folder, send `folderId` instead of `designId` through the existing payment endpoints. The backend always takes `amount` from the folder's stored `pricePaise`; clients must not submit an amount. Once status is `paid`, `POST /folders/:id/download` returns a short-lived signed URL for the original ZIP. Unpaid users receive `403 folder_download_forbidden` and never receive a full-file URL.
+Folder image previews use temporary signed URLs and can be displayed directly without a Bearer header. Non-image files intentionally return `previewUri: null`. To buy a folder, send `folderId` instead of `designId` through the existing payment endpoints. The backend always takes `amount` from the folder's stored `pricePaise`; clients must not submit an amount. Once status is `paid`, `POST /folders/:id/download` returns a short-lived signed URL for the original ZIP or RAR archive. Unpaid users receive `403 folder_download_forbidden` and never receive a full-file URL. The existing `zipName` response key is retained for backward compatibility and may now end in `.zip` or `.rar`.
 
 ## Search by image
 

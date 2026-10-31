@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 use ZipArchive;
@@ -14,6 +15,19 @@ use ZipArchive;
 class FolderManagementTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_folder_archive_validation_accepts_zip_and_rar_extensions(): void
+    {
+        foreach (['folder.zip', 'folder.rar'] as $name) {
+            $validator = Validator::make([
+                'archive' => UploadedFile::fake()->create($name, 1),
+            ], [
+                'archive' => ['required', 'file', 'extensions:zip,rar'],
+            ]);
+
+            $this->assertTrue($validator->passes(), $validator->errors()->first('archive'));
+        }
+    }
 
     public function test_admin_can_create_replace_and_delete_an_extracted_folder(): void
     {

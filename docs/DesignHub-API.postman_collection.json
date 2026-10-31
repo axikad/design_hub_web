@@ -3528,7 +3528,7 @@
                             }
                         ],
                         "url": "{{base_url}}/folders/{{folder_id}}/download",
-                        "description": "Paid buyers only. Returns a temporary signed URL for the original folder ZIP."
+                        "description": "Paid buyers only. Returns a temporary signed URL for the original folder ZIP or RAR archive."
                     },
                     "response": [
                         {
@@ -3542,7 +3542,7 @@
                                     }
                                 ],
                                 "url": "{{base_url}}/folders/{{folder_id}}/download",
-                                "description": "Paid buyers only. Returns a temporary signed URL for the original folder ZIP."
+                                "description": "Paid buyers only. Returns a temporary signed URL for the original folder ZIP or RAR archive."
                             },
                             "status": "OK",
                             "code": 200,
@@ -3568,7 +3568,7 @@
                                     }
                                 ],
                                 "url": "{{base_url}}/folders/{{folder_id}}/download",
-                                "description": "Paid buyers only. Returns a temporary signed URL for the original folder ZIP."
+                                "description": "Paid buyers only. Returns a temporary signed URL for the original folder ZIP or RAR archive."
                             },
                             "status": "Forbidden",
                             "code": 403,
@@ -3581,12 +3581,12 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Purchase this folder to download its ZIP file.\",\n    \"code\": \"folder_download_forbidden\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Purchase this folder to download its archive file.\",\n    \"code\": \"folder_download_forbidden\"\n}"
                         }
                     ]
                 },
                 {
-                    "name": "Download Purchased Folder ZIP",
+                    "name": "Download Purchased Folder Archive",
                     "request": {
                         "auth": {
                             "type": "noauth"
@@ -3599,7 +3599,7 @@
                             }
                         ],
                         "url": "{{folder_download_url}}",
-                        "description": "Opens the short-lived signed ZIP URL returned by Create Folder Download Link."
+                        "description": "Opens the short-lived signed ZIP/RAR URL returned by Create Folder Download Link."
                     },
                     "response": []
                 }

@@ -116,10 +116,10 @@ class FolderAdminController extends Controller
             $folder->delete();
             report($exception);
 
-            throw ValidationException::withMessages(['zipFile' => 'The ZIP archive could not be processed.']);
+            throw ValidationException::withMessages(['zipFile' => 'The archive could not be processed.']);
         }
 
-        return redirect()->route('admin.folders.index')->with('success', 'Folder created and ZIP files extracted.');
+        return redirect()->route('admin.folders.index')->with('success', 'Folder created and archive files extracted.');
     }
 
     public function edit(string $folder): Response
@@ -174,7 +174,7 @@ class FolderAdminController extends Controller
             }
 
             report($exception);
-            throw ValidationException::withMessages(['zipFile' => 'The ZIP archive could not be processed.']);
+            throw ValidationException::withMessages(['zipFile' => 'The archive could not be processed.']);
         }
 
         return redirect()->route('admin.folders.index')->with('success', 'Folder updated.');
@@ -251,7 +251,7 @@ class FolderAdminController extends Controller
         return $request->validate([
             'name' => ['required', 'string', 'max:150', Rule::unique('folders', 'name')->ignore($folder?->id)],
             'priceRupees' => ['required', 'numeric', 'min:0', 'max:99999999.99', 'decimal:0,2'],
-            'zipFile' => [$creating ? 'required' : 'nullable', 'file', 'extensions:zip'],
+            'zipFile' => [$creating ? 'required' : 'nullable', 'file', 'extensions:zip,rar'],
         ]);
     }
 
