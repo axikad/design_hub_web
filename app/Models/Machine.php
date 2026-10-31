@@ -65,7 +65,7 @@ class Machine extends Model
             'enabled' => (bool) ($config['enabled'] ?? false),
             'text' => mb_substr($text !== '' ? $text : 'Textile Design Hub', 0, 60),
             'opacity' => max(5, min((int) ($config['opacity'] ?? 24), 60)),
-            'textSize' => max(50, min((int) ($config['textSize'] ?? 100), 200)),
+            'textSize' => max(50, min((int) ($config['textSize'] ?? 100), 400)),
             'spacing' => max(50, min((int) ($config['spacing'] ?? 100), 250)),
         ];
     }

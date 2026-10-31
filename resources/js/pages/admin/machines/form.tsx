@@ -310,7 +310,7 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
                                         id="watermarkTextSize"
                                         type="number"
                                         min={50}
-                                        max={200}
+                                        max={400}
                                         value={data.watermarkConfig.textSize}
                                         onChange={(event) =>
                                             setData('watermarkConfig', {
@@ -321,7 +321,7 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
                                         required
                                         className="h-11 rounded-xl"
                                     />
-                                    <p className="text-xs text-slate-500">50% is smaller; 200% is larger.</p>
+                                    <p className="text-xs text-slate-500">50% is smaller; up to 400% makes the text larger.</p>
                                     <InputError message={errors['watermarkConfig.textSize']} />
                                 </div>
                                 <div className="grid gap-2">

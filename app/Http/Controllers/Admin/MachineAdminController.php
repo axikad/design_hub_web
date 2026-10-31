@@ -107,7 +107,7 @@ class MachineAdminController extends Controller
         $this->syncImage($request, $model);
         $model->refresh();
 
-        if ($previousWatermarkConfig !== $model->normalizedWatermarkConfig()) {
+        if ($previousWatermarkConfig !== $model->normalizedWatermarkConfig() || $model->normalizedWatermarkConfig()['enabled']) {
             $this->watermarks->syncMachine($model);
         }
 
@@ -192,7 +192,7 @@ class MachineAdminController extends Controller
             'watermarkConfig.enabled' => ['required_with:watermarkConfig', 'boolean'],
             'watermarkConfig.text' => ['required_if:watermarkConfig.enabled,true', 'nullable', 'string', 'max:60'],
             'watermarkConfig.opacity' => ['required_if:watermarkConfig.enabled,true', 'integer', 'min:5', 'max:60'],
-            'watermarkConfig.textSize' => ['sometimes', 'integer', 'min:50', 'max:200'],
+            'watermarkConfig.textSize' => ['sometimes', 'integer', 'min:50', 'max:400'],
             'watermarkConfig.spacing' => ['sometimes', 'integer', 'min:50', 'max:250'],
         ]);
 

@@ -135,10 +135,7 @@ class DesignWatermarkService
 
             imagettftext($stamp, $fontSize, 0, $textX, $textY, $white, $font, $text);
         } else {
-            $textX = 30;
-            $textY = (int) ($stampHeight / 2) - 8;
-            imagestring($stamp, 5, $textX + 2, $textY + 2, $text, $outline);
-            imagestring($stamp, 5, $textX, $textY, $text, $white);
+            $this->drawScaledFallbackText($stamp, $text, $fontSize, $white, $outline);
         }
 
         $rotated = imagerotate($stamp, 28, $transparent);
@@ -157,6 +154,44 @@ class DesignWatermarkService
 
         imagedestroy($rotated);
         imagedestroy($stamp);
+    }
+
+    private function drawScaledFallbackText(\GdImage $stamp, string $text, int $fontSize, int $white, int $outline): void
+    {
+        $font = 5;
+        $padding = 4;
+        $glyphWidth = imagefontwidth($font) * strlen($text) + ($padding * 2);
+        $glyphHeight = imagefontheight($font) + ($padding * 2);
+        $glyph = imagecreatetruecolor($glyphWidth, $glyphHeight);
+        imagealphablending($glyph, false);
+        imagesavealpha($glyph, true);
+        $transparent = imagecolorallocatealpha($glyph, 255, 255, 255, 127);
+        imagefill($glyph, 0, 0, $transparent);
+        imagealphablending($glyph, true);
+
+        imagestring($glyph, $font, $padding + 1, $padding + 1, $text, $outline);
+        imagestring($glyph, $font, $padding, $padding, $text, $white);
+
+        $scale = max(1, $fontSize / imagefontheight($font));
+        $renderWidth = max(1, (int) round($glyphWidth * $scale));
+        $renderHeight = max(1, (int) round($glyphHeight * $scale));
+        $textX = 30;
+        $textY = max(0, (int) round((imagesy($stamp) - $renderHeight) / 2));
+
+        imagecopyresampled(
+            $stamp,
+            $glyph,
+            $textX,
+            $textY,
+            0,
+            0,
+            $renderWidth,
+            $renderHeight,
+            $glyphWidth,
+            $glyphHeight,
+        );
+
+        imagedestroy($glyph);
     }
 
     /** @return array{string, string} */
