@@ -113,13 +113,22 @@ class DesignWatermarkService
         imagefill($stamp, 0, 0, $transparent);
         imagealphablending($stamp, true);
         $white = imagecolorallocatealpha($stamp, 255, 255, 255, $alpha);
-        $shadow = imagecolorallocatealpha($stamp, 20, 30, 45, min(126, $alpha + 18));
+        $outline = imagecolorallocatealpha($stamp, 8, 67, 82, max(0, $alpha - 18));
 
         if ($font !== null && function_exists('imagettftext')) {
-            imagettftext($stamp, $fontSize, 0, 33, (int) ($stampHeight / 2) + 2, $shadow, $font, $text);
-            imagettftext($stamp, $fontSize, 0, 30, (int) ($stampHeight / 2), $white, $font, $text);
+            $textX = 30;
+            $textY = (int) ($stampHeight / 2);
+
+            foreach ([[-2, 0], [2, 0], [0, -2], [0, 2], [2, 2]] as [$offsetX, $offsetY]) {
+                imagettftext($stamp, $fontSize, 0, $textX + $offsetX, $textY + $offsetY, $outline, $font, $text);
+            }
+
+            imagettftext($stamp, $fontSize, 0, $textX, $textY, $white, $font, $text);
         } else {
-            imagestring($stamp, 5, 30, (int) ($stampHeight / 2) - 8, $text, $white);
+            $textX = 30;
+            $textY = (int) ($stampHeight / 2) - 8;
+            imagestring($stamp, 5, $textX + 2, $textY + 2, $text, $outline);
+            imagestring($stamp, 5, $textX, $textY, $text, $white);
         }
 
         $rotated = imagerotate($stamp, 28, $transparent);
