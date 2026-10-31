@@ -48,6 +48,8 @@ class DesignWatermarkService
                 $index,
                 $config['text'],
                 $config['opacity'],
+                $config['textSize'],
+                $config['spacing'],
             );
 
             return $image;
@@ -56,8 +58,15 @@ class DesignWatermarkService
         $design->updateQuietly(['images' => $watermarked]);
     }
 
-    private function generate(string $sourcePath, string $designId, int $index, string $text, int $opacity): string
-    {
+    private function generate(
+        string $sourcePath,
+        string $designId,
+        int $index,
+        string $text,
+        int $opacity,
+        int $textSize,
+        int $spacing,
+    ): string {
         $disk = Storage::disk('public');
 
         if (! $disk->exists($sourcePath)) {
@@ -85,24 +94,25 @@ class DesignWatermarkService
         imagecopy($canvas, $source, 0, 0, 0, 0, $width, $height);
         imagealphablending($canvas, true);
 
-        $this->tileText($canvas, $text, $opacity);
+        $this->tileText($canvas, $text, $opacity, $textSize, $spacing);
 
         $mime = $disk->mimeType($sourcePath) ?: 'image/jpeg';
         [$extension, $encoded] = $this->encode($canvas, $mime);
         imagedestroy($canvas);
         imagedestroy($source);
 
-        $fingerprint = substr(hash('sha256', $contents.$text.$opacity), 0, 16);
+        $fingerprint = substr(hash('sha256', $contents.$text.$opacity.$textSize.$spacing), 0, 16);
         $path = "watermarked/{$designId}/{$index}-{$fingerprint}.{$extension}";
         $disk->put($path, $encoded);
 
         return $path;
     }
 
-    private function tileText(\GdImage $image, string $text, int $opacity): void
+    private function tileText(\GdImage $image, string $text, int $opacity, int $textSize, int $spacing): void
     {
         $font = $this->fontPath();
-        $fontSize = max(16, min(38, (int) round(min(imagesx($image), imagesy($image)) / 18)));
+        $baseFontSize = min(imagesx($image), imagesy($image)) / 18;
+        $fontSize = max(10, min(96, (int) round($baseFontSize * ($textSize / 100))));
         $alpha = 127 - (int) round(($opacity / 100) * 127);
         $stampWidth = max(260, (int) round(strlen($text) * $fontSize * 0.78) + 80);
         $stampHeight = max(100, $fontSize * 3);
@@ -133,8 +143,8 @@ class DesignWatermarkService
 
         $rotated = imagerotate($stamp, 28, $transparent);
         imagesavealpha($rotated, true);
-        $stepX = max(220, imagesx($rotated) - 35);
-        $stepY = max(150, imagesy($rotated) - 20);
+        $stepX = max(120, (int) round((imagesx($rotated) - 35) * ($spacing / 100)));
+        $stepY = max(80, (int) round((imagesy($rotated) - 20) * ($spacing / 100)));
 
         for ($y = -$stepY; $y < imagesy($image) + $stepY; $y += $stepY) {
             $row = (int) floor($y / $stepY);

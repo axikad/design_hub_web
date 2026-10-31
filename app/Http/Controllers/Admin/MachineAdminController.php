@@ -192,6 +192,8 @@ class MachineAdminController extends Controller
             'watermarkConfig.enabled' => ['required_with:watermarkConfig', 'boolean'],
             'watermarkConfig.text' => ['required_if:watermarkConfig.enabled,true', 'nullable', 'string', 'max:60'],
             'watermarkConfig.opacity' => ['required_if:watermarkConfig.enabled,true', 'integer', 'min:5', 'max:60'],
+            'watermarkConfig.textSize' => ['sometimes', 'integer', 'min:50', 'max:200'],
+            'watermarkConfig.spacing' => ['sometimes', 'integer', 'min:50', 'max:250'],
         ]);
 
         return [
@@ -203,6 +205,8 @@ class MachineAdminController extends Controller
                 'enabled' => (bool) data_get($validated, 'watermarkConfig.enabled', false),
                 'text' => trim((string) data_get($validated, 'watermarkConfig.text', 'Textile Design Hub')) ?: 'Textile Design Hub',
                 'opacity' => (int) data_get($validated, 'watermarkConfig.opacity', 24),
+                'textSize' => (int) data_get($validated, 'watermarkConfig.textSize', 100),
+                'spacing' => (int) data_get($validated, 'watermarkConfig.spacing', 100),
             ],
         ];
     }

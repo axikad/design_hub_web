@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Machine;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\PhoneNormalizer;
@@ -11,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -59,6 +61,7 @@ class UserAdminController extends Controller
         return Inertia::render('admin/users/form', [
             'user' => null,
             'roles' => $this->roleOptions(),
+            'machines' => $this->machineOptions(),
         ]);
     }
 
@@ -67,7 +70,7 @@ class UserAdminController extends Controller
         $validated = $this->validateUser($request);
         $role = Role::query()->findOrFail($validated['roleId']);
 
-        User::query()->create([
+        $user = User::query()->create([
             'name' => $validated['name'],
             'role_id' => $role->id,
             'email' => $validated['email'],
@@ -77,17 +80,22 @@ class UserAdminController extends Controller
             'phone_key' => $validated['phoneKey'],
             'status' => $validated['status'],
         ]);
+        $user->machines()->sync($this->machineDatabaseIds($validated['machineIds']));
 
         return redirect()->route('admin.users.index')->with('success', 'User created.');
     }
 
     public function edit(string $user): Response
     {
-        $model = User::query()->with('role')->where('public_id', $user)->firstOrFail();
+        $model = User::query()->with(['role', 'machines'])->where('public_id', $user)->firstOrFail();
 
         return Inertia::render('admin/users/form', [
-            'user' => $model->toAdminArray(),
+            'user' => [
+                ...$model->toAdminArray(),
+                'machineIds' => $model->machines->where('is_active', true)->pluck('public_id')->values()->all(),
+            ],
             'roles' => $this->roleOptions(),
+            'machines' => $this->machineOptions(),
         ]);
     }
 
@@ -108,7 +116,7 @@ class UserAdminController extends Controller
         ];
 
         if ($model->role?->isSuperAdmin() && ($role->id !== $model->role_id || $validated['status'] !== 'active')) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'roleId' => 'The Super Admin role and active status cannot be changed.',
             ]);
         }
@@ -118,6 +126,7 @@ class UserAdminController extends Controller
         }
 
         $model->update($payload);
+        $model->machines()->sync($this->machineDatabaseIds($validated['machineIds']));
 
         return redirect()->route('admin.users.index')->with('success', 'User updated.');
     }
@@ -154,6 +163,33 @@ class UserAdminController extends Controller
             ->all();
     }
 
+    /** @return list<array{id: string, name: string, imageUri: string|null}> */
+    private function machineOptions(): array
+    {
+        return Machine::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Machine $machine) => [
+                'id' => $machine->public_id,
+                'name' => $machine->name,
+                'imageUri' => $machine->imageUrl(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /** @param list<string> $publicIds */
+    private function machineDatabaseIds(array $publicIds): array
+    {
+        return Machine::query()
+            ->whereIn('public_id', $publicIds)
+            ->where('is_active', true)
+            ->pluck('id')
+            ->all();
+    }
+
     /**
      * @return array{
      *     name: string,
@@ -162,7 +198,8 @@ class UserAdminController extends Controller
      *     password: string|null,
      *     countryCode: string|null,
      *     mobileNumber: string|null,
-     *     phoneKey: string|null
+     *     phoneKey: string|null,
+     *     machineIds: list<string>
      * }
      */
     private function validateUser(Request $request, ?int $ignoreUserId = null): array
@@ -175,6 +212,13 @@ class UserAdminController extends Controller
             'countryCode' => ['nullable', 'string', 'max:8'],
             'mobileNumber' => ['nullable', 'string', 'max:20'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
+            'machineIds' => ['sometimes', 'array', 'max:50'],
+            'machineIds.*' => [
+                'required',
+                'string',
+                'distinct',
+                Rule::exists('machines', 'public_id')->where('is_active', true),
+            ],
         ]);
 
         $role = Role::query()->findOrFail($validated['roleId']);
@@ -184,6 +228,7 @@ class UserAdminController extends Controller
             $request->validate([
                 'countryCode' => ['required', 'string', 'max:8'],
                 'mobileNumber' => ['required', 'string', 'max:20'],
+                'machineIds' => ['required', 'array', 'min:1', 'max:50'],
             ]);
         } else {
             $request->validate([
@@ -199,7 +244,7 @@ class UserAdminController extends Controller
         if ($countryCode && $mobileNumber) {
             $phoneKey = PhoneNormalizer::key($countryCode, $mobileNumber);
             if ($phoneKey === null) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'mobileNumber' => 'Enter a valid mobile number.',
                 ]);
             }
@@ -210,7 +255,7 @@ class UserAdminController extends Controller
                 ->exists();
 
             if ($exists) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'mobileNumber' => 'This mobile number is already registered.',
                 ]);
             }
@@ -225,6 +270,7 @@ class UserAdminController extends Controller
             'mobileNumber' => $mobileNumber,
             'phoneKey' => $phoneKey,
             'status' => $validated['status'],
+            'machineIds' => array_values($validated['machineIds'] ?? []),
         ];
     }
 }

@@ -29,6 +29,8 @@ class MachineManagementTest extends TestCase
                 'enabled' => true,
                 'text' => 'Protected DesignHub',
                 'opacity' => 30,
+                'textSize' => 135,
+                'spacing' => 160,
             ],
             'designFormConfig' => [
                 'machineType' => false,
@@ -94,6 +96,8 @@ class MachineManagementTest extends TestCase
         $this->assertTrue($watermark['enabled']);
         $this->assertSame('Protected DesignHub', $watermark['text']);
         $this->assertSame(30, $watermark['opacity']);
+        $this->assertSame(135, $watermark['textSize']);
+        $this->assertSame(160, $watermark['spacing']);
     }
 
     public function test_admin_can_upload_remove_and_expose_a_machine_image_in_the_catalog_api(): void

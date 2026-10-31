@@ -43,13 +43,19 @@ class Machine extends Model
         return MachineDesignFormConfig::normalize($this->design_form_config);
     }
 
-    /** @return array{enabled: bool, text: string, opacity: int} */
+    /** @return array{enabled: bool, text: string, opacity: int, textSize: int, spacing: int} */
     public static function defaultWatermarkConfig(): array
     {
-        return ['enabled' => false, 'text' => 'Textile Design Hub', 'opacity' => 24];
+        return [
+            'enabled' => false,
+            'text' => 'Textile Design Hub',
+            'opacity' => 24,
+            'textSize' => 100,
+            'spacing' => 100,
+        ];
     }
 
-    /** @return array{enabled: bool, text: string, opacity: int} */
+    /** @return array{enabled: bool, text: string, opacity: int, textSize: int, spacing: int} */
     public function normalizedWatermarkConfig(): array
     {
         $config = is_array($this->watermark_config) ? $this->watermark_config : [];
@@ -59,6 +65,8 @@ class Machine extends Model
             'enabled' => (bool) ($config['enabled'] ?? false),
             'text' => mb_substr($text !== '' ? $text : 'Textile Design Hub', 0, 60),
             'opacity' => max(5, min((int) ($config['opacity'] ?? 24), 60)),
+            'textSize' => max(50, min((int) ($config['textSize'] ?? 100), 200)),
+            'spacing' => max(50, min((int) ($config['spacing'] ?? 100), 250)),
         ];
     }
 

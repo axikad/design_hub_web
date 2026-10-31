@@ -37,7 +37,7 @@ type MachineForm = {
     designFormConfig: DesignFormConfig;
     watermarkConfig: WatermarkConfig;
 };
-type WatermarkConfig = { enabled: boolean; text: string; opacity: number };
+type WatermarkConfig = { enabled: boolean; text: string; opacity: number; textSize: number; spacing: number };
 type Props = {
     machine: MachineForm | null;
     nextSortOrder: number;
@@ -271,7 +271,7 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
                             </span>
                         </label>
                         {data.watermarkConfig.enabled ? (
-                            <div className="mt-5 grid gap-5 sm:grid-cols-[1fr_180px]">
+                            <div className="mt-5 grid gap-5 sm:grid-cols-2">
                                 <div className="grid gap-2">
                                     <Label htmlFor="watermarkText">Watermark text</Label>
                                     <Input
@@ -303,6 +303,46 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
                                         className="h-11 rounded-xl"
                                     />
                                     <InputError message={errors['watermarkConfig.opacity']} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="watermarkTextSize">Text size (%)</Label>
+                                    <Input
+                                        id="watermarkTextSize"
+                                        type="number"
+                                        min={50}
+                                        max={200}
+                                        value={data.watermarkConfig.textSize}
+                                        onChange={(event) =>
+                                            setData('watermarkConfig', {
+                                                ...data.watermarkConfig,
+                                                textSize: Number(event.target.value),
+                                            })
+                                        }
+                                        required
+                                        className="h-11 rounded-xl"
+                                    />
+                                    <p className="text-xs text-slate-500">50% is smaller; 200% is larger.</p>
+                                    <InputError message={errors['watermarkConfig.textSize']} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="watermarkSpacing">Spacing (%)</Label>
+                                    <Input
+                                        id="watermarkSpacing"
+                                        type="number"
+                                        min={50}
+                                        max={250}
+                                        value={data.watermarkConfig.spacing}
+                                        onChange={(event) =>
+                                            setData('watermarkConfig', {
+                                                ...data.watermarkConfig,
+                                                spacing: Number(event.target.value),
+                                            })
+                                        }
+                                        required
+                                        className="h-11 rounded-xl"
+                                    />
+                                    <p className="text-xs text-slate-500">50% is denser; 250% adds more space.</p>
+                                    <InputError message={errors['watermarkConfig.spacing']} />
                                 </div>
                             </div>
                         ) : null}
