@@ -16,7 +16,7 @@ return [
 
     'download_url_ttl_minutes' => 15,
 
-    // Optional absolute path/name for bsdtar (libarchive), required for RAR folder uploads.
+    // Optional bsdtar fallback when the PHP rar extension is unavailable.
     'folder_archive_extractor' => env('DESIGNHUB_FOLDER_ARCHIVE_EXTRACTOR'),
 
     'image_matching' => [

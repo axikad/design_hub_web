@@ -141,10 +141,131 @@ class FolderArchiveService
      */
     private function extractRar(UploadedFile $upload, Folder $folder): array
     {
+        if (class_exists(\RarArchive::class)) {
+            return $this->extractRarWithExtension($upload, $folder);
+        }
+
+        return $this->extractRarWithCommand($upload, $folder);
+    }
+
+    /**
+     * @return array{zip_name: string, zip_path: string, file_count: int, total_size: int, files: list<array{name: string, relative_path: string, storage_path: string, extension: ?string, mime_type: string, size: int}>}
+     */
+    private function extractRarWithExtension(UploadedFile $upload, Folder $folder): array
+    {
+        $archive = \RarArchive::open($upload->getRealPath());
+
+        if ($archive === false) {
+            throw new RuntimeException('The uploaded file is not a valid RAR archive.');
+        }
+
+        $version = Str::lower((string) Str::uuid());
+        $basePath = "folders/{$folder->public_id}/{$version}";
+        $archivePath = "{$basePath}/archive/source.rar";
+
+        try {
+            $entries = $archive->getEntries();
+
+            if ($entries === false || $entries === []) {
+                throw new RuntimeException('The RAR archive is empty.');
+            }
+
+            Storage::disk('local')->put($archivePath, fopen($upload->getRealPath(), 'rb'));
+            $files = [];
+            $seenPaths = [];
+            $totalSize = 0;
+
+            foreach ($entries as $entry) {
+                if ($entry->isDirectory()) {
+                    continue;
+                }
+
+                if ($entry->getHostOs() === \RarEntry::HOST_UNIX
+                    && ($entry->getAttr() & \RarEntry::ATTRIBUTE_UNIX_FINAL_QUARTET) === \RarEntry::ATTRIBUTE_UNIX_SYM_LINK) {
+                    throw new RuntimeException('The archive may not contain symbolic links.');
+                }
+
+                if ($entry->isEncrypted()) {
+                    throw new RuntimeException('Password-protected RAR archives are not supported.');
+                }
+
+                $relativePath = $this->safeRelativePath($entry->getName());
+
+                if (isset($seenPaths[$relativePath])) {
+                    throw new RuntimeException("The archive contains the duplicate path: {$relativePath}");
+                }
+
+                $size = $entry->getUnpackedSize();
+                $totalSize += $size;
+
+                if (count($files) >= self::MAX_FILES) {
+                    throw new RuntimeException('The RAR archive may contain at most '.self::MAX_FILES.' files.');
+                }
+
+                if ($totalSize > self::MAX_EXTRACTED_BYTES) {
+                    throw new RuntimeException('The extracted RAR content may not exceed 512 MB.');
+                }
+
+                $stream = $entry->getStream();
+
+                if ($stream === false) {
+                    throw new RuntimeException("Could not extract: {$relativePath}");
+                }
+
+                $storagePath = "{$basePath}/files/{$relativePath}";
+
+                try {
+                    Storage::disk('local')->put($storagePath, $stream);
+                } finally {
+                    fclose($stream);
+                }
+
+                if (Storage::disk('local')->size($storagePath) !== $size) {
+                    throw new RuntimeException("The extracted file is incomplete: {$relativePath}");
+                }
+
+                $absolutePath = Storage::disk('local')->path($storagePath);
+                $name = basename($relativePath);
+                $extension = pathinfo($name, PATHINFO_EXTENSION);
+                $files[] = [
+                    'name' => $name,
+                    'relative_path' => $relativePath,
+                    'storage_path' => $storagePath,
+                    'extension' => $extension !== '' ? Str::lower($extension) : null,
+                    'mime_type' => mime_content_type($absolutePath) ?: 'application/octet-stream',
+                    'size' => $size,
+                ];
+                $seenPaths[$relativePath] = true;
+            }
+
+            if ($files === []) {
+                throw new RuntimeException('The RAR archive does not contain any files.');
+            }
+
+            return [
+                'zip_name' => basename($upload->getClientOriginalName()),
+                'zip_path' => $archivePath,
+                'file_count' => count($files),
+                'total_size' => $totalSize,
+                'files' => $files,
+            ];
+        } catch (\Throwable $exception) {
+            Storage::disk('local')->deleteDirectory($basePath);
+            throw $exception;
+        } finally {
+            $archive->close();
+        }
+    }
+
+    /**
+     * @return array{zip_name: string, zip_path: string, file_count: int, total_size: int, files: list<array{name: string, relative_path: string, storage_path: string, extension: ?string, mime_type: string, size: int}>}
+     */
+    private function extractRarWithCommand(UploadedFile $upload, Folder $folder): array
+    {
         $extractor = $this->rarExtractor();
 
         if ($extractor === null) {
-            throw new RuntimeException('RAR extraction requires bsdtar (libarchive) on the server.');
+            throw new RuntimeException('RAR extraction requires the PHP rar extension or bsdtar (libarchive) on the server.');
         }
 
         $version = Str::lower((string) Str::uuid());
