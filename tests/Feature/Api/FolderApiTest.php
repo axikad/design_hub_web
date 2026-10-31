@@ -5,13 +5,73 @@ namespace Tests\Feature\Api;
 use App\Models\Folder;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
+use ZipArchive;
 
 class FolderApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_authenticated_user_can_create_a_folder_from_a_zip_archive(): void
+    {
+        Storage::fake('local');
+        Sanctum::actingAs(User::factory()->create());
+
+        $response = $this->post('/api/v1/folders', [
+            'name' => 'Mobile Pack',
+            'pricePaise' => 39900,
+            'file' => $this->zipUpload('mobile-pack.zip', [
+                'images/preview.svg' => '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+                'design.emb' => 'embroidery-data',
+            ]),
+        ], ['Accept' => 'application/json']);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Folder created successfully.')
+            ->assertJsonPath('data.name', 'Mobile Pack')
+            ->assertJsonPath('data.pricePaise', 39900)
+            ->assertJsonPath('data.fileCount', 2)
+            ->assertJsonPath('data.zipName', 'mobile-pack.zip')
+            ->assertJsonCount(2, 'data.files');
+
+        $folder = Folder::query()->where('name', 'Mobile Pack')->firstOrFail();
+        Storage::disk('local')->assertExists($folder->zip_path);
+        $this->assertSame(2, $folder->files()->count());
+    }
+
+    public function test_folder_create_accepts_mobile_compatible_archive_and_rupee_aliases(): void
+    {
+        Storage::fake('local');
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->post('/api/v1/folders', [
+            'name' => 'Compatible Pack',
+            'price' => '399',
+            'zipFile' => $this->zipUpload('compatible.zip', ['design.dst' => 'data']),
+        ], ['Accept' => 'application/json'])
+            ->assertCreated()
+            ->assertJsonPath('data.pricePaise', 39900);
+    }
+
+    public function test_folder_create_requires_an_archive_and_authentication(): void
+    {
+        $this->postJson('/api/v1/folders')->assertUnauthorized();
+
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->postJson('/api/v1/folders', [
+            'name' => 'Missing Archive',
+            'pricePaise' => 39900,
+        ])
+            ->assertUnprocessable()
+            ->assertJsonPath('code', 'validation_error')
+            ->assertJsonValidationErrors('file');
+    }
 
     public function test_folder_list_is_paginated_and_folder_details_include_signed_image_previews(): void
     {
@@ -86,5 +146,21 @@ class FolderApiTest extends TestCase
                 'message' => 'Folder not found.',
                 'code' => 'folder_not_found',
             ]);
+    }
+
+    /** @param array<string, string> $files */
+    private function zipUpload(string $name, array $files): UploadedFile
+    {
+        $path = tempnam(sys_get_temp_dir(), 'folder-api-zip-');
+        $zip = new ZipArchive;
+        $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+
+        foreach ($files as $relativePath => $contents) {
+            $zip->addFromString($relativePath, $contents);
+        }
+
+        $zip->close();
+
+        return new UploadedFile($path, $name, 'application/zip', null, true);
     }
 }

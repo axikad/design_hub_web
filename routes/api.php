@@ -66,6 +66,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('designs/{designId}/download', [DesignController::class, 'download']);
 
         Route::get('folders', [FolderController::class, 'index'])->name('folders.index');
+        Route::post('folders', [FolderController::class, 'store'])->name('folders.store');
         Route::get('folders/{folderId}', [FolderController::class, 'show'])->name('folders.show');
         Route::post('folders/{folderId}/download', [FolderController::class, 'download']);
 

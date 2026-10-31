@@ -6,17 +6,24 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\FolderResource;
 use App\Models\Folder;
 use App\Models\FolderPurchase;
+use App\Services\FolderArchiveService;
 use App\Support\ApiResponse;
 use App\Support\FolderFilePreview;
 use App\Support\Pagination;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class FolderController extends Controller
 {
+    public function __construct(private readonly FolderArchiveService $archives) {}
+
     public function index(Request $request)
     {
         $filters = $request->validate([
@@ -53,6 +60,64 @@ class FolderController extends Controller
         return ApiResponse::data(
             (new FolderResource($folder))->resolve($request),
             message: 'Folder retrieved successfully.',
+        );
+    }
+
+    public function store(Request $request)
+    {
+        $archive = $request->file('file')
+            ?? $request->file('zipFile')
+            ?? $request->file('archive');
+
+        $payload = [
+            ...$request->all(),
+            'name' => trim((string) $request->input('name')),
+            'file' => $archive,
+        ];
+
+        $validated = validator($payload, [
+            'name' => ['required', 'string', 'max:150', Rule::unique('folders', 'name')],
+            'pricePaise' => ['nullable', 'integer', 'min:0', 'max:9999999999', 'required_without_all:price,priceRupees'],
+            'price' => ['nullable', 'numeric', 'min:0', 'max:99999999.99', 'decimal:0,2', 'required_without_all:pricePaise,priceRupees'],
+            'priceRupees' => ['nullable', 'numeric', 'min:0', 'max:99999999.99', 'decimal:0,2', 'required_without_all:pricePaise,price'],
+            'file' => ['required', 'file', 'extensions:zip,rar'],
+        ])->validate();
+
+        $pricePaise = array_key_exists('pricePaise', $validated) && $validated['pricePaise'] !== null
+            ? (int) $validated['pricePaise']
+            : (int) round(((float) ($validated['priceRupees'] ?? $validated['price'])) * 100);
+
+        $folder = Folder::query()->create([
+            'name' => $validated['name'],
+            'price_paise' => $pricePaise,
+            'zip_name' => '',
+            'zip_path' => '',
+        ]);
+
+        try {
+            $extracted = $this->archives->extract($archive, $folder);
+
+            DB::transaction(function () use ($folder, $extracted): void {
+                $folder->update(collect($extracted)->except('files')->all());
+                $folder->files()->createMany($extracted['files']);
+            });
+        } catch (RuntimeException $exception) {
+            $this->deleteFailedFolder($folder);
+
+            throw ValidationException::withMessages(['file' => $exception->getMessage()]);
+        } catch (\Throwable $exception) {
+            $this->deleteFailedFolder($folder);
+            report($exception);
+
+            throw ValidationException::withMessages(['file' => 'The archive could not be processed.']);
+        }
+
+        $folder->load(['files.folder', 'previewFiles']);
+
+        return ApiResponse::data(
+            (new FolderResource($folder))->resolve($request),
+            201,
+            'Folder created successfully.',
         );
     }
 
@@ -127,5 +192,11 @@ class FolderController extends Controller
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, no-store',
         ]);
+    }
+
+    private function deleteFailedFolder(Folder $folder): void
+    {
+        $this->archives->deleteFolder($folder);
+        $folder->delete();
     }
 }

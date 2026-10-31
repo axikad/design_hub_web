@@ -44,6 +44,7 @@ Design and user collection endpoints accept `page` and `per_page` (default 20, m
 | PATCH  | `/designs/:id`                                     | `DesignRequest` below                                                                                   | Updated `Design`                                                                  |
 | DELETE | `/designs/:id`                                     | Bearer token                                                                                            | `{ message: "Design deleted successfully." }`                                     |
 | GET    | `/folders`                                         | Bearer token; optional `search`, `page`, `per_page`                                                     | Paginated `Folder[]`                                                              |
+| POST   | `/folders`                                         | Bearer token; multipart `name`, `pricePaise`, `file` (ZIP or RAR)                                      | Created folder with extracted file metadata                                       |
 | GET    | `/folders/:id`                                     | Bearer token                                                                                            | Folder metadata and ordered extracted files                                       |
 | POST   | `/payments/orders`                                 | `{ folderId: string }`                                                                                  | Razorpay order using the server-side folder price                                 |
 | POST   | `/payments/verify`                                 | `{ folderId, razorpay_order_id, razorpay_payment_id, razorpay_signature }`                              | Folder payment status and purchase ID                                             |
@@ -142,6 +143,8 @@ type Folder = {
 ```
 
 Folder image previews use temporary signed URLs and can be displayed directly without a Bearer header. Non-image files intentionally return `previewUri: null`. To buy a folder, send `folderId` instead of `designId` through the existing payment endpoints. The backend always takes `amount` from the folder's stored `pricePaise`; clients must not submit an amount. Once status is `paid`, `POST /folders/:id/download` returns a short-lived signed URL for the original ZIP or RAR archive. Unpaid users receive `403 folder_download_forbidden` and never receive a full-file URL. The existing `zipName` response key is retained for backward compatibility and may now end in `.zip` or `.rar`.
+
+Create folders with `multipart/form-data`. Send `name`, integer `pricePaise` (for example `39900` for ₹399), and one archive in `file`. ZIP and RAR are supported. For compatibility, the API also accepts a rupee value in `price` or `priceRupees`, and accepts the archive field as `zipFile` or `archive`.
 
 ## Search by image
 
