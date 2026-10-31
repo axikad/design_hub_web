@@ -66,7 +66,7 @@ type DesignRequest = {
     machineId: string; // Always send the selected machine.
     machineTypeId?: string; // Show when machineType is true; require when required.machineType is true.
     categoryId?: string; // Show when category is true; require when required.category is true.
-    title?: string; // Required when design specifications are disabled.
+    title?: string; // Optional. Without specifications, the backend uses the first preview filename, then "Untitled design".
     sequenceType?: number; // Used only when enabled; common design value in millimetres (mm).
     designTypes?: Array<{
         typeId?: string; // Catalog type. Send either this or customTypeName.

@@ -123,9 +123,9 @@ class MachineDesignFormConfigApiTest extends TestCase
 
         $this->postJson('/api/v1/designs', [
             'machineId' => $machine->public_id,
-            'title' => 'Minimal design',
         ])
             ->assertCreated()
+            ->assertJsonPath('data.title', 'Untitled design')
             ->assertJsonPath('data.machineId', 'minimal-machine')
             ->assertJsonPath('data.machineTypeId', null)
             ->assertJsonPath('data.categoryId', null)
@@ -143,6 +143,56 @@ class MachineDesignFormConfigApiTest extends TestCase
         $this->assertNull($design->category_id);
         $this->assertNull($design->design_file_type_id);
         $this->assertNull($design->stitch_path);
+    }
+
+    public function test_design_without_specifications_uses_preview_filename_as_its_title(): void
+    {
+        $machine = Machine::query()->create([
+            'public_id' => 'sketch-images',
+            'name' => 'Sketch images',
+            'is_active' => true,
+            'sort_order' => 1,
+            'design_form_config' => [
+                'machineType' => false,
+                'category' => false,
+                'designTypes' => false,
+                'designSpecifications' => false,
+                'sequenceType' => false,
+                'designFileType' => false,
+                'previewImages' => true,
+                'stitchFiles' => false,
+                'pricing' => true,
+            ],
+        ]);
+        $user = User::factory()->create();
+        $preview = Upload::query()->create([
+            'user_id' => $user->id,
+            'disk' => 'public',
+            'path' => 'previews/'.$user->public_id.'/1000000838.jpg',
+            'kind' => 'photo',
+            'original_name' => '1000000838.jpg',
+            'mime' => 'image/jpeg',
+            'size_bytes' => 100,
+        ]);
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/designs', [
+            'machineId' => $machine->public_id,
+            'pricePaise' => 39900,
+            'images' => [[
+                'name' => '1000000838.jpg',
+                'uri' => app(UploadService::class)->publicUrl($preview),
+            ]],
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.title', '1000000838')
+            ->assertJsonPath('data.pricePaise', 39900);
+
+        $this->assertDatabaseHas('designs', [
+            'machine_id' => $machine->id,
+            'title' => '1000000838',
+            'price_paise' => 39900,
+        ]);
     }
 
     public function test_category_types_and_file_type_work_without_machine_type_or_stitch_file(): void

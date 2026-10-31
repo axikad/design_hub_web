@@ -261,7 +261,7 @@ class DesignController extends Controller
             'categoryId' => [$config['category'] && $required['category'] ? 'required' : 'nullable', 'string', 'max:120'],
             'showPrice' => ['sometimes', 'boolean'],
             'publishDate' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
-            'title' => [$config['designSpecifications'] ? 'nullable' : 'required', 'string', 'min:1', 'max:120'],
+            'title' => ['sometimes', 'nullable', 'string', 'min:1', 'max:120'],
             'pricePaise' => [$config['pricing'] && $required['pricing'] ? 'required' : 'nullable', 'integer', 'min:'.($config['pricing'] ? 100 : 0), 'max:100000000'],
             'sequenceType' => [$config['sequenceType'] && $required['sequenceType'] ? 'required' : 'sometimes', 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'size' => ['sometimes', 'nullable', 'string', 'max:120'],
@@ -423,8 +423,15 @@ class DesignController extends Controller
             return $detail;
         })->values()->all();
 
+        $automaticTitle = trim((string) ($validated['title'] ?? ''));
+
+        if ($automaticTitle === '' && filled($images[0]['name'] ?? null)) {
+            $automaticTitle = trim((string) pathinfo($images[0]['name'], PATHINFO_FILENAME));
+        }
+
+        $automaticTitle = mb_substr($automaticTitle !== '' ? $automaticTitle : 'Untitled design', 0, 120);
         $firstVariant = $variants[0] ?? [
-            'name_or_number' => trim((string) ($validated['title'] ?? 'Untitled design')),
+            'name_or_number' => $automaticTitle,
             'height' => 0,
             'width' => 0,
         ];
