@@ -279,7 +279,7 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
                                         maxLength={60}
                                         value={data.watermarkConfig.text}
                                         onChange={(event) => setData('watermarkConfig', { ...data.watermarkConfig, text: event.target.value })}
-                                        placeholder="DesignHub"
+                                        placeholder="Textile Design Hub"
                                         required
                                         className="h-11 rounded-xl"
                                     />

@@ -46,18 +46,18 @@ class Machine extends Model
     /** @return array{enabled: bool, text: string, opacity: int} */
     public static function defaultWatermarkConfig(): array
     {
-        return ['enabled' => false, 'text' => 'DesignHub', 'opacity' => 24];
+        return ['enabled' => false, 'text' => 'Textile Design Hub', 'opacity' => 24];
     }
 
     /** @return array{enabled: bool, text: string, opacity: int} */
     public function normalizedWatermarkConfig(): array
     {
         $config = is_array($this->watermark_config) ? $this->watermark_config : [];
-        $text = trim((string) ($config['text'] ?? 'DesignHub'));
+        $text = trim((string) ($config['text'] ?? 'Textile Design Hub'));
 
         return [
             'enabled' => (bool) ($config['enabled'] ?? false),
-            'text' => mb_substr($text !== '' ? $text : 'DesignHub', 0, 60),
+            'text' => mb_substr($text !== '' ? $text : 'Textile Design Hub', 0, 60),
             'opacity' => max(5, min((int) ($config['opacity'] ?? 24), 60)),
         ];
     }

@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('site_settings', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->default('DesignHub Admin');
+            $table->string('name')->default('Textile Design Hub');
             $table->string('logo_path')->nullable();
             $table->string('favicon_path')->nullable();
             $table->timestamps();

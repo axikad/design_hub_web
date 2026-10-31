@@ -44,7 +44,7 @@ export default function ResetPassword({ token, email }: ResetPasswordProps) {
                 <p className="text-xs font-semibold tracking-[0.18em] text-indigo-600 uppercase dark:text-indigo-400">Account recovery</p>
                 <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 dark:text-white">Choose a new password</h1>
                 <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                    Create a strong password to secure your DesignHub administrator account.
+                    Create a strong password to secure your Textile Design Hub administrator account.
                 </p>
             </div>
 

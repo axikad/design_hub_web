@@ -53,10 +53,10 @@ class ProfileContactOtpService
 
         if ($type === 'email') {
             Mail::raw(
-                "Your DesignHub verification code is {$code}. It expires in ".config('designhub.otp_ttl_minutes').' minutes.',
+                "Your Textile Design Hub verification code is {$code}. It expires in ".config('designhub.otp_ttl_minutes').' minutes.',
                 fn ($message) => $message
                     ->to($contact['email'])
-                    ->subject('Verify your DesignHub email'),
+                    ->subject('Verify your Textile Design Hub email'),
             );
         }
 

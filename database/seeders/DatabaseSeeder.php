@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
         $admin = User::query()->updateOrCreate(
             ['email' => 'admin@designhub.local'],
             [
-                'name' => 'DesignHub Admin',
+                'name' => 'Textile Design Hub Admin',
                 'password' => 'password',
             ],
         );

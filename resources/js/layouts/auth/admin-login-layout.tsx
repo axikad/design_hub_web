@@ -10,7 +10,7 @@ type Props = {
 
 export default function AdminLoginLayout({ children }: Props) {
     const { siteBranding } = usePage<SharedData>().props;
-    const name = siteBranding?.name ?? 'DesignHub Admin';
+    const name = siteBranding?.name ?? 'Textile Design Hub';
     const logoUrl = siteBranding?.logoUrl;
 
     return (
@@ -57,7 +57,7 @@ export default function AdminLoginLayout({ children }: Props) {
                         </div>
                     </div>
 
-                    <p className="relative z-10 text-xs text-slate-500">Secure access for authorized DesignHub administrators.</p>
+                    <p className="relative z-10 text-xs text-slate-500">Secure access for authorized Textile Design Hub administrators.</p>
                 </section>
 
                 <section className="relative flex items-center justify-center px-5 py-10 sm:px-8 lg:px-12">

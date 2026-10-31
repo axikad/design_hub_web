@@ -20,7 +20,7 @@ export default function VerifyEmail({ status }: { status?: string }) {
                 <p className="text-xs font-semibold tracking-[0.18em] text-indigo-600 uppercase dark:text-indigo-400">Secure your account</p>
                 <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 dark:text-white">Verify your email</h1>
                 <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                    Open the verification link we sent to your email address to continue to DesignHub.
+                    Open the verification link we sent to your email address to continue to Textile Design Hub.
                 </p>
             </div>
 

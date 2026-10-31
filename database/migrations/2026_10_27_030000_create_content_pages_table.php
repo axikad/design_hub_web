@@ -24,7 +24,7 @@ return new class extends Migration
             [
                 'slug' => 'terms-and-conditions',
                 'title' => 'Terms and Conditions',
-                'content' => 'Welcome to DesignHub. Please update these terms from the admin panel before publishing the mobile application.',
+                'content' => 'Welcome to Textile Design Hub. Please update these terms from the admin panel before publishing the mobile application.',
                 'is_active' => true,
                 'created_at' => $now,
                 'updated_at' => $now,
@@ -32,7 +32,7 @@ return new class extends Migration
             [
                 'slug' => 'privacy-policy',
                 'title' => 'Privacy Policy',
-                'content' => 'This page explains how DesignHub handles user information. Please replace this draft with your approved privacy policy.',
+                'content' => 'This page explains how Textile Design Hub handles user information. Please replace this draft with your approved privacy policy.',
                 'is_active' => true,
                 'created_at' => $now,
                 'updated_at' => $now,
@@ -47,8 +47,8 @@ return new class extends Migration
             ],
             [
                 'slug' => 'about-app',
-                'title' => 'About DesignHub',
-                'content' => 'DesignHub is a marketplace for discovering and purchasing machine-ready design files.',
+                'title' => 'About Textile Design Hub',
+                'content' => 'Textile Design Hub is a marketplace for discovering and purchasing machine-ready design files.',
                 'is_active' => true,
                 'created_at' => $now,
                 'updated_at' => $now,

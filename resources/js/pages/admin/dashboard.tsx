@@ -61,10 +61,10 @@ export default function AdminDashboard({ stats, recentDesigns, recentPurchases }
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="DesignHub Admin" />
+            <Head title="Textile Design Hub" />
             <div className="space-y-7 p-4 md:p-6">
                 <div className="rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 p-6 text-white shadow-lg shadow-indigo-500/15 md:p-8">
-                    <p className="text-sm font-semibold text-indigo-100">DesignHub administration</p>
+                    <p className="text-sm font-semibold text-indigo-100">Textile Design Hub administration</p>
                     <h1 className="mt-2 text-2xl font-bold tracking-tight md:text-3xl">Marketplace overview</h1>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-indigo-100">
                         Monitor designs, customers, purchases, and server-side payment activity from one place.

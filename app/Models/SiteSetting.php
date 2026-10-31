@@ -35,7 +35,7 @@ class SiteSetting extends Model
             }
 
             return static::query()->create([
-                'name' => 'DesignHub Admin',
+                'name' => 'Textile Design Hub',
             ]);
         });
     }

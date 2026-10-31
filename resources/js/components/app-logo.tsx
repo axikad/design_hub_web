@@ -4,7 +4,7 @@ import AppLogoIcon from './app-logo-icon';
 
 export default function AppLogo() {
     const { siteBranding } = usePage<SharedData>().props;
-    const name = siteBranding?.name ?? 'DesignHub Admin';
+    const name = siteBranding?.name ?? 'Textile Design Hub';
     const logoUrl = siteBranding?.logoUrl;
 
     return (

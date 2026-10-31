@@ -39,7 +39,7 @@ export default function Register() {
                 <p className="text-xs font-semibold tracking-[0.18em] text-indigo-600 uppercase dark:text-indigo-400">Admin portal</p>
                 <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 dark:text-white">Create your account</h1>
                 <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                    Enter your details to request access to the DesignHub workspace.
+                    Enter your details to request access to the Textile Design Hub workspace.
                 </p>
             </div>
 

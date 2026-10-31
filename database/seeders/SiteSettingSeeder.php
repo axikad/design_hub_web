@@ -10,7 +10,7 @@ class SiteSettingSeeder extends Seeder
     public function run(): void
     {
         SiteSetting::query()->firstOrCreate([], [
-            'name' => 'DesignHub Admin',
+            'name' => 'Textile Design Hub',
         ]);
     }
 }

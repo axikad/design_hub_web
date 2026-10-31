@@ -201,7 +201,7 @@ class MachineAdminController extends Controller
             'design_form_config' => MachineDesignFormConfig::normalize($validated['designFormConfig'] ?? null),
             'watermark_config' => [
                 'enabled' => (bool) data_get($validated, 'watermarkConfig.enabled', false),
-                'text' => trim((string) data_get($validated, 'watermarkConfig.text', 'DesignHub')) ?: 'DesignHub',
+                'text' => trim((string) data_get($validated, 'watermarkConfig.text', 'Textile Design Hub')) ?: 'Textile Design Hub',
                 'opacity' => (int) data_get($validated, 'watermarkConfig.opacity', 24),
             ],
         ];

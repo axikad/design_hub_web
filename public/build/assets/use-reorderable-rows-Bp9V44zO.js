@@ -1,0 +1,6 @@
+import{c as D}from"./app-logo-icon-C675Te9w.js";import{r as s}from"./app-DsGMCDV-.js";/**
+ * @license lucide-react v0.475.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const m=[["circle",{cx:"9",cy:"12",r:"1",key:"1vctgf"}],["circle",{cx:"9",cy:"5",r:"1",key:"hp0tcf"}],["circle",{cx:"9",cy:"19",r:"1",key:"fkjjf6"}],["circle",{cx:"15",cy:"12",r:"1",key:"1tmaij"}],["circle",{cx:"15",cy:"5",r:"1",key:"19l28e"}],["circle",{cx:"15",cy:"19",r:"1",key:"f4zoj3"}]],T=D("GripVertical",m);function j(l,a,g){const[i,p]=s.useState(l),[t,f]=s.useState(null),[x,n]=s.useState(null);return s.useEffect(()=>p(l),[l]),{rows:i,rowDragProps:e=>({draggable:a,onDragStart:r=>{a&&(r.dataTransfer.effectAllowed="move",r.dataTransfer.setData("text/plain",e),f(e))},onDragOver:r=>{!a||!t||t===e||(r.preventDefault(),r.dataTransfer.dropEffect="move",n(e))},onDragLeave:()=>n(r=>r===e?null:r),onDrop:r=>{if(r.preventDefault(),!a||!t||t===e)return;const c=[...i],u=c.findIndex(o=>o.id===t),d=c.findIndex(o=>o.id===e);if(u<0||d<0)return;const[y]=c.splice(u,1);c.splice(d,0,y),p(c),f(null),n(null),g(c.map(o=>o.id))},onDragEnd:()=>{f(null),n(null)}}),draggedId:t,dropTargetId:x}}export{T as G,j as u};

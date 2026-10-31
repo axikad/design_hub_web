@@ -153,7 +153,7 @@ export default function AdminUsersIndex({ users, roles, filters }: Props) {
                         <AdminEmptyState
                             icon={UsersRound}
                             title="No users found"
-                            description="Try changing your filters or add a new user to the DesignHub workspace."
+                            description="Try changing your filters or add a new user to the Textile Design Hub workspace."
                             action={
                                 canCreate ? (
                                     <Button asChild className="rounded-xl bg-indigo-600 hover:bg-indigo-700">
