@@ -13,6 +13,7 @@ use App\Models\MachineType;
 use App\Models\User;
 use App\Services\DesignImageMatchingService;
 use App\Services\DesignPresenter;
+use App\Services\DesignWatermarkService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -28,6 +29,7 @@ class DesignAdminController extends Controller
     public function __construct(
         private readonly DesignPresenter $presenter,
         private readonly DesignImageMatchingService $imageMatching,
+        private readonly DesignWatermarkService $watermarks,
     ) {}
 
     public function index(Request $request): Response
@@ -238,7 +240,8 @@ class DesignAdminController extends Controller
             return $design;
         });
 
-        $this->imageMatching->syncDesign($design);
+        $this->watermarks->syncDesign($design);
+        $this->imageMatching->syncDesign($design->fresh());
 
         return redirect()->route('admin.designs.index')->with('success', 'Design created.');
     }
@@ -289,6 +292,7 @@ class DesignAdminController extends Controller
         $previewImages = $this->existingPreviewImages($model);
         if ($validated['previewImagesEnabled'] && ($request->hasFile('previewImages') || $request->hasFile('previewImage'))) {
             Storage::disk('public')->delete(collect($previewImages)->pluck('path')->filter()->unique()->all());
+            Storage::disk('public')->delete(collect($previewImages)->pluck('watermarkedPath')->filter()->unique()->all());
             $previewImages = $this->storePreviewImages($request, $owner);
         }
 
@@ -339,6 +343,7 @@ class DesignAdminController extends Controller
             $model->variants()->createMany($validated['variants']);
         });
 
+        $this->watermarks->syncDesign($model->fresh());
         $this->imageMatching->syncDesign($model->fresh());
 
         return redirect()->route('admin.designs.index')->with('success', 'Design updated.');
@@ -615,10 +620,11 @@ class DesignAdminController extends Controller
     private function existingPreviewImages(Design $design): array
     {
         if (is_array($design->images) && $design->images !== []) {
-            return collect($design->images)->map(fn (array $image) => [
+            return collect($design->images)->map(fn (array $image) => array_filter([
                 'name' => $image['name'],
                 'path' => $image['path'],
-            ])->values()->all();
+                'watermarkedPath' => $image['watermarkedPath'] ?? null,
+            ]))->values()->all();
         }
 
         if ($design->preview_path === null) {

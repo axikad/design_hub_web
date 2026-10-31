@@ -11,11 +11,11 @@ use Illuminate\Support\Str;
 
 class Machine extends Model
 {
-    protected $fillable = ['public_id', 'name', 'image_path', 'design_form_config', 'is_active', 'sort_order'];
+    protected $fillable = ['public_id', 'name', 'image_path', 'design_form_config', 'watermark_config', 'is_active', 'sort_order'];
 
     protected function casts(): array
     {
-        return ['design_form_config' => 'array', 'is_active' => 'boolean', 'sort_order' => 'integer'];
+        return ['design_form_config' => 'array', 'watermark_config' => 'array', 'is_active' => 'boolean', 'sort_order' => 'integer'];
     }
 
     protected static function booted(): void
@@ -41,6 +41,25 @@ class Machine extends Model
     public function normalizedDesignFormConfig(): array
     {
         return MachineDesignFormConfig::normalize($this->design_form_config);
+    }
+
+    /** @return array{enabled: bool, text: string, opacity: int} */
+    public static function defaultWatermarkConfig(): array
+    {
+        return ['enabled' => false, 'text' => 'DesignHub', 'opacity' => 24];
+    }
+
+    /** @return array{enabled: bool, text: string, opacity: int} */
+    public function normalizedWatermarkConfig(): array
+    {
+        $config = is_array($this->watermark_config) ? $this->watermark_config : [];
+        $text = trim((string) ($config['text'] ?? 'DesignHub'));
+
+        return [
+            'enabled' => (bool) ($config['enabled'] ?? false),
+            'text' => mb_substr($text !== '' ? $text : 'DesignHub', 0, 60),
+            'opacity' => max(5, min((int) ($config['opacity'] ?? 24), 60)),
+        ];
     }
 
     public function imageUrl(): ?string

@@ -41,6 +41,7 @@ Design and user collection endpoints accept `page` and `per_page` (default 20, m
 | GET    | `/designs/:id`                                     | Bearer token                                                                                            | `Design` (404 if missing)                                                         |
 | POST   | `/uploads`                                         | Multipart form with one `file` field                                                                    | `{ url: "https://..." }`                                                          |
 | POST   | `/designs`                                         | `DesignRequest` below                                                                                   | Created `Design`                                                                  |
+| POST   | `/designs/:id/images/:index/download`              | Bearer token; owner or paid buyer only                                                                  | Temporary signed clean-image download URL                                         |
 | PATCH  | `/designs/:id`                                     | `DesignRequest` below                                                                                   | Updated `Design`                                                                  |
 | DELETE | `/designs/:id`                                     | Bearer token                                                                                            | `{ message: "Design deleted successfully." }`                                     |
 | GET    | `/folders`                                         | Bearer token; optional `search`, `page`, `per_page`                                                     | Paginated `Folder[]`                                                              |
@@ -141,6 +142,8 @@ type Folder = {
     updatedAt: string;
 };
 ```
+
+When a design belongs to a watermark-enabled machine, each `images[]` item returns the protected preview in `uri`, `isWatermarked: true`, and `downloadUri: null` for unpaid users. Owners and paid buyers receive `downloadUri`; call that URL with `POST` and the Bearer token to receive a temporary signed URL for the clean original image. Never use the preview URL as the purchased file.
 
 Folder image previews use temporary signed URLs and can be displayed directly without a Bearer header. Non-image files intentionally return `previewUri: null`. To buy a folder, send `folderId` instead of `designId` through the existing payment endpoints. The backend always takes `amount` from the folder's stored `pricePaise`; clients must not submit an amount. Once status is `paid`, `POST /folders/:id/download` returns a short-lived signed URL for the original ZIP or RAR archive. Unpaid users receive `403 folder_download_forbidden` and never receive a full-file URL. The existing `zipName` response key is retained for backward compatibility and may now end in `.zip` or `.rar`.
 

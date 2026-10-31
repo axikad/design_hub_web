@@ -72,6 +72,7 @@ class CatalogController extends Controller
                 'name' => $machine->name,
                 'imageUri' => $machine->imageUrl(),
                 'designFormConfig' => $machine->normalizedDesignFormConfig(),
+                'watermarkEnabled' => $machine->normalizedWatermarkConfig()['enabled'],
             ]);
 
         return ApiResponse::data($machines->values(), message: 'Machines retrieved successfully.');
@@ -221,6 +222,7 @@ class CatalogController extends Controller
                 'name' => $machine->name,
                 'imageUri' => $machine->imageUrl(),
                 'designFormConfig' => $machine->normalizedDesignFormConfig(),
+                'watermarkEnabled' => $machine->normalizedWatermarkConfig()['enabled'],
                 'machineTypeIds' => $machine->machineTypes->pluck('public_id')->values(),
                 'categoryIds' => $machine->machineTypes
                     ->flatMap->categories

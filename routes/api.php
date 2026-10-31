@@ -22,6 +22,9 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::get('files/stitch/{design}', [DesignController::class, 'streamStitch'])
         ->name('files.stitch')
         ->middleware('signed');
+    Route::get('files/design-images/{designId}/{imageIndex}', [DesignController::class, 'streamImage'])
+        ->name('files.design-images')
+        ->middleware('signed');
     Route::get('files/folders/{folderId}/{fileId}/preview', [FolderController::class, 'streamPreview'])
         ->name('files.folders.preview')
         ->middleware('signed');
@@ -64,6 +67,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::patch('designs/{designId}', [DesignController::class, 'update']);
         Route::delete('designs/{designId}', [DesignController::class, 'destroy']);
         Route::post('designs/{designId}/download', [DesignController::class, 'download']);
+        Route::post('designs/{designId}/images/{imageIndex}/download', [DesignController::class, 'downloadImage']);
 
         Route::get('folders', [FolderController::class, 'index'])->name('folders.index');
         Route::post('folders', [FolderController::class, 'store'])->name('folders.store');

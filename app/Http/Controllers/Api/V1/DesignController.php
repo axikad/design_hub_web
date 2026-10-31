@@ -11,6 +11,7 @@ use App\Models\DesignType;
 use App\Models\Machine;
 use App\Models\MachineType;
 use App\Services\DesignImageMatchingService;
+use App\Services\DesignWatermarkService;
 use App\Services\PurchaseAccessService;
 use App\Services\UploadService;
 use App\Support\ApiResponse;
@@ -29,6 +30,7 @@ class DesignController extends Controller
         private readonly UploadService $uploads,
         private readonly PurchaseAccessService $access,
         private readonly DesignImageMatchingService $imageMatching,
+        private readonly DesignWatermarkService $watermarks,
     ) {}
 
     public function index(Request $request)
@@ -118,6 +120,8 @@ class DesignController extends Controller
         });
 
         $design->load(['owner', 'type.category', 'fileType', 'variants.type']);
+        $this->watermarks->syncDesign($design);
+        $design->refresh();
         $this->imageMatching->syncDesign($design);
 
         return ApiResponse::data(
@@ -168,6 +172,8 @@ class DesignController extends Controller
         });
 
         $design->load(['owner', 'type.category', 'fileType', 'variants.type']);
+        $this->watermarks->syncDesign($design);
+        $design->refresh();
         $this->imageMatching->syncDesign($design);
 
         return ApiResponse::data(
@@ -245,6 +251,55 @@ class DesignController extends Controller
             $file['path'],
             $file['name'],
         );
+    }
+
+    public function downloadImage(Request $request, string $designId, int $imageIndex)
+    {
+        $design = Design::query()->listed()->where('public_id', $designId)->first();
+
+        if ($design === null) {
+            return ApiResponse::error('Design not found.', 'design_not_found', 404);
+        }
+
+        if (! $this->access->canDownloadStitch($request->user(), $design)) {
+            return ApiResponse::error(
+                'Purchase this design to download its original image.',
+                'design_image_download_forbidden',
+                403,
+            );
+        }
+
+        $image = $this->designImage($design, max($imageIndex, 0));
+
+        if ($image === null || ! Storage::disk('public')->exists($image['path'])) {
+            return ApiResponse::error('Original design image is unavailable.', 'design_image_not_found', 404);
+        }
+
+        $expiresAt = now()->addMinutes((int) config('designhub.download_url_ttl_minutes'));
+
+        return ApiResponse::data([
+            'url' => URL::temporarySignedRoute(
+                'api.v1.files.design-images',
+                $expiresAt,
+                ['designId' => $design->public_id, 'imageIndex' => $imageIndex],
+            ),
+            'fileName' => $image['name'],
+            'expiresAt' => $expiresAt->utc()->toIso8601String(),
+        ], message: 'Original image download URL created successfully.');
+    }
+
+    public function streamImage(string $designId, int $imageIndex)
+    {
+        $design = Design::query()->listed()->where('public_id', $designId)->firstOrFail();
+        $image = $this->designImage($design, max($imageIndex, 0));
+
+        abort_if($image === null, 404);
+        abort_unless(Storage::disk('public')->exists($image['path']), 404);
+
+        return Storage::disk('public')->download($image['path'], $image['name'], [
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store',
+        ]);
     }
 
     private function validatedDesignPayload(Request $request, ?Design $existingDesign = null): array
@@ -757,6 +812,25 @@ class DesignController extends Controller
                 'name' => $design->file_name ?? 'design.dst',
                 'path' => $design->stitch_path,
             ];
+        }
+
+        return null;
+    }
+
+    /** @return array{name: string, path: string}|null */
+    private function designImage(Design $design, int $index): ?array
+    {
+        $images = $design->images;
+
+        if (is_array($images) && isset($images[$index]['path'])) {
+            return [
+                'name' => $images[$index]['name'] ?? basename($images[$index]['path']),
+                'path' => $images[$index]['path'],
+            ];
+        }
+
+        if ($index === 0 && $design->preview_path !== null) {
+            return ['name' => basename($design->preview_path), 'path' => $design->preview_path];
         }
 
         return null;

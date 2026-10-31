@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Cpu, ImageIcon, LoaderCircle, Save, SlidersHorizontal, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Cpu, ImageIcon, LoaderCircle, Save, ShieldCheck, SlidersHorizontal, Trash2, Upload } from 'lucide-react';
 import { type ChangeEvent, type FormEventHandler, useRef, useState } from 'react';
 
 type DesignFieldKey =
@@ -35,8 +35,15 @@ type MachineForm = {
     isActive: boolean;
     sortOrder: number;
     designFormConfig: DesignFormConfig;
+    watermarkConfig: WatermarkConfig;
 };
-type Props = { machine: MachineForm | null; nextSortOrder: number; defaultDesignFormConfig: DesignFormConfig };
+type WatermarkConfig = { enabled: boolean; text: string; opacity: number };
+type Props = {
+    machine: MachineForm | null;
+    nextSortOrder: number;
+    defaultDesignFormConfig: DesignFormConfig;
+    defaultWatermarkConfig: WatermarkConfig;
+};
 type MachineFormData = {
     name: string;
     image: File | null;
@@ -44,6 +51,7 @@ type MachineFormData = {
     isActive: boolean;
     sortOrder: number;
     designFormConfig: DesignFormConfig;
+    watermarkConfig: WatermarkConfig;
     _method: 'post' | 'put';
 };
 
@@ -67,7 +75,7 @@ const specificationFieldOptions: { key: SpecificationFieldKey; label: string }[]
     { key: 'width', label: 'Width (mm)' },
 ];
 
-export default function AdminMachineForm({ machine, nextSortOrder, defaultDesignFormConfig }: Props) {
+export default function AdminMachineForm({ machine, nextSortOrder, defaultDesignFormConfig, defaultWatermarkConfig }: Props) {
     const editing = Boolean(machine?.id);
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Overview', href: '/dashboard' },
@@ -83,6 +91,7 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
         isActive: machine?.isActive ?? true,
         sortOrder: machine?.sortOrder ?? nextSortOrder,
         designFormConfig: machine?.designFormConfig ?? defaultDesignFormConfig,
+        watermarkConfig: machine?.watermarkConfig ?? defaultWatermarkConfig,
         _method: editing ? 'put' : 'post',
     });
 
@@ -241,6 +250,63 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
                                 </span>
                             </span>
                         </label>
+                    </AdminFormPanel>
+
+                    <AdminFormPanel
+                        title="Design image watermark"
+                        description="Protect marketplace previews while keeping the original image clean for buyers."
+                        icon={ShieldCheck}
+                    >
+                        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+                            <Checkbox
+                                checked={data.watermarkConfig.enabled}
+                                onCheckedChange={(value) => setData('watermarkConfig', { ...data.watermarkConfig, enabled: value === true })}
+                                className="mt-0.5"
+                            />
+                            <span>
+                                <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">Watermark design previews</span>
+                                <span className="mt-1 block text-xs text-slate-500">
+                                    New and existing design previews for this machine will show a repeated watermark.
+                                </span>
+                            </span>
+                        </label>
+                        {data.watermarkConfig.enabled ? (
+                            <div className="mt-5 grid gap-5 sm:grid-cols-[1fr_180px]">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="watermarkText">Watermark text</Label>
+                                    <Input
+                                        id="watermarkText"
+                                        maxLength={60}
+                                        value={data.watermarkConfig.text}
+                                        onChange={(event) => setData('watermarkConfig', { ...data.watermarkConfig, text: event.target.value })}
+                                        placeholder="DesignHub"
+                                        required
+                                        className="h-11 rounded-xl"
+                                    />
+                                    <InputError message={errors['watermarkConfig.text']} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="watermarkOpacity">Opacity (%)</Label>
+                                    <Input
+                                        id="watermarkOpacity"
+                                        type="number"
+                                        min={5}
+                                        max={60}
+                                        value={data.watermarkConfig.opacity}
+                                        onChange={(event) =>
+                                            setData('watermarkConfig', {
+                                                ...data.watermarkConfig,
+                                                opacity: Number(event.target.value),
+                                            })
+                                        }
+                                        required
+                                        className="h-11 rounded-xl"
+                                    />
+                                    <InputError message={errors['watermarkConfig.opacity']} />
+                                </div>
+                            </div>
+                        ) : null}
+                        <InputError message={errors.watermarkConfig} />
                     </AdminFormPanel>
 
                     <AdminFormPanel

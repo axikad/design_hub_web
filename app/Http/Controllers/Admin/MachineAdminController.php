@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Machine;
+use App\Services\DesignWatermarkService;
 use App\Services\SortOrderService;
 use App\Support\MachineDesignFormConfig;
 use Illuminate\Http\RedirectResponse;
@@ -14,7 +15,10 @@ use Inertia\Response;
 
 class MachineAdminController extends Controller
 {
-    public function __construct(private readonly SortOrderService $sortOrder) {}
+    public function __construct(
+        private readonly SortOrderService $sortOrder,
+        private readonly DesignWatermarkService $watermarks,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -55,6 +59,7 @@ class MachineAdminController extends Controller
             'machine' => null,
             'nextSortOrder' => $this->sortOrder->nextPosition(Machine::class),
             'defaultDesignFormConfig' => MachineDesignFormConfig::defaults(),
+            'defaultWatermarkConfig' => Machine::defaultWatermarkConfig(),
         ]);
     }
 
@@ -82,21 +87,29 @@ class MachineAdminController extends Controller
                 'isActive' => $model->is_active,
                 'sortOrder' => $model->sort_order,
                 'designFormConfig' => $model->normalizedDesignFormConfig(),
+                'watermarkConfig' => $model->normalizedWatermarkConfig(),
             ],
             'nextSortOrder' => $this->sortOrder->nextPosition(Machine::class),
             'defaultDesignFormConfig' => MachineDesignFormConfig::defaults(),
+            'defaultWatermarkConfig' => Machine::defaultWatermarkConfig(),
         ]);
     }
 
     public function update(Request $request, string $machine): RedirectResponse
     {
         $model = Machine::query()->where('public_id', $machine)->firstOrFail();
+        $previousWatermarkConfig = $model->normalizedWatermarkConfig();
         $attributes = $this->validated($request);
         $position = $attributes['sort_order'];
         unset($attributes['sort_order']);
         $model->update($attributes);
         $this->sortOrder->place($model, $position);
         $this->syncImage($request, $model);
+        $model->refresh();
+
+        if ($previousWatermarkConfig !== $model->normalizedWatermarkConfig()) {
+            $this->watermarks->syncMachine($model);
+        }
 
         return redirect()->route('admin.machines.index')->with('success', 'Machine updated.');
     }
@@ -175,6 +188,10 @@ class MachineAdminController extends Controller
             'designFormConfig.specificationFields.required.area' => ['sometimes', 'boolean'],
             'designFormConfig.specificationFields.required.height' => ['sometimes', 'boolean'],
             'designFormConfig.specificationFields.required.width' => ['sometimes', 'boolean'],
+            'watermarkConfig' => ['sometimes', 'array'],
+            'watermarkConfig.enabled' => ['required_with:watermarkConfig', 'boolean'],
+            'watermarkConfig.text' => ['required_if:watermarkConfig.enabled,true', 'nullable', 'string', 'max:60'],
+            'watermarkConfig.opacity' => ['required_if:watermarkConfig.enabled,true', 'integer', 'min:5', 'max:60'],
         ]);
 
         return [
@@ -182,6 +199,11 @@ class MachineAdminController extends Controller
             'is_active' => $request->boolean('isActive', true),
             'sort_order' => isset($validated['sortOrder']) ? (int) $validated['sortOrder'] : null,
             'design_form_config' => MachineDesignFormConfig::normalize($validated['designFormConfig'] ?? null),
+            'watermark_config' => [
+                'enabled' => (bool) data_get($validated, 'watermarkConfig.enabled', false),
+                'text' => trim((string) data_get($validated, 'watermarkConfig.text', 'DesignHub')) ?: 'DesignHub',
+                'opacity' => (int) data_get($validated, 'watermarkConfig.opacity', 24),
+            ],
         ];
     }
 

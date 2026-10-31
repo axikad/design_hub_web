@@ -18,7 +18,7 @@ class DesignPresenter
     {
         $design->loadMissing(['owner', 'type.category', 'machine', 'machineType.machine', 'fileType', 'variants.type']);
         $canAccessFile = $viewer !== null && $this->access->canDownloadStitch($viewer, $design);
-        $images = $this->images($design);
+        $images = $this->images($design, $canAccessFile);
         $files = $this->files($design, $canAccessFile);
         $formCategory = $design->category_id === null
             ? null
@@ -79,13 +79,17 @@ class DesignPresenter
         return $fileIndex === 0 ? $url : $url.'?file='.$fileIndex;
     }
 
-    private function images(Design $design): array
+    private function images(Design $design, bool $canDownloadOriginal): array
     {
         if (is_array($design->images) && $design->images !== []) {
-            return collect($design->images)->map(fn (array $image) => [
+            return collect($design->images)->map(fn (array $image, int $index) => [
                 'name' => $image['name'],
-                'uri' => Storage::disk('public')->url($image['path']),
-                'thumbnailUri' => $this->thumbnails->url($image['path']),
+                'uri' => Storage::disk('public')->url($image['watermarkedPath'] ?? $image['path']),
+                'thumbnailUri' => $this->thumbnails->url($image['watermarkedPath'] ?? $image['path']),
+                'isWatermarked' => filled($image['watermarkedPath'] ?? null),
+                'downloadUri' => $canDownloadOriginal
+                    ? url("/api/v1/designs/{$design->public_id}/images/{$index}/download")
+                    : null,
             ])->values()->all();
         }
 
@@ -97,6 +101,10 @@ class DesignPresenter
             'name' => basename($design->preview_path),
             'uri' => $this->previewUrl($design),
             'thumbnailUri' => $this->thumbnails->url($design->preview_path),
+            'isWatermarked' => false,
+            'downloadUri' => $canDownloadOriginal
+                ? url("/api/v1/designs/{$design->public_id}/images/0/download")
+                : null,
         ]];
     }
 

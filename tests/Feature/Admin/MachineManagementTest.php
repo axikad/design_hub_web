@@ -25,6 +25,11 @@ class MachineManagementTest extends TestCase
             'name' => 'Embroidery',
             'isActive' => true,
             'sortOrder' => 1,
+            'watermarkConfig' => [
+                'enabled' => true,
+                'text' => 'Protected DesignHub',
+                'opacity' => 30,
+            ],
             'designFormConfig' => [
                 'machineType' => false,
                 'category' => true,
@@ -72,6 +77,7 @@ class MachineManagementTest extends TestCase
         ]);
 
         $config = Machine::query()->where('name', 'Embroidery')->firstOrFail()->normalizedDesignFormConfig();
+        $watermark = Machine::query()->where('name', 'Embroidery')->firstOrFail()->normalizedWatermarkConfig();
         $this->assertFalse($config['machineType']);
         $this->assertTrue($config['category']);
         $this->assertTrue($config['designTypes']);
@@ -85,6 +91,9 @@ class MachineManagementTest extends TestCase
         $this->assertFalse($config['specificationFields']['needle']);
         $this->assertFalse($config['specificationFields']['required']['stitchCount']);
         $this->assertTrue($config['specificationFields']['required']['height']);
+        $this->assertTrue($watermark['enabled']);
+        $this->assertSame('Protected DesignHub', $watermark['text']);
+        $this->assertSame(30, $watermark['opacity']);
     }
 
     public function test_admin_can_upload_remove_and_expose_a_machine_image_in_the_catalog_api(): void
