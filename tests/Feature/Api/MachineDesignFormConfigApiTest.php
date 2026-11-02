@@ -39,6 +39,7 @@ class MachineDesignFormConfigApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.id', 'simple-machine')
             ->assertJsonPath('data.0.designFormConfig.machineType', false)
+            ->assertJsonPath('data.0.designFormConfig.title', false)
             ->assertJsonPath('data.0.designFormConfig.category', true)
             ->assertJsonPath('data.0.designFormConfig.designTypes', true)
             ->assertJsonPath('data.0.designFormConfig.designSpecifications', true)
@@ -46,6 +47,7 @@ class MachineDesignFormConfigApiTest extends TestCase
             ->assertJsonPath('data.0.designFormConfig.designFileType', true)
             ->assertJsonPath('data.0.designFormConfig.previewImages', true)
             ->assertJsonPath('data.0.designFormConfig.required.machineType', false)
+            ->assertJsonPath('data.0.designFormConfig.required.title', false)
             ->assertJsonPath('data.0.designFormConfig.required.category', true)
             ->assertJsonPath('data.0.designFormConfig.required.stitchFiles', false)
             ->assertJsonPath('data.0.designFormConfig.required.previewImages', true)
@@ -192,6 +194,47 @@ class MachineDesignFormConfigApiTest extends TestCase
             'machine_id' => $machine->id,
             'title' => '1000000838',
             'price_paise' => 39900,
+        ]);
+    }
+
+    public function test_machine_can_require_an_explicit_design_title(): void
+    {
+        $machine = Machine::query()->create([
+            'public_id' => 'title-machine',
+            'name' => 'Title Machine',
+            'is_active' => true,
+            'sort_order' => 1,
+            'design_form_config' => [
+                'title' => true,
+                'machineType' => false,
+                'category' => false,
+                'designTypes' => false,
+                'designSpecifications' => false,
+                'sequenceType' => false,
+                'designFileType' => false,
+                'previewImages' => false,
+                'stitchFiles' => false,
+                'pricing' => false,
+                'required' => ['title' => true],
+            ],
+        ]);
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/designs', ['machineId' => $machine->public_id])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('title');
+
+        $this->postJson('/api/v1/designs', [
+            'machineId' => $machine->public_id,
+            'title' => 'Floral Sketch 101',
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.title', 'Floral Sketch 101');
+
+        $this->assertDatabaseHas('designs', [
+            'machine_id' => $machine->id,
+            'title' => 'Floral Sketch 101',
         ]);
     }
 

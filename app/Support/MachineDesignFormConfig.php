@@ -8,6 +8,7 @@ final class MachineDesignFormConfig
     public static function defaults(): array
     {
         $fields = [
+            'title' => false,
             'machineType' => true,
             'category' => true,
             'designTypes' => true,

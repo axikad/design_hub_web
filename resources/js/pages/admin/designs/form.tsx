@@ -16,6 +16,7 @@ type TypeOption = { id: string; name: string };
 type CategoryOption = { id: string; name: string; types: TypeOption[] };
 type MachineTypeOption = { id: string; name: string; categories: CategoryOption[] };
 type DesignFieldKey =
+    | 'title'
     | 'machineType'
     | 'category'
     | 'designTypes'
@@ -44,6 +45,7 @@ type VariantInput = {
 };
 type DesignForm = {
     id?: string;
+    title?: string;
     ownerId?: string;
     machineId?: string | null;
     machineTypeId?: string | null;
@@ -107,6 +109,7 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
     ];
     const form = useForm({
         ownerId: design?.ownerId ?? owners[0]?.id ?? '',
+        title: design?.title ?? '',
         machineId: initialMachine?.id ?? '',
         machineTypeId: initialMachineType?.id ?? '',
         categoryId: initialCategory?.id ?? '',
@@ -152,6 +155,7 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
         setData((current) => ({
             ...current,
             machineId,
+            title: machineConfig?.title ? current.title : '',
             machineTypeId: machineConfig?.machineType ? (machineType?.id ?? '') : '',
             categoryId: category?.id ?? '',
             variants: machineConfig?.designTypes && typeId ? [emptyVariant(typeId)] : [],
@@ -202,6 +206,7 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
         processing ||
         !owners.length ||
         !catalog.length ||
+        Boolean(config?.required.title && !data.title.trim()) ||
         Boolean(config?.required.machineType && !data.machineTypeId) ||
         Boolean(config?.required.category && !data.categoryId) ||
         Boolean(config?.required.designTypes && !data.variants.length) ||
@@ -224,22 +229,39 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                 />
                 <form onSubmit={submit} className="space-y-5">
                     <AdminFormPanel title="Seller" description="Choose the marketplace user who owns this design." icon={UserRound}>
-                        <div className="grid gap-2">
-                            <Label>Seller</Label>
-                            <Select value={data.ownerId} onValueChange={(value) => setData('ownerId', value)}>
-                                <SelectTrigger className={selectClass}>
-                                    <SelectValue placeholder="Select user" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {owners.map((owner) => (
-                                        <SelectItem key={owner.id} value={owner.id}>
-                                            {owner.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <InputError message={errors.ownerId} />
-                            {!owners.length ? <p className="text-sm text-amber-700">Create a marketplace user before adding designs.</p> : null}
+                        <div className={`grid gap-5 ${config?.title ? 'sm:grid-cols-2' : ''}`}>
+                            <div className="grid gap-2">
+                                <Label>Seller</Label>
+                                <Select value={data.ownerId} onValueChange={(value) => setData('ownerId', value)}>
+                                    <SelectTrigger className={selectClass}>
+                                        <SelectValue placeholder="Select user" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {owners.map((owner) => (
+                                            <SelectItem key={owner.id} value={owner.id}>
+                                                {owner.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.ownerId} />
+                                {!owners.length ? <p className="text-sm text-amber-700">Create a marketplace user before adding designs.</p> : null}
+                            </div>
+                            {config?.title ? (
+                                <div className="grid gap-2">
+                                    <Label htmlFor="title">Title</Label>
+                                    <Input
+                                        id="title"
+                                        value={data.title}
+                                        maxLength={120}
+                                        required={config.required.title}
+                                        onChange={(event) => setData('title', event.target.value)}
+                                        placeholder="Enter design title"
+                                        className={inputClass}
+                                    />
+                                    <InputError message={errors.title} />
+                                </div>
+                            ) : null}
                         </div>
                     </AdminFormPanel>
 

@@ -12,6 +12,7 @@ import { ArrowLeft, Cpu, ImageIcon, LoaderCircle, Save, ShieldCheck, SlidersHori
 import { type ChangeEvent, type FormEventHandler, useRef, useState } from 'react';
 
 type DesignFieldKey =
+    | 'title'
     | 'machineType'
     | 'category'
     | 'designTypes'
@@ -56,6 +57,7 @@ type MachineFormData = {
 };
 
 const designFieldOptions: { key: DesignFieldKey; label: string; description: string }[] = [
+    { key: 'title', label: 'Title', description: 'Enter a public title for the design.' },
     { key: 'machineType', label: 'Machine type', description: 'Select a machine type for the design.' },
     { key: 'category', label: 'Category', description: 'Select a compatible category.' },
     { key: 'designTypes', label: 'Design types', description: 'Allow catalog and custom design types.' },

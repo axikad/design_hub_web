@@ -259,6 +259,7 @@ class DesignAdminController extends Controller
         return Inertia::render('admin/designs/form', [
             'design' => [
                 'id' => $model->public_id,
+                'title' => $model->title,
                 'ownerId' => $model->owner?->public_id,
                 'categoryId' => $model->category_id ?? $model->type?->category?->public_id,
                 'machineTypeId' => $model->machine_type_id,
@@ -285,7 +286,7 @@ class DesignAdminController extends Controller
     public function update(Request $request, string $design): RedirectResponse
     {
         $model = Design::query()->listed()->where('public_id', $design)->firstOrFail();
-        $validated = $this->validateDesign($request, false);
+        $validated = $this->validateDesign($request, false, $model);
 
         $owner = User::query()->where('public_id', $validated['ownerId'])->firstOrFail();
 
@@ -374,7 +375,7 @@ class DesignAdminController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function validateDesign(Request $request, bool $creating): array
+    private function validateDesign(Request $request, bool $creating, ?Design $existingDesign = null): array
     {
         $machineInput = $request->validate([
             'machineId' => ['required', 'string', Rule::exists('machines', 'public_id')->where('is_active', true)],
@@ -390,6 +391,7 @@ class DesignAdminController extends Controller
 
         $rules = [
             'ownerId' => ['required', 'string', Rule::exists('users', 'public_id')],
+            'title' => [! $config['title'] ? 'exclude' : ($required['title'] ? 'required' : 'nullable'), 'string', 'min:1', 'max:120'],
             'machineId' => ['required', 'string', Rule::exists('machines', 'public_id')->where('is_active', true)],
             'machineTypeId' => [$config['machineType'] && $required['machineType'] ? 'required' : 'nullable', 'string', Rule::exists('machine_types', 'public_id')->where('is_active', true)],
             'categoryId' => [$config['category'] && $required['category'] ? 'required' : 'nullable', 'string', Rule::exists('design_categories', 'public_id')->where('is_active', true)],
@@ -525,7 +527,21 @@ class DesignAdminController extends Controller
                 'sort_order' => $index,
             ];
         })->values();
-        $firstVariant = $variants->first() ?? ['name_or_number' => 'Untitled design', 'height' => 0, 'width' => 0];
+        $explicitTitle = $config['title'] ? trim((string) ($validated['title'] ?? '')) : '';
+        $automaticTitle = trim((string) ($variants->first()['name_or_number'] ?? ''));
+        $uploadedPreview = collect($request->file('previewImages', []))->first() ?? $request->file('previewImage');
+
+        if ($automaticTitle === '' && $uploadedPreview !== null) {
+            $automaticTitle = trim((string) pathinfo($uploadedPreview->getClientOriginalName(), PATHINFO_FILENAME));
+        }
+
+        if ($automaticTitle === '' && $existingDesign !== null) {
+            $automaticTitle = trim((string) $existingDesign->title);
+        }
+
+        $automaticTitle = mb_substr($automaticTitle !== '' ? $automaticTitle : 'Untitled design', 0, 120);
+        $resolvedTitle = mb_substr($explicitTitle !== '' ? $explicitTitle : $automaticTitle, 0, 120);
+        $firstVariant = $variants->first() ?? ['name_or_number' => $resolvedTitle, 'height' => 0, 'width' => 0];
 
         return [
             'ownerId' => $validated['ownerId'],
@@ -534,7 +550,7 @@ class DesignAdminController extends Controller
             'machineDbId' => $machine->id,
             'machineTypeId' => $machineType?->public_id,
             'categoryId' => $category?->public_id,
-            'title' => $firstVariant['name_or_number'],
+            'title' => $resolvedTitle,
             'pricePaise' => $pricePaise,
             'sequenceType' => $config['sequenceType'] ? ($validated['sequenceType'] ?? 0) : 0,
             'size' => $firstVariant['height'].' Ã— '.$firstVariant['width'],

@@ -316,7 +316,7 @@ class DesignController extends Controller
             'categoryId' => [$config['category'] && $required['category'] ? 'required' : 'nullable', 'string', 'max:120'],
             'showPrice' => ['sometimes', 'boolean'],
             'publishDate' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
-            'title' => ['sometimes', 'nullable', 'string', 'min:1', 'max:120'],
+            'title' => [! $config['title'] ? 'exclude' : ($required['title'] ? 'required' : 'nullable'), 'string', 'min:1', 'max:120'],
             'pricePaise' => [$config['pricing'] && $required['pricing'] ? 'required' : 'nullable', 'integer', 'min:'.($config['pricing'] ? 100 : 0), 'max:100000000'],
             'sequenceType' => [$config['sequenceType'] && $required['sequenceType'] ? 'required' : 'sometimes', 'nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'size' => ['sometimes', 'nullable', 'string', 'max:120'],
@@ -478,15 +478,17 @@ class DesignController extends Controller
             return $detail;
         })->values()->all();
 
-        $automaticTitle = trim((string) ($validated['title'] ?? ''));
+        $explicitTitle = $config['title'] ? trim((string) ($validated['title'] ?? '')) : '';
+        $automaticTitle = trim((string) ($variants[0]['name_or_number'] ?? ''));
 
         if ($automaticTitle === '' && filled($images[0]['name'] ?? null)) {
             $automaticTitle = trim((string) pathinfo($images[0]['name'], PATHINFO_FILENAME));
         }
 
         $automaticTitle = mb_substr($automaticTitle !== '' ? $automaticTitle : 'Untitled design', 0, 120);
+        $resolvedTitle = mb_substr($explicitTitle !== '' ? $explicitTitle : $automaticTitle, 0, 120);
         $firstVariant = $variants[0] ?? [
-            'name_or_number' => $automaticTitle,
+            'name_or_number' => $resolvedTitle,
             'height' => 0,
             'width' => 0,
         ];
@@ -510,7 +512,7 @@ class DesignController extends Controller
             'details' => $details,
             'images' => $images,
             'files' => $files,
-            'title' => $firstVariant['name_or_number'],
+            'title' => $resolvedTitle,
             'pricePaise' => $config['pricing'] ? ($validated['pricePaise'] ?? 0) : 0,
             'sequenceType' => $config['sequenceType'] ? $sequenceType : 0,
             'size' => $summarySize,
