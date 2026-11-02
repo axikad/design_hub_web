@@ -34,6 +34,12 @@ export default function AdminMachineTypeForm({ machineType, machines, categories
     const allCategoryIds = categories.map((category) => category.id);
     const allCategoriesSelected = categories.length > 0 && allCategoryIds.every((id) => data.categoryIds.includes(id));
     const someCategoriesSelected = data.categoryIds.length > 0 && !allCategoriesSelected;
+    const orderedCategories = [
+        ...data.categoryIds
+            .map((categoryId) => categories.find((category) => category.id === categoryId))
+            .filter((category): category is Option => Boolean(category)),
+        ...categories.filter((category) => !data.categoryIds.includes(category.id)),
+    ];
     const toggleCategory = (id: string, checked: boolean) =>
         setData('categoryIds', checked ? Array.from(new Set([...data.categoryIds, id])) : data.categoryIds.filter((value) => value !== id));
     const toggleAllCategories = (checked: boolean) => setData('categoryIds', checked ? allCategoryIds : []);
@@ -165,79 +171,91 @@ export default function AdminMachineTypeForm({ machineType, machines, categories
                                 )}
                             </div>
                         )}
-                        {data.categoryIds.length > 0 ? (
-                            <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-900/40">
+                        {categories.length > 0 ? (
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-900/40">
                                 <div className="mb-3">
-                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Category display order</p>
-                                    <p className="mt-1 text-xs text-slate-500">Drag categories or use the arrow buttons to change their position.</p>
+                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Categories and display order</p>
+                                    <p className="mt-1 text-xs text-slate-500">
+                                        Select categories here. Drag selected rows or use the arrows to arrange their display order.
+                                    </p>
                                 </div>
                                 <div className="space-y-2">
-                                    {data.categoryIds.map((categoryId, index) => {
-                                        const category = categories.find((item) => item.id === categoryId);
-                                        if (!category) return null;
+                                    {orderedCategories.map((category) => {
+                                        const selectedIndex = data.categoryIds.indexOf(category.id);
+                                        const selected = selectedIndex >= 0;
 
                                         return (
                                             <div
                                                 key={category.id}
-                                                draggable
-                                                onDragStart={() => setDraggedCategoryId(category.id)}
+                                                draggable={selected}
+                                                onDragStart={() => selected && setDraggedCategoryId(category.id)}
                                                 onDragEnd={() => setDraggedCategoryId(null)}
-                                                onDragOver={(event) => event.preventDefault()}
-                                                onDrop={() => dropCategory(category.id)}
+                                                onDragOver={(event) => selected && event.preventDefault()}
+                                                onDrop={() => selected && dropCategory(category.id)}
                                                 className={`flex items-center gap-3 rounded-xl border bg-white p-3 transition dark:bg-slate-900 ${
                                                     draggedCategoryId === category.id
                                                         ? 'border-indigo-400 opacity-60'
-                                                        : 'border-slate-200 dark:border-slate-700'
+                                                        : selected
+                                                          ? 'border-indigo-200 dark:border-indigo-900'
+                                                          : 'border-slate-200 dark:border-slate-700'
                                                 }`}
                                             >
-                                                <GripVertical className="size-4 cursor-grab text-slate-400" />
-                                                <span className="flex size-7 items-center justify-center rounded-lg bg-indigo-50 text-xs font-bold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
-                                                    {index + 1}
-                                                </span>
-                                                <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                                <Checkbox
+                                                    id={`category-${category.id}`}
+                                                    checked={selected}
+                                                    onCheckedChange={(value) => toggleCategory(category.id, value === true)}
+                                                    aria-label={`Select ${category.name}`}
+                                                />
+                                                <GripVertical
+                                                    className={`size-4 ${selected ? 'cursor-grab text-slate-400' : 'text-slate-200 dark:text-slate-700'}`}
+                                                />
+                                                {selected ? (
+                                                    <span className="flex size-7 items-center justify-center rounded-lg bg-indigo-50 text-xs font-bold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
+                                                        {selectedIndex + 1}
+                                                    </span>
+                                                ) : (
+                                                    <span className="flex size-7 items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-400 dark:bg-slate-800">
+                                                        —
+                                                    </span>
+                                                )}
+                                                <label
+                                                    htmlFor={`category-${category.id}`}
+                                                    className="min-w-0 flex-1 cursor-pointer truncate text-sm font-semibold text-slate-700 dark:text-slate-200"
+                                                >
                                                     {category.name}
-                                                </span>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    disabled={index === 0}
-                                                    onClick={() => moveCategory(category.id, index - 1)}
-                                                    aria-label={`Move ${category.name} up`}
-                                                >
-                                                    <ArrowUp className="size-4" />
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    disabled={index === data.categoryIds.length - 1}
-                                                    onClick={() => moveCategory(category.id, index + 1)}
-                                                    aria-label={`Move ${category.name} down`}
-                                                >
-                                                    <ArrowDown className="size-4" />
-                                                </Button>
+                                                </label>
+                                                {selected && (
+                                                    <>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            disabled={selectedIndex === 0}
+                                                            onClick={() => moveCategory(category.id, selectedIndex - 1)}
+                                                            aria-label={`Move ${category.name} up`}
+                                                        >
+                                                            <ArrowUp className="size-4" />
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            disabled={selectedIndex === data.categoryIds.length - 1}
+                                                            onClick={() => moveCategory(category.id, selectedIndex + 1)}
+                                                            aria-label={`Move ${category.name} down`}
+                                                        >
+                                                            <ArrowDown className="size-4" />
+                                                        </Button>
+                                                    </>
+                                                )}
                                             </div>
                                         );
                                     })}
                                 </div>
                             </div>
-                        ) : null}
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            {categories.map((category) => (
-                                <label
-                                    key={category.id}
-                                    className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm font-medium transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 dark:border-slate-700 dark:hover:border-indigo-800 dark:hover:bg-indigo-950/20"
-                                >
-                                    <Checkbox
-                                        checked={data.categoryIds.includes(category.id)}
-                                        onCheckedChange={(value) => toggleCategory(category.id, value === true)}
-                                    />
-                                    {category.name}
-                                </label>
-                            ))}
-                            {!categories.length && <p className="text-sm text-slate-500">Create categories first.</p>}
-                        </div>
+                        ) : (
+                            <p className="text-sm text-slate-500">Create categories first.</p>
+                        )}
                         <InputError message={errors.categoryIds} className="mt-3" />
                     </AdminFormPanel>
 
