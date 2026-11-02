@@ -53,6 +53,7 @@ class DesignCategory extends Model
 
     public function machineTypes(): BelongsToMany
     {
-        return $this->belongsToMany(MachineType::class, 'category_machine_type');
+        return $this->belongsToMany(MachineType::class, 'category_machine_type')
+            ->withPivot('sort_order');
     }
 }

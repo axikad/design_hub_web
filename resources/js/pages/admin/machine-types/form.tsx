@@ -9,8 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Cog, Layers3, LoaderCircle, Save } from 'lucide-react';
-import { type FormEventHandler } from 'react';
+import { ArrowDown, ArrowLeft, ArrowUp, Cog, GripVertical, Layers3, LoaderCircle, Save } from 'lucide-react';
+import { type FormEventHandler, useState } from 'react';
 
 type Option = { id: string; name: string };
 type MachineTypeForm = { id: string; machineId: string | null; name: string; categoryIds: string[]; isActive: boolean; sortOrder: number };
@@ -18,6 +18,7 @@ type Props = { machineType: MachineTypeForm | null; machines: Option[]; categori
 
 export default function AdminMachineTypeForm({ machineType, machines, categories, nextSortOrders }: Props) {
     const editing = Boolean(machineType?.id);
+    const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null);
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Overview', href: '/dashboard' },
         { title: 'Machine Types', href: '/admin/machine-types' },
@@ -36,6 +37,20 @@ export default function AdminMachineTypeForm({ machineType, machines, categories
     const toggleCategory = (id: string, checked: boolean) =>
         setData('categoryIds', checked ? Array.from(new Set([...data.categoryIds, id])) : data.categoryIds.filter((value) => value !== id));
     const toggleAllCategories = (checked: boolean) => setData('categoryIds', checked ? allCategoryIds : []);
+    const moveCategory = (categoryId: string, nextIndex: number) => {
+        const currentIndex = data.categoryIds.indexOf(categoryId);
+        if (currentIndex < 0 || nextIndex < 0 || nextIndex >= data.categoryIds.length || currentIndex === nextIndex) return;
+
+        const orderedIds = [...data.categoryIds];
+        orderedIds.splice(currentIndex, 1);
+        orderedIds.splice(nextIndex, 0, categoryId);
+        setData('categoryIds', orderedIds);
+    };
+    const dropCategory = (targetCategoryId: string) => {
+        if (draggedCategoryId === null) return;
+        moveCategory(draggedCategoryId, data.categoryIds.indexOf(targetCategoryId));
+        setDraggedCategoryId(null);
+    };
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
         editing && machineType?.id ? put(route('admin.machine-types.update', machineType.id)) : post(route('admin.machine-types.store'));
@@ -125,7 +140,7 @@ export default function AdminMachineTypeForm({ machineType, machines, categories
 
                     <AdminFormPanel
                         title="Compatible categories"
-                        description="Only selected categories will be available for this machine and machine type combination."
+                        description="Select compatible categories and arrange their display order for this machine type."
                         icon={Layers3}
                     >
                         {categories.length > 0 && (
@@ -150,6 +165,64 @@ export default function AdminMachineTypeForm({ machineType, machines, categories
                                 )}
                             </div>
                         )}
+                        {data.categoryIds.length > 0 ? (
+                            <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-900/40">
+                                <div className="mb-3">
+                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Category display order</p>
+                                    <p className="mt-1 text-xs text-slate-500">Drag categories or use the arrow buttons to change their position.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    {data.categoryIds.map((categoryId, index) => {
+                                        const category = categories.find((item) => item.id === categoryId);
+                                        if (!category) return null;
+
+                                        return (
+                                            <div
+                                                key={category.id}
+                                                draggable
+                                                onDragStart={() => setDraggedCategoryId(category.id)}
+                                                onDragEnd={() => setDraggedCategoryId(null)}
+                                                onDragOver={(event) => event.preventDefault()}
+                                                onDrop={() => dropCategory(category.id)}
+                                                className={`flex items-center gap-3 rounded-xl border bg-white p-3 transition dark:bg-slate-900 ${
+                                                    draggedCategoryId === category.id
+                                                        ? 'border-indigo-400 opacity-60'
+                                                        : 'border-slate-200 dark:border-slate-700'
+                                                }`}
+                                            >
+                                                <GripVertical className="size-4 cursor-grab text-slate-400" />
+                                                <span className="flex size-7 items-center justify-center rounded-lg bg-indigo-50 text-xs font-bold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
+                                                    {index + 1}
+                                                </span>
+                                                <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                                    {category.name}
+                                                </span>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    disabled={index === 0}
+                                                    onClick={() => moveCategory(category.id, index - 1)}
+                                                    aria-label={`Move ${category.name} up`}
+                                                >
+                                                    <ArrowUp className="size-4" />
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    disabled={index === data.categoryIds.length - 1}
+                                                    onClick={() => moveCategory(category.id, index + 1)}
+                                                    aria-label={`Move ${category.name} down`}
+                                                >
+                                                    <ArrowDown className="size-4" />
+                                                </Button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ) : null}
                         <div className="grid gap-3 sm:grid-cols-2">
                             {categories.map((category) => (
                                 <label

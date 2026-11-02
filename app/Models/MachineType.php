@@ -32,6 +32,9 @@ class MachineType extends Model
 
     public function categories(): BelongsToMany
     {
-        return $this->belongsToMany(DesignCategory::class, 'category_machine_type');
+        return $this->belongsToMany(DesignCategory::class, 'category_machine_type')
+            ->withPivot('sort_order')
+            ->orderByRaw('CASE WHEN category_machine_type.sort_order = 0 THEN design_categories.sort_order ELSE category_machine_type.sort_order END')
+            ->orderBy('design_categories.name');
     }
 }

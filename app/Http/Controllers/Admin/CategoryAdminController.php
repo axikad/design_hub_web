@@ -71,7 +71,7 @@ class CategoryAdminController extends Controller
             $validated['attributes']['sort_order'] = $position ?? $this->sortOrder->nextPosition(DesignCategory::class);
             $category = DesignCategory::query()->create($validated['attributes']);
             $this->sortOrder->place($category, $position);
-            $category->machineTypes()->sync($validated['machineTypeIds']);
+            $this->syncMachineTypesPreservingOrder($category, $validated['machineTypeIds']);
         });
 
         return redirect()->route('admin.categories.index')->with('success', 'Category created.');
@@ -107,7 +107,7 @@ class CategoryAdminController extends Controller
             unset($validated['attributes']['sort_order']);
             $model->update($validated['attributes']);
             $this->sortOrder->place($model, $position);
-            $model->machineTypes()->sync($validated['machineTypeIds']);
+            $this->syncMachineTypesPreservingOrder($model, $validated['machineTypeIds']);
         });
 
         return redirect()->route('admin.categories.index')->with('success', 'Category updated.');
@@ -191,5 +191,22 @@ class CategoryAdminController extends Controller
             ])
             ->values()
             ->all();
+    }
+
+    /** @param  list<int>  $machineTypeIds */
+    private function syncMachineTypesPreservingOrder(DesignCategory $category, array $machineTypeIds): void
+    {
+        $existingOrders = DB::table('category_machine_type')
+            ->where('design_category_id', $category->id)
+            ->pluck('sort_order', 'machine_type_id');
+
+        $syncData = collect($machineTypeIds)->mapWithKeys(function (int $machineTypeId) use ($existingOrders): array {
+            $position = $existingOrders->get($machineTypeId)
+                ?? ((int) DB::table('category_machine_type')->where('machine_type_id', $machineTypeId)->max('sort_order') + 1);
+
+            return [$machineTypeId => ['sort_order' => $position]];
+        })->all();
+
+        $category->machineTypes()->sync($syncData);
     }
 }

@@ -132,8 +132,6 @@ class CatalogController extends Controller
 
         $categories = $machineType->categories()
             ->where('design_categories.is_active', true)
-            ->orderBy('design_categories.sort_order')
-            ->orderBy('design_categories.name')
             ->get()
             ->map(fn (DesignCategory $category) => [
                 'id' => $category->public_id,
@@ -175,9 +173,7 @@ class CatalogController extends Controller
                     ->orderBy('sort_order')
                     ->orderBy('name'),
                 'machineTypes.categories' => fn ($query) => $query
-                    ->where('design_categories.is_active', true)
-                    ->orderBy('design_categories.sort_order')
-                    ->orderBy('design_categories.name'),
+                    ->where('design_categories.is_active', true),
                 'designFileTypes' => fn ($query) => $query
                     ->where('design_file_types.is_active', true)
                     ->orderBy('design_file_types.sort_order')

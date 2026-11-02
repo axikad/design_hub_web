@@ -16,22 +16,24 @@ type SiteSettings = {
     logoUrl: string | null;
     faviconUrl: string | null;
     defaultRegistrationRoleId: number | null;
+    defaultMobileRegistrationRoleId: number | null;
     imageSearchSimilarity: number;
 };
 type RegistrationRole = { id: number; name: string; slug: string };
-type Props = { settings: SiteSettings; registrationRoles: RegistrationRole[] };
+type Props = { settings: SiteSettings; registrationRoles: RegistrationRole[]; mobileRegistrationRoles: RegistrationRole[] };
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Overview', href: '/dashboard' },
     { title: 'Site settings', href: '/admin/settings/site' },
 ];
 const inputClass = 'h-11 rounded-xl border-slate-200 focus-visible:border-indigo-500 dark:border-slate-700';
 
-export default function AdminSiteSettings({ settings, registrationRoles }: Props) {
+export default function AdminSiteSettings({ settings, registrationRoles, mobileRegistrationRoles }: Props) {
     const form = useForm({
         name: settings.name,
         logo: null as File | null,
         favicon: null as File | null,
         defaultRegistrationRoleId: settings.defaultRegistrationRoleId?.toString() ?? '',
+        defaultMobileRegistrationRoleId: settings.defaultMobileRegistrationRoleId?.toString() ?? '',
         imageSearchSimilarity: settings.imageSearchSimilarity.toString(),
     });
     const { data, setData, post, processing, errors } = form;
@@ -66,24 +68,46 @@ export default function AdminSiteSettings({ settings, registrationRoles }: Props
                         description="Choose the role assigned to users who register from the admin login page."
                         icon={UserRoundCog}
                     >
-                        <div className="grid gap-2">
-                            <Label htmlFor="defaultRegistrationRoleId">Default registration role</Label>
-                            <Select value={data.defaultRegistrationRoleId} onValueChange={(value) => setData('defaultRegistrationRoleId', value)}>
-                                <SelectTrigger id="defaultRegistrationRoleId" className={inputClass}>
-                                    <SelectValue placeholder="Select a role" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {registrationRoles.map((role) => (
-                                        <SelectItem key={role.id} value={role.id.toString()}>
-                                            {role.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <p className="text-xs leading-5 text-slate-500">
-                                Only roles with dashboard access are available. Super Admin is never allowed.
-                            </p>
-                            <InputError message={errors.defaultRegistrationRoleId} />
+                        <div className="grid gap-5 sm:grid-cols-2">
+                            <div className="grid gap-2">
+                                <Label htmlFor="defaultRegistrationRoleId">Default website registration role</Label>
+                                <Select value={data.defaultRegistrationRoleId} onValueChange={(value) => setData('defaultRegistrationRoleId', value)}>
+                                    <SelectTrigger id="defaultRegistrationRoleId" className={inputClass}>
+                                        <SelectValue placeholder="Select a role" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {registrationRoles.map((role) => (
+                                            <SelectItem key={role.id} value={role.id.toString()}>
+                                                {role.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs leading-5 text-slate-500">Used for website registration. Dashboard access is required.</p>
+                                <InputError message={errors.defaultRegistrationRoleId} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="defaultMobileRegistrationRoleId">Default mobile registration role</Label>
+                                <Select
+                                    value={data.defaultMobileRegistrationRoleId}
+                                    onValueChange={(value) => setData('defaultMobileRegistrationRoleId', value)}
+                                >
+                                    <SelectTrigger id="defaultMobileRegistrationRoleId" className={inputClass}>
+                                        <SelectValue placeholder="Select a role" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {mobileRegistrationRoles.map((role) => (
+                                            <SelectItem key={role.id} value={role.id.toString()}>
+                                                {role.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs leading-5 text-slate-500">
+                                    Assigned after mobile OTP registration. Dashboard roles are excluded.
+                                </p>
+                                <InputError message={errors.defaultMobileRegistrationRoleId} />
+                            </div>
                         </div>
                     </AdminFormPanel>
 

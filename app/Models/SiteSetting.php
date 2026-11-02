@@ -13,6 +13,7 @@ class SiteSetting extends Model
         'logo_path',
         'favicon_path',
         'default_registration_role_id',
+        'default_mobile_registration_role_id',
         'image_search_similarity',
         'duplicate_image_similarity',
     ];
@@ -58,6 +59,11 @@ class SiteSetting extends Model
     public function defaultRegistrationRole(): BelongsTo
     {
         return $this->belongsTo(Role::class, 'default_registration_role_id');
+    }
+
+    public function defaultMobileRegistrationRole(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'default_mobile_registration_role_id');
     }
 
     /** @return array{name: string, logoUrl: string|null, faviconUrl: string|null} */

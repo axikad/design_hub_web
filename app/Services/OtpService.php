@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Machine;
 use App\Models\OtpChallenge;
 use App\Models\Role;
+use App\Models\SiteSetting;
 use App\Models\User;
 use App\Support\PhoneNormalizer;
 use Illuminate\Support\Facades\Hash;
@@ -118,13 +119,17 @@ class OtpService
                 throw new \InvalidArgumentException('Selected machines do not match the registration request. Request a new OTP.');
             }
 
-            $marketplaceRole = Role::query()->firstOrCreate(
-                ['slug' => 'marketplace_user'],
-                ['name' => 'Marketplace User'],
-            );
+            $mobileRegistrationRole = SiteSetting::current()->defaultMobileRegistrationRole;
+
+            if ($mobileRegistrationRole === null || $mobileRegistrationRole->isSuperAdmin() || $mobileRegistrationRole->hasPermission('dashboard.read')) {
+                $mobileRegistrationRole = Role::query()->firstOrCreate(
+                    ['slug' => 'marketplace_user'],
+                    ['name' => 'Marketplace User'],
+                );
+            }
 
             $user = User::query()->create([
-                'role_id' => $marketplaceRole->id,
+                'role_id' => $mobileRegistrationRole->id,
                 'name' => trim((string) ($name ?? $challenge->name)),
                 'country_code' => $countryCode,
                 'mobile_number' => preg_replace('/\D+/', '', $mobileNumber),

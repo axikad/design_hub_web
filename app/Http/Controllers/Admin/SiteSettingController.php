@@ -22,11 +22,18 @@ class SiteSettingController extends Controller
             'settings' => [
                 ...$settings->toBranding(),
                 'defaultRegistrationRoleId' => $settings->default_registration_role_id,
+                'defaultMobileRegistrationRoleId' => $settings->default_mobile_registration_role_id
+                    ?? Role::query()->where('slug', 'marketplace_user')->value('id'),
                 'imageSearchSimilarity' => $settings->image_search_similarity,
             ],
             'registrationRoles' => Role::query()
                 ->where('slug', '!=', 'super_admin')
                 ->whereHas('permissions', fn ($query) => $query->where('slug', 'dashboard.read')->where('is_active', true))
+                ->orderBy('name')
+                ->get(['id', 'name', 'slug']),
+            'mobileRegistrationRoles' => Role::query()
+                ->where('slug', '!=', 'super_admin')
+                ->whereDoesntHave('permissions', fn ($query) => $query->where('slug', 'dashboard.read')->where('is_active', true))
                 ->orderBy('name')
                 ->get(['id', 'name', 'slug']),
         ]);
@@ -43,12 +50,18 @@ class SiteSettingController extends Controller
                 'integer',
                 Rule::exists('roles', 'id')->where(fn ($query) => $query->where('slug', '!=', 'super_admin')),
             ],
+            'defaultMobileRegistrationRoleId' => [
+                'required',
+                'integer',
+                Rule::exists('roles', 'id')->where(fn ($query) => $query->where('slug', '!=', 'super_admin')),
+            ],
             'imageSearchSimilarity' => ['required', 'integer', 'between:1,100'],
         ]);
 
         $setting = SiteSetting::current();
 
         $registrationRole = Role::query()->findOrFail($validated['defaultRegistrationRoleId']);
+        $mobileRegistrationRole = Role::query()->findOrFail($validated['defaultMobileRegistrationRoleId']);
 
         if (! $registrationRole->hasPermission('dashboard.read')) {
             return back()->withErrors([
@@ -56,9 +69,16 @@ class SiteSettingController extends Controller
             ]);
         }
 
+        if ($mobileRegistrationRole->hasPermission('dashboard.read')) {
+            return back()->withErrors([
+                'defaultMobileRegistrationRoleId' => 'The mobile registration role cannot have dashboard access.',
+            ]);
+        }
+
         $payload = [
             'name' => trim($validated['name']),
             'default_registration_role_id' => $registrationRole->id,
+            'default_mobile_registration_role_id' => $mobileRegistrationRole->id,
             'image_search_similarity' => $validated['imageSearchSimilarity'],
         ];
 

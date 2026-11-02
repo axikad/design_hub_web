@@ -8,6 +8,7 @@ use App\Models\DesignFileType;
 use App\Models\DesignType;
 use App\Models\Machine;
 use App\Models\Role;
+use App\Models\SiteSetting;
 use App\Models\Upload;
 use App\Models\User;
 use App\Services\UploadService;
@@ -145,6 +146,43 @@ class ApiResponseContractTest extends TestCase
         ])
             ->assertUnprocessable()
             ->assertJsonStructure(['errors' => ['machineIds']]);
+    }
+
+    public function test_mobile_registration_uses_the_admin_configured_default_role(): void
+    {
+        $mobileRole = Role::query()->create([
+            'name' => 'Mobile Seller',
+            'slug' => 'mobile_seller',
+        ]);
+        SiteSetting::current()->update(['default_mobile_registration_role_id' => $mobileRole->id]);
+        SiteSetting::forgetCache();
+        $machine = Machine::query()->create([
+            'public_id' => 'sketch-images',
+            'name' => 'Sketch images',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        config([
+            'designhub.otp_static_enabled' => true,
+            'designhub.otp_static_code' => '1234',
+        ]);
+        $payload = [
+            'flow' => 'register',
+            'name' => 'Mobile Seller',
+            'countryCode' => '+91',
+            'mobileNumber' => '9876543210',
+            'machineIds' => [$machine->public_id],
+        ];
+
+        $this->postJson('/api/v1/auth/request-otp', $payload)->assertOk();
+        $this->postJson('/api/v1/auth/verify-otp', $payload + ['code' => '1234'])
+            ->assertOk()
+            ->assertJsonPath('data.user.role.slug', 'mobile_seller');
+
+        $this->assertDatabaseHas('users', [
+            'phone_key' => '+919876543210',
+            'role_id' => $mobileRole->id,
+        ]);
     }
 
     public function test_missing_resources_use_the_standard_not_found_response(): void

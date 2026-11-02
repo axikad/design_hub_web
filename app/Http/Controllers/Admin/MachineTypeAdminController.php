@@ -28,9 +28,7 @@ class MachineTypeAdminController extends Controller
             ->with([
                 'machine',
                 'categories' => fn ($query) => $query
-                    ->where('design_categories.is_active', true)
-                    ->orderBy('design_categories.sort_order')
-                    ->orderBy('design_categories.name'),
+                    ->where('design_categories.is_active', true),
             ])
             ->when($search !== '', fn ($query) => $query->where('name', 'like', "%{$search}%"))
             ->when(in_array($status, ['active', 'inactive'], true), fn ($query) => $query->where('is_active', $status === 'active'))
@@ -79,7 +77,7 @@ class MachineTypeAdminController extends Controller
         $validated['attributes']['sort_order'] = $position ?? $this->sortOrder->nextPosition(MachineType::class, $scope);
         $machineType = MachineType::query()->create($validated['attributes']);
         $this->sortOrder->place($machineType, $position, $scope, $scope);
-        $machineType->categories()->sync($validated['categoryIds']);
+        $machineType->categories()->sync($this->categorySyncData($validated['categoryIds']));
 
         return redirect()->route('admin.machine-types.index')->with('success', 'Machine type created.');
     }
@@ -89,7 +87,8 @@ class MachineTypeAdminController extends Controller
         $model = MachineType::query()
             ->with([
                 'machine',
-                'categories' => fn ($query) => $query->where('design_categories.is_active', true),
+                'categories' => fn ($query) => $query
+                    ->where('design_categories.is_active', true),
             ])
             ->where('public_id', $machineType)
             ->firstOrFail();
@@ -118,7 +117,7 @@ class MachineTypeAdminController extends Controller
         unset($validated['attributes']['sort_order']);
         $model->update($validated['attributes']);
         $this->sortOrder->place($model, $position, $oldScope, $newScope);
-        $model->categories()->sync($validated['categoryIds']);
+        $model->categories()->sync($this->categorySyncData($validated['categoryIds']));
 
         return redirect()->route('admin.machine-types.index')->with('success', 'Machine type updated.');
     }
@@ -186,10 +185,15 @@ class MachineTypeAdminController extends Controller
         ]);
 
         $machine = Machine::query()->where('public_id', $validated['machineId'])->firstOrFail();
-        $categoryIds = DesignCategory::query()
+        $categories = DesignCategory::query()
             ->where('is_active', true)
             ->whereIn('public_id', $validated['categoryIds'] ?? [])
-            ->pluck('id')
+            ->get(['id', 'public_id'])
+            ->keyBy('public_id');
+        $categoryIds = collect($validated['categoryIds'] ?? [])
+            ->map(fn (string $publicId) => $categories->get($publicId)?->id)
+            ->filter()
+            ->values()
             ->all();
 
         return [
@@ -201,6 +205,14 @@ class MachineTypeAdminController extends Controller
             ],
             'categoryIds' => $categoryIds,
         ];
+    }
+
+    /** @param  list<int>  $categoryIds */
+    private function categorySyncData(array $categoryIds): array
+    {
+        return collect($categoryIds)->mapWithKeys(fn (int $categoryId, int $index) => [
+            $categoryId => ['sort_order' => $index + 1],
+        ])->all();
     }
 
     /** @return array<string, int> */

@@ -138,20 +138,47 @@ class MachineManagementTest extends TestCase
     {
         $admin = User::factory()->superAdmin()->create();
         $machine = Machine::query()->create(['name' => 'Embroidery']);
-        $category = DesignCategory::query()->create(['name' => 'Neckline']);
+        $neckline = DesignCategory::query()->create(['name' => 'Neckline', 'sort_order' => 1]);
+        $saree = DesignCategory::query()->create(['name' => 'Saree', 'sort_order' => 2]);
 
         $this->actingAs($admin)->post('/admin/machine-types', [
             'machineId' => $machine->public_id,
             'name' => 'Multi-head',
-            'categoryIds' => [$category->public_id],
+            'categoryIds' => [$saree->public_id, $neckline->public_id],
             'isActive' => true,
             'sortOrder' => 1,
         ])->assertRedirect(route('admin.machine-types.index'));
 
-        $machineType = MachineType::query()->where('name', 'Multi-head')->firstOrFail();
+        $this->actingAs($admin)->post('/admin/machine-types', [
+            'machineId' => $machine->public_id,
+            'name' => 'Single-head',
+            'categoryIds' => [$neckline->public_id, $saree->public_id],
+            'isActive' => true,
+            'sortOrder' => 2,
+        ])->assertRedirect(route('admin.machine-types.index'));
 
-        $this->assertSame($machine->id, $machineType->machine_id);
-        $this->assertTrue($machineType->categories()->whereKey($category->id)->exists());
+        $multiHead = MachineType::query()->where('name', 'Multi-head')->firstOrFail();
+        $singleHead = MachineType::query()->where('name', 'Single-head')->firstOrFail();
+
+        $this->assertSame($machine->id, $multiHead->machine_id);
+        $this->assertSame([$saree->id, $neckline->id], $multiHead->categories()->pluck('design_categories.id')->all());
+        $this->assertSame([$neckline->id, $saree->id], $singleHead->categories()->pluck('design_categories.id')->all());
+
+        $this->assertDatabaseHas('category_machine_type', [
+            'machine_type_id' => $multiHead->id,
+            'design_category_id' => $saree->id,
+            'sort_order' => 1,
+        ]);
+
+        Sanctum::actingAs($admin);
+        $this->getJson('/api/v1/catalog/machine-types/'.$multiHead->public_id.'/categories')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $saree->public_id)
+            ->assertJsonPath('data.1.id', $neckline->public_id);
+        $this->getJson('/api/v1/catalog/machine-types/'.$singleHead->public_id.'/categories')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $neckline->public_id)
+            ->assertJsonPath('data.1.id', $saree->public_id);
     }
 
     public function test_machine_with_types_cannot_be_deleted(): void
