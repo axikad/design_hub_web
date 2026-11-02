@@ -329,28 +329,6 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                         {!catalog.length ? <p className="mt-4 text-sm text-amber-700">Add active catalog options before creating designs.</p> : null}
                     </AdminFormPanel>
 
-                    {config?.sequenceType ? (
-                        <AdminFormPanel
-                            title="Design measurement"
-                            description="This sequence value applies once to the complete design."
-                            icon={Layers3}
-                        >
-                            <div className="max-w-xs">
-                                <VariantField
-                                    label="Sequence type"
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    suffix="mm"
-                                    value={data.sequenceType}
-                                    onChange={(value) => setData('sequenceType', value)}
-                                    error={errors.sequenceType}
-                                    required={config.required.sequenceType}
-                                />
-                            </div>
-                        </AdminFormPanel>
-                    ) : null}
-
                     {config?.designSpecifications && data.variants.length ? (
                         <AdminFormPanel
                             title="Design type specifications"
@@ -468,6 +446,28 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                                         </div>
                                     );
                                 })}
+                            </div>
+                        </AdminFormPanel>
+                    ) : null}
+
+                    {config?.sequenceType ? (
+                        <AdminFormPanel
+                            title="Design measurement"
+                            description="This sequence value applies once to the complete design."
+                            icon={Layers3}
+                        >
+                            <div className="max-w-xs">
+                                <VariantField
+                                    label="Sequence type"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    suffix="mm"
+                                    value={data.sequenceType}
+                                    onChange={(value) => setData('sequenceType', value)}
+                                    error={errors.sequenceType}
+                                    required={config.required.sequenceType}
+                                />
                             </div>
                         </AdminFormPanel>
                     ) : null}
