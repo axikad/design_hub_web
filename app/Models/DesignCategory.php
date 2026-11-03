@@ -37,7 +37,8 @@ class DesignCategory extends Model
     public function types(): BelongsToMany
     {
         return $this->belongsToMany(DesignType::class, 'category_design_type')
-            ->orderBy('design_types.sort_order')
+            ->withPivot('sort_order')
+            ->orderByRaw('CASE WHEN category_design_type.sort_order = 0 THEN design_types.sort_order ELSE category_design_type.sort_order END')
             ->orderBy('design_types.name');
     }
 

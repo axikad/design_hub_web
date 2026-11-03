@@ -685,9 +685,7 @@ class DesignAdminController extends Controller
                     ->orderBy('name'),
                 'machineTypes.categories' => fn ($query) => $query
                     ->where('design_categories.is_active', true),
-                'machineTypes.categories.activeTypes' => fn ($query) => $query
-                    ->orderBy('sort_order')
-                    ->orderBy('name'),
+                'machineTypes.categories.activeTypes',
             ])
             ->orderBy('sort_order')
             ->orderBy('name')

@@ -87,7 +87,7 @@ class TypeAdminController extends Controller
                 'sort_order' => $position ?? $this->sortOrder->nextPosition(DesignType::class),
             ]);
             $this->sortOrder->place($type, $position);
-            $type->categories()->sync($validated['categoryIds']);
+            $this->syncCategoriesPreservingTypeOrder($type, $validated['categoryIds']);
         });
 
         return redirect()->route('admin.types.index')->with('success', 'Type created.');
@@ -127,7 +127,7 @@ class TypeAdminController extends Controller
                 'is_active' => $validated['isActive'],
             ]);
             $this->sortOrder->place($model, $validated['sortOrder']);
-            $model->categories()->sync($validated['categoryIds']);
+            $this->syncCategoriesPreservingTypeOrder($model, $validated['categoryIds']);
         });
 
         return redirect()->route('admin.types.index')->with('success', 'Type updated.');
@@ -208,5 +208,24 @@ class TypeAdminController extends Controller
             'isActive' => $request->boolean('isActive', true),
             'sortOrder' => isset($validated['sortOrder']) ? (int) $validated['sortOrder'] : null,
         ];
+    }
+
+    /** @param  list<int>  $categoryIds */
+    private function syncCategoriesPreservingTypeOrder(DesignType $type, array $categoryIds): void
+    {
+        $existingOrders = DB::table('category_design_type')
+            ->where('design_type_id', $type->id)
+            ->pluck('sort_order', 'design_category_id');
+
+        $syncData = collect($categoryIds)->mapWithKeys(function (int $categoryId) use ($existingOrders): array {
+            $existingPosition = (int) ($existingOrders->get($categoryId) ?? 0);
+            $position = $existingPosition > 0
+                ? $existingPosition
+                : ((int) DB::table('category_design_type')->where('design_category_id', $categoryId)->max('sort_order') + 1);
+
+            return [$categoryId => ['sort_order' => $position]];
+        })->all();
+
+        $type->categories()->sync($syncData);
     }
 }

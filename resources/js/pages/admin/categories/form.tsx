@@ -8,15 +8,25 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Cog, FolderTree, LoaderCircle, Save } from 'lucide-react';
-import { type FormEventHandler } from 'react';
+import { ArrowDown, ArrowLeft, ArrowUp, Cog, FolderTree, GripVertical, Layers3, LoaderCircle, Save } from 'lucide-react';
+import { type FormEventHandler, useState } from 'react';
 
 type MachineTypeOption = { id: string; name: string; machineName: string };
-type CategoryForm = { id: string; name: string; description: string; isActive: boolean; sortOrder: number; machineTypeIds: string[] };
-type Props = { category: CategoryForm | null; machineTypes: MachineTypeOption[]; nextSortOrder: number };
+type DesignTypeOption = { id: string; name: string };
+type CategoryForm = {
+    id: string;
+    name: string;
+    description: string;
+    isActive: boolean;
+    sortOrder: number;
+    machineTypeIds: string[];
+    designTypeIds: string[];
+};
+type Props = { category: CategoryForm | null; machineTypes: MachineTypeOption[]; designTypes: DesignTypeOption[]; nextSortOrder: number };
 
-export default function AdminCategoryForm({ category, machineTypes, nextSortOrder }: Props) {
+export default function AdminCategoryForm({ category, machineTypes, designTypes, nextSortOrder }: Props) {
     const editing = Boolean(category?.id);
+    const [draggedDesignTypeId, setDraggedDesignTypeId] = useState<string | null>(null);
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Overview', href: '/dashboard' },
         { title: 'Categories', href: '/admin/categories' },
@@ -28,6 +38,7 @@ export default function AdminCategoryForm({ category, machineTypes, nextSortOrde
         isActive: category?.isActive ?? true,
         sortOrder: category?.sortOrder ?? nextSortOrder,
         machineTypeIds: category?.machineTypeIds ?? [],
+        designTypeIds: category?.designTypeIds ?? [],
     });
     const allMachineTypeIds = machineTypes.map((machineType) => machineType.id);
     const allMachineTypesSelected = machineTypes.length > 0 && allMachineTypeIds.every((id) => data.machineTypeIds.includes(id));
@@ -42,6 +53,32 @@ export default function AdminCategoryForm({ category, machineTypes, nextSortOrde
         );
     };
     const toggleAllMachineTypes = (checked: boolean) => setData('machineTypeIds', checked ? allMachineTypeIds : []);
+    const allDesignTypeIds = designTypes.map((designType) => designType.id);
+    const allDesignTypesSelected = designTypes.length > 0 && allDesignTypeIds.every((id) => data.designTypeIds.includes(id));
+    const someDesignTypesSelected = data.designTypeIds.length > 0 && !allDesignTypesSelected;
+    const orderedDesignTypes = [
+        ...data.designTypeIds
+            .map((designTypeId) => designTypes.find((designType) => designType.id === designTypeId))
+            .filter((designType): designType is DesignTypeOption => Boolean(designType)),
+        ...designTypes.filter((designType) => !data.designTypeIds.includes(designType.id)),
+    ];
+    const toggleDesignType = (id: string, checked: boolean) =>
+        setData('designTypeIds', checked ? Array.from(new Set([...data.designTypeIds, id])) : data.designTypeIds.filter((value) => value !== id));
+    const toggleAllDesignTypes = (checked: boolean) => setData('designTypeIds', checked ? allDesignTypeIds : []);
+    const moveDesignType = (designTypeId: string, nextIndex: number) => {
+        const currentIndex = data.designTypeIds.indexOf(designTypeId);
+        if (currentIndex < 0 || nextIndex < 0 || nextIndex >= data.designTypeIds.length || currentIndex === nextIndex) return;
+
+        const orderedIds = [...data.designTypeIds];
+        orderedIds.splice(currentIndex, 1);
+        orderedIds.splice(nextIndex, 0, designTypeId);
+        setData('designTypeIds', orderedIds);
+    };
+    const dropDesignType = (targetDesignTypeId: string) => {
+        if (draggedDesignTypeId === null) return;
+        moveDesignType(draggedDesignTypeId, data.designTypeIds.indexOf(targetDesignTypeId));
+        setDraggedDesignTypeId(null);
+    };
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
@@ -160,6 +197,122 @@ export default function AdminCategoryForm({ category, machineTypes, nextSortOrde
                             {!machineTypes.length ? <p className="text-sm text-amber-700">Create an active machine type first.</p> : null}
                         </div>
                         <InputError message={errors.machineTypeIds} className="mt-3" />
+                    </AdminFormPanel>
+
+                    <AdminFormPanel
+                        title="Design types"
+                        description="Select design types and arrange how they appear inside this category."
+                        icon={Layers3}
+                    >
+                        {designTypes.length > 0 && (
+                            <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 dark:border-indigo-900 dark:bg-indigo-950/20">
+                                <label className="flex cursor-pointer items-center gap-3">
+                                    <Checkbox
+                                        checked={allDesignTypesSelected ? true : someDesignTypesSelected ? 'indeterminate' : false}
+                                        onCheckedChange={(value) => toggleAllDesignTypes(value === true)}
+                                    />
+                                    <span>
+                                        <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                            Select all design types
+                                        </span>
+                                        <span className="mt-0.5 block text-xs text-slate-500">
+                                            {data.designTypeIds.length} of {designTypes.length} selected
+                                        </span>
+                                    </span>
+                                </label>
+                                {data.designTypeIds.length > 0 && (
+                                    <Button type="button" variant="ghost" size="sm" onClick={() => toggleAllDesignTypes(false)}>
+                                        Clear all
+                                    </Button>
+                                )}
+                            </div>
+                        )}
+                        {designTypes.length > 0 ? (
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-900/40">
+                                <div className="mb-3">
+                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Design types and display order</p>
+                                    <p className="mt-1 text-xs text-slate-500">
+                                        Select types here. Drag selected rows or use the arrows to arrange their display order.
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    {orderedDesignTypes.map((designType) => {
+                                        const selectedIndex = data.designTypeIds.indexOf(designType.id);
+                                        const selected = selectedIndex >= 0;
+
+                                        return (
+                                            <div
+                                                key={designType.id}
+                                                draggable={selected}
+                                                onDragStart={() => selected && setDraggedDesignTypeId(designType.id)}
+                                                onDragEnd={() => setDraggedDesignTypeId(null)}
+                                                onDragOver={(event) => selected && event.preventDefault()}
+                                                onDrop={() => selected && dropDesignType(designType.id)}
+                                                className={`flex items-center gap-3 rounded-xl border bg-white p-3 transition dark:bg-slate-900 ${
+                                                    draggedDesignTypeId === designType.id
+                                                        ? 'border-indigo-400 opacity-60'
+                                                        : selected
+                                                          ? 'border-indigo-200 dark:border-indigo-900'
+                                                          : 'border-slate-200 dark:border-slate-700'
+                                                }`}
+                                            >
+                                                <Checkbox
+                                                    id={`design-type-${designType.id}`}
+                                                    checked={selected}
+                                                    onCheckedChange={(value) => toggleDesignType(designType.id, value === true)}
+                                                    aria-label={`Select ${designType.name}`}
+                                                />
+                                                <GripVertical
+                                                    className={`size-4 ${selected ? 'cursor-grab text-slate-400' : 'text-slate-200 dark:text-slate-700'}`}
+                                                />
+                                                <span
+                                                    className={`flex size-7 items-center justify-center rounded-lg text-xs ${
+                                                        selected
+                                                            ? 'bg-indigo-50 font-bold text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300'
+                                                            : 'bg-slate-100 text-slate-400 dark:bg-slate-800'
+                                                    }`}
+                                                >
+                                                    {selected ? selectedIndex + 1 : '—'}
+                                                </span>
+                                                <label
+                                                    htmlFor={`design-type-${designType.id}`}
+                                                    className="min-w-0 flex-1 cursor-pointer truncate text-sm font-semibold text-slate-700 dark:text-slate-200"
+                                                >
+                                                    {designType.name}
+                                                </label>
+                                                {selected && (
+                                                    <>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            disabled={selectedIndex === 0}
+                                                            onClick={() => moveDesignType(designType.id, selectedIndex - 1)}
+                                                            aria-label={`Move ${designType.name} up`}
+                                                        >
+                                                            <ArrowUp className="size-4" />
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            disabled={selectedIndex === data.designTypeIds.length - 1}
+                                                            onClick={() => moveDesignType(designType.id, selectedIndex + 1)}
+                                                            aria-label={`Move ${designType.name} down`}
+                                                        >
+                                                            <ArrowDown className="size-4" />
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="text-sm text-amber-700">Create an active design type first.</p>
+                        )}
+                        <InputError message={errors.designTypeIds} className="mt-3" />
                     </AdminFormPanel>
 
                     <div className="flex justify-end gap-3">

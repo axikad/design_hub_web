@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Design;
 use App\Models\DesignCategory;
+use App\Models\DesignType;
 use App\Models\MachineType;
 use App\Services\SortOrderService;
 use Illuminate\Http\RedirectResponse;
@@ -59,6 +60,7 @@ class CategoryAdminController extends Controller
         return Inertia::render('admin/categories/form', [
             'category' => null,
             'machineTypes' => $this->machineTypeOptions(),
+            'designTypes' => $this->designTypeOptions(),
             'nextSortOrder' => $this->sortOrder->nextPosition(DesignCategory::class),
         ]);
     }
@@ -72,6 +74,7 @@ class CategoryAdminController extends Controller
             $category = DesignCategory::query()->create($validated['attributes']);
             $this->sortOrder->place($category, $position);
             $this->syncMachineTypesPreservingOrder($category, $validated['machineTypeIds']);
+            $this->syncDesignTypes($category, $validated['designTypeIds']);
         });
 
         return redirect()->route('admin.categories.index')->with('success', 'Category created.');
@@ -80,7 +83,10 @@ class CategoryAdminController extends Controller
     public function edit(string $category): Response
     {
         $model = DesignCategory::query()
-            ->with(['machineTypes' => fn ($query) => $query->where('machine_types.is_active', true)])
+            ->with([
+                'machineTypes' => fn ($query) => $query->where('machine_types.is_active', true),
+                'types' => fn ($query) => $query->where('design_types.is_active', true),
+            ])
             ->where('public_id', $category)
             ->firstOrFail();
 
@@ -92,8 +98,10 @@ class CategoryAdminController extends Controller
                 'isActive' => $model->is_active,
                 'sortOrder' => $model->sort_order,
                 'machineTypeIds' => $model->machineTypes->pluck('public_id')->values(),
+                'designTypeIds' => $model->types->pluck('public_id')->values(),
             ],
             'machineTypes' => $this->machineTypeOptions(),
+            'designTypes' => $this->designTypeOptions(),
             'nextSortOrder' => $this->sortOrder->nextPosition(DesignCategory::class),
         ]);
     }
@@ -108,6 +116,7 @@ class CategoryAdminController extends Controller
             $model->update($validated['attributes']);
             $this->sortOrder->place($model, $position);
             $this->syncMachineTypesPreservingOrder($model, $validated['machineTypeIds']);
+            $this->syncDesignTypes($model, $validated['designTypeIds']);
         });
 
         return redirect()->route('admin.categories.index')->with('success', 'Category updated.');
@@ -143,7 +152,7 @@ class CategoryAdminController extends Controller
         return back()->with('success', 'Category order updated.');
     }
 
-    /** @return array{attributes: array<string, mixed>, machineTypeIds: list<int>} */
+    /** @return array{attributes: array<string, mixed>, machineTypeIds: list<int>, designTypeIds: list<int>} */
     private function validated(Request $request): array
     {
         $validated = $request->validate([
@@ -157,7 +166,19 @@ class CategoryAdminController extends Controller
                 'distinct',
                 Rule::exists('machine_types', 'public_id')->where('is_active', true),
             ],
+            'designTypeIds' => ['array'],
+            'designTypeIds.*' => [
+                'string',
+                'distinct',
+                Rule::exists('design_types', 'public_id')->where('is_active', true),
+            ],
         ]);
+
+        $designTypes = DesignType::query()
+            ->where('is_active', true)
+            ->whereIn('public_id', $validated['designTypeIds'] ?? [])
+            ->get(['id', 'public_id'])
+            ->keyBy('public_id');
 
         return [
             'attributes' => [
@@ -170,6 +191,9 @@ class CategoryAdminController extends Controller
                 ->where('is_active', true)
                 ->whereIn('public_id', $validated['machineTypeIds'] ?? [])
                 ->pluck('id')
+                ->all(),
+            'designTypeIds' => collect($validated['designTypeIds'] ?? [])
+                ->map(fn (string $publicId) => $designTypes->get($publicId)->id)
                 ->all(),
         ];
     }
@@ -193,6 +217,22 @@ class CategoryAdminController extends Controller
             ->all();
     }
 
+    /** @return list<array{id: string, name: string}> */
+    private function designTypeOptions(): array
+    {
+        return DesignType::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['public_id', 'name'])
+            ->map(fn (DesignType $designType) => [
+                'id' => $designType->public_id,
+                'name' => $designType->name,
+            ])
+            ->values()
+            ->all();
+    }
+
     /** @param  list<int>  $machineTypeIds */
     private function syncMachineTypesPreservingOrder(DesignCategory $category, array $machineTypeIds): void
     {
@@ -208,5 +248,16 @@ class CategoryAdminController extends Controller
         })->all();
 
         $category->machineTypes()->sync($syncData);
+    }
+
+    /** @param  list<int>  $designTypeIds */
+    private function syncDesignTypes(DesignCategory $category, array $designTypeIds): void
+    {
+        $category->types()->sync(collect($designTypeIds)
+            ->values()
+            ->mapWithKeys(fn (int $designTypeId, int $index) => [
+                $designTypeId => ['sort_order' => $index + 1],
+            ])
+            ->all());
     }
 }

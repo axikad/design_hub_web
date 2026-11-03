@@ -49,7 +49,8 @@ class DesignType extends Model
 
     public function categories(): BelongsToMany
     {
-        return $this->belongsToMany(DesignCategory::class, 'category_design_type');
+        return $this->belongsToMany(DesignCategory::class, 'category_design_type')
+            ->withPivot('sort_order');
     }
 
     public function designs(): HasMany

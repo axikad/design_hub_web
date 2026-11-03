@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\DesignCategory;
+use App\Models\DesignType;
 use App\Models\Machine;
 use App\Models\MachineType;
 use App\Models\User;
@@ -96,5 +97,53 @@ class CategoryManagementTest extends TestCase
         ])->assertRedirect(route('admin.categories.index'));
 
         $this->assertDatabaseHas('design_categories', ['name' => 'Fourth', 'sort_order' => 4]);
+    }
+
+    public function test_admin_can_select_and_order_design_types_per_category(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+        $sourceCategory = DesignCategory::query()->create(['name' => 'Source']);
+        $border = DesignType::query()->create([
+            'design_category_id' => $sourceCategory->id,
+            'name' => 'Border',
+            'sort_order' => 1,
+        ]);
+        $pallu = DesignType::query()->create([
+            'design_category_id' => $sourceCategory->id,
+            'name' => 'Pallu',
+            'sort_order' => 2,
+        ]);
+
+        $this->actingAs($admin)->post('/admin/categories', [
+            'name' => 'Saree',
+            'isActive' => true,
+            'sortOrder' => 2,
+            'machineTypeIds' => [],
+            'designTypeIds' => [$pallu->public_id, $border->public_id],
+        ])->assertRedirect(route('admin.categories.index'));
+
+        $category = DesignCategory::query()->where('name', 'Saree')->firstOrFail();
+        $this->assertSame(
+            [$pallu->id, $border->id],
+            $category->types()->pluck('design_types.id')->all(),
+        );
+        $this->assertDatabaseHas('category_design_type', [
+            'design_category_id' => $category->id,
+            'design_type_id' => $pallu->id,
+            'sort_order' => 1,
+        ]);
+
+        $this->actingAs($admin)->put('/admin/categories/'.$category->public_id, [
+            'name' => 'Saree',
+            'isActive' => true,
+            'sortOrder' => 2,
+            'machineTypeIds' => [],
+            'designTypeIds' => [$border->public_id, $pallu->public_id],
+        ])->assertRedirect(route('admin.categories.index'));
+
+        $this->assertSame(
+            [$border->id, $pallu->id],
+            $category->types()->pluck('design_types.id')->all(),
+        );
     }
 }

@@ -250,7 +250,7 @@ class CatalogController extends Controller
                 'machineTypes.machine',
                 fn ($machineQuery) => $machineQuery->whereIn('machines.public_id', $selectedMachineIds),
             ))
-            ->with(['activeTypes' => fn ($query) => $query->orderBy('sort_order')->orderBy('name')])
+            ->with('activeTypes')
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get()
