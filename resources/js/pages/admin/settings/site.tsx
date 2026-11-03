@@ -101,6 +101,9 @@ export default function AdminSiteSettings({ settings, registrationRoles, mobileR
                                                 {role.name}
                                             </SelectItem>
                                         ))}
+                                        {!mobileRegistrationRoles.length && (
+                                            <div className="px-3 py-2 text-sm text-slate-500">No mobile-safe role is available.</div>
+                                        )}
                                     </SelectContent>
                                 </Select>
                                 <p className="text-xs leading-5 text-slate-500">

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Permission;
 use App\Models\Role;
+use App\Models\SiteSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -83,6 +84,19 @@ class RoleAdminController extends Controller
                 ),
             ],
         ]);
+
+        $assignsDashboardAccess = Permission::query()
+            ->whereIn('id', $validated['permissionIds'])
+            ->where('slug', 'dashboard.read')
+            ->exists();
+        $isMobileRegistrationRole = $role->slug === 'marketplace_user'
+            || SiteSetting::current()->default_mobile_registration_role_id === $role->id;
+
+        if ($assignsDashboardAccess && $isMobileRegistrationRole) {
+            return back()->withErrors([
+                'role' => 'The mobile registration role cannot be given dashboard access.',
+            ]);
+        }
 
         $syncData = collect($validated['permissionIds'])->mapWithKeys(fn (int $permissionId) => [
             $permissionId => ['assigned_by' => $request->user()?->id],
