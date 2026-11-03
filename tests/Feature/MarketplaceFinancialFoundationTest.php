@@ -16,11 +16,24 @@ use App\Services\CommissionCalculator;
 use App\Services\PurchaseAccessService;
 use App\Services\SaleEarningService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class MarketplaceFinancialFoundationTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_financial_foundation_migration_is_safe_to_resume_after_partial_mysql_ddl(): void
+    {
+        $migration = require database_path('migrations/2026_11_03_010000_create_marketplace_financial_foundation.php');
+
+        $migration->up();
+
+        $this->assertTrue(Schema::hasColumn('folders', 'user_id'));
+        $this->assertTrue(Schema::hasTable('sale_earnings'));
+        $this->assertTrue(Schema::hasTable('seller_ledger_entries'));
+        $this->assertTrue(Schema::hasIndex('seller_ledger_entries', 'seller_ledger_seller_balance_idx'));
+    }
 
     public function test_commission_calculator_splits_one_hundred_rupees_as_twenty_five_and_seventy_five(): void
     {
