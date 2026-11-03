@@ -11,6 +11,11 @@ use Razorpay\Api\Api;
 
 class RazorpayFolderPaymentService
 {
+    public function __construct(
+        private readonly MarketplacePaymentSettings $settings,
+        private readonly SaleEarningService $earnings,
+    ) {}
+
     public function isConfigured(): bool
     {
         return filled(config('designhub.razorpay_key_id'))
@@ -20,10 +25,12 @@ class RazorpayFolderPaymentService
     public function createOrder(User $buyer, Folder $folder): array
     {
         $this->guardCheckout($buyer, $folder);
+        $environment = $this->settings->environment();
 
         $existing = FolderPaymentOrder::query()
             ->where('buyer_id', $buyer->id)
             ->where('folder_id', $folder->id)
+            ->where('payment_environment', $environment)
             ->whereIn('status', ['created', 'pending'])
             ->latest('id')
             ->first();
@@ -46,6 +53,8 @@ class RazorpayFolderPaymentService
             'razorpay_order_id' => $razorpayOrder['id'],
             'amount_paise' => $amount,
             'currency' => 'INR',
+            'payment_environment' => $environment,
+            'commission_basis_points' => $this->settings->commissionBasisPoints(),
             'status' => 'created',
         ]);
 
@@ -58,6 +67,7 @@ class RazorpayFolderPaymentService
             ->where('buyer_id', $buyer->id)
             ->where('folder_id', $folder->id)
             ->where('razorpay_order_id', $orderId)
+            ->where('payment_environment', $this->settings->environment())
             ->first();
 
         if ($paymentOrder === null) {
@@ -91,6 +101,7 @@ class RazorpayFolderPaymentService
         $paymentOrder = FolderPaymentOrder::query()
             ->where('buyer_id', $buyer->id)
             ->where('folder_id', $folder->id)
+            ->where('payment_environment', $this->settings->environment())
             ->latest('id')
             ->first();
 
@@ -189,17 +200,22 @@ class RazorpayFolderPaymentService
                 'last_reconciled_at' => now(),
             ]);
 
-            return FolderPurchase::query()->firstOrCreate(
+            $purchase = FolderPurchase::query()->firstOrCreate(
                 ['buyer_id' => $buyer->id, 'folder_id' => $folder->id],
                 [
                     'folder_payment_order_id' => $paymentOrder->id,
                     'razorpay_payment_id' => $paymentId,
                     'amount_paise' => $paymentOrder->amount_paise,
                     'currency' => $paymentOrder->currency,
+                    'payment_environment' => $paymentOrder->payment_environment,
                     'status' => 'paid',
                     'purchased_at' => now(),
                 ],
             );
+
+            $this->earnings->createForFolderPurchase($purchase, $folder);
+
+            return $purchase;
         });
     }
 
@@ -209,6 +225,7 @@ class RazorpayFolderPaymentService
             ->where('buyer_id', $buyer->id)
             ->where('folder_id', $folder->id)
             ->where('status', 'paid')
+            ->where('payment_environment', $this->settings->environment())
             ->first();
 
         return $purchase === null ? null : [
@@ -224,6 +241,10 @@ class RazorpayFolderPaymentService
             throw new \InvalidArgumentException('This folder is not available for purchase.');
         }
 
+        if ($folder->user_id !== null && $folder->user_id === $buyer->id) {
+            throw new \InvalidArgumentException('You cannot purchase your own folder.');
+        }
+
         if ($this->paidStatus($buyer, $folder) !== null) {
             throw new \InvalidArgumentException('You already purchased this folder.');
         }
@@ -237,6 +258,8 @@ class RazorpayFolderPaymentService
             'keyId' => config('designhub.razorpay_key_id'),
             'amount' => (int) $order->amount_paise,
             'currency' => $order->currency,
+            'environment' => $order->payment_environment,
+            'isRealMoney' => $order->payment_environment === 'live',
         ];
     }
 

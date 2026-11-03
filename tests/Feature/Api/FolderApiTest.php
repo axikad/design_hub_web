@@ -18,7 +18,8 @@ class FolderApiTest extends TestCase
     public function test_authenticated_user_can_create_a_folder_from_a_zip_archive(): void
     {
         Storage::fake('local');
-        Sanctum::actingAs(User::factory()->create());
+        $owner = User::factory()->create();
+        Sanctum::actingAs($owner);
 
         $response = $this->post('/api/v1/folders', [
             'name' => 'Mobile Pack',
@@ -40,6 +41,7 @@ class FolderApiTest extends TestCase
             ->assertJsonCount(2, 'data.files');
 
         $folder = Folder::query()->where('name', 'Mobile Pack')->firstOrFail();
+        $this->assertSame($owner->id, $folder->user_id);
         Storage::disk('local')->assertExists($folder->zip_path);
         $this->assertSame(2, $folder->files()->count());
     }

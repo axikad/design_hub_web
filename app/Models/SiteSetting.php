@@ -16,6 +16,18 @@ class SiteSetting extends Model
         'default_mobile_registration_role_id',
         'image_search_similarity',
         'duplicate_image_similarity',
+        'seller_payouts_enabled',
+        'platform_commission_basis_points',
+        'earning_hold_days',
+        'minimum_withdrawal_paise',
+        'buyer_gst_enabled',
+        'buyer_gst_basis_points',
+        'commission_gst_enabled',
+        'commission_gst_basis_points',
+        'tds_enabled',
+        'tds_basis_points',
+        'gst_tcs_enabled',
+        'gst_tcs_basis_points',
     ];
 
     protected function casts(): array
@@ -23,6 +35,18 @@ class SiteSetting extends Model
         return [
             'image_search_similarity' => 'integer',
             'duplicate_image_similarity' => 'integer',
+            'seller_payouts_enabled' => 'boolean',
+            'platform_commission_basis_points' => 'integer',
+            'earning_hold_days' => 'integer',
+            'minimum_withdrawal_paise' => 'integer',
+            'buyer_gst_enabled' => 'boolean',
+            'buyer_gst_basis_points' => 'integer',
+            'commission_gst_enabled' => 'boolean',
+            'commission_gst_basis_points' => 'integer',
+            'tds_enabled' => 'boolean',
+            'tds_basis_points' => 'integer',
+            'gst_tcs_enabled' => 'boolean',
+            'gst_tcs_basis_points' => 'integer',
         ];
     }
 

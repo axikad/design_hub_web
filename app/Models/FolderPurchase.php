@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 class FolderPurchase extends Model
@@ -16,6 +17,7 @@ class FolderPurchase extends Model
         'razorpay_payment_id',
         'amount_paise',
         'currency',
+        'payment_environment',
         'status',
         'purchased_at',
     ];
@@ -50,5 +52,10 @@ class FolderPurchase extends Model
     public function paymentOrder(): BelongsTo
     {
         return $this->belongsTo(FolderPaymentOrder::class, 'folder_payment_order_id');
+    }
+
+    public function saleEarning(): HasOne
+    {
+        return $this->hasOne(SaleEarning::class, 'folder_purchase_id');
     }
 }

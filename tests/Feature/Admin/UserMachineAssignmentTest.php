@@ -16,11 +16,7 @@ class UserMachineAssignmentTest extends TestCase
     public function test_admin_can_assign_machines_when_creating_and_editing_a_marketplace_user(): void
     {
         $admin = User::factory()->superAdmin()->create();
-        $role = Role::query()->create([
-            'name' => 'Marketplace User',
-            'slug' => 'marketplace_user',
-            'is_active' => true,
-        ]);
+        $role = Role::query()->where('slug', 'marketplace_user')->firstOrFail();
         $embroidery = Machine::query()->create(['name' => 'Embroidery', 'is_active' => true, 'sort_order' => 1]);
         $sketch = Machine::query()->create(['name' => 'Sketch Images', 'is_active' => true, 'sort_order' => 2]);
 
@@ -65,11 +61,7 @@ class UserMachineAssignmentTest extends TestCase
     public function test_marketplace_user_requires_at_least_one_active_machine(): void
     {
         $admin = User::factory()->superAdmin()->create();
-        $role = Role::query()->create([
-            'name' => 'Marketplace User',
-            'slug' => 'marketplace_user',
-            'is_active' => true,
-        ]);
+        $role = Role::query()->where('slug', 'marketplace_user')->firstOrFail();
 
         $this->actingAs($admin)->post(route('admin.users.store'), [
             'name' => 'Marketplace Seller',

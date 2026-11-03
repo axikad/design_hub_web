@@ -90,6 +90,21 @@ class User extends Authenticatable
         return $this->hasMany(FolderPurchase::class, 'buyer_id');
     }
 
+    public function folders(): HasMany
+    {
+        return $this->hasMany(Folder::class);
+    }
+
+    public function saleEarnings(): HasMany
+    {
+        return $this->hasMany(SaleEarning::class, 'seller_id');
+    }
+
+    public function sellerLedgerEntries(): HasMany
+    {
+        return $this->hasMany(SellerLedgerEntry::class, 'seller_id');
+    }
+
     public function machines(): BelongsToMany
     {
         return $this->belongsToMany(Machine::class)

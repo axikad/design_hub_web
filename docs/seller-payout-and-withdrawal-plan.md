@@ -811,23 +811,23 @@ Complete and test each group before moving to the next group. Mark a checkbox on
 - [ ] Document the current design order, verification and purchase-status flow.
 - [ ] Document the current folder order, verification and purchase-status flow.
 - [ ] Confirm every sellable design and folder has an owner/seller ID.
-- [ ] Prevent a seller from purchasing their own design or folder.
-- [ ] Confirm Razorpay amount is always calculated by the backend.
-- [ ] Confirm payment signatures and relevant webhooks are verified server-side.
-- [ ] Add an idempotency constraint so one purchase cannot create duplicate financial records.
-- [ ] Run regression tests proving the existing buyer purchase/download flow still works.
+- [x] Prevent a seller from purchasing their own design or folder.
+- [x] Confirm Razorpay amount is always calculated by the backend.
+- [x] Confirm payment signatures and relevant webhooks are verified server-side.
+- [x] Add an idempotency constraint so one purchase cannot create duplicate financial records.
+- [x] Run regression tests proving the existing buyer purchase/download flow still works.
 
 ### Step 2: Add configurable marketplace settings
 
 - [ ] Add versioned seller-payment settings.
-- [ ] Set test platform commission to `2500` basis points (25%).
-- [ ] Derive seller share as 75% for the current test configuration.
-- [ ] Add the 7-day earning hold setting.
-- [ ] Add the INR 500 minimum withdrawal setting.
+- [x] Set test platform commission to `2500` basis points (25%).
+- [x] Derive seller share as 75% for the current test configuration.
+- [x] Add the 7-day earning hold setting.
+- [x] Add the INR 500 minimum withdrawal setting.
 - [ ] Add `test`/`live` environment and `simulated`/`manual`/`provider` payout modes.
 - [ ] Build permission-protected Admin settings UI.
 - [ ] Ensure setting changes affect only future purchases.
-- [ ] Add separate disabled/zero Test Mode settings for buyer GST, commission GST, TDS and GST TCS.
+- [x] Add separate disabled/zero Test Mode settings for buyer GST, commission GST, TDS and GST TCS.
 - [ ] Add versioned tax configuration and effective dates.
 - [ ] Return a server-calculated pricing preview for seller create/edit forms.
 - [ ] Return a server-calculated buyer checkout breakdown.
@@ -835,11 +835,11 @@ Complete and test each group before moving to the next group. Mark a checkbox on
 ### Step 3: Build the common financial domain
 
 - [ ] Add seller profile and payout-account tables.
-- [ ] Add `sale_earnings` purchase-time snapshot table.
-- [ ] Add immutable `seller_ledger_entries` table.
+- [x] Add `sale_earnings` purchase-time snapshot table.
+- [x] Add immutable `seller_ledger_entries` table.
 - [ ] Add `withdrawals` table with status history and idempotency key.
 - [ ] Add webhook event/audit storage.
-- [ ] Implement `CommissionCalculator` using integer paise and basis points.
+- [x] Implement `CommissionCalculator` using integer paise and basis points.
 - [ ] Implement common earning, ledger, wallet, withdrawal and refund services.
 - [ ] Use database transactions and row locks for balance-changing operations.
 - [ ] Add unit tests for rounding, INR 100 -> INR 25/75 split and boundary values.
@@ -849,13 +849,13 @@ Complete and test each group before moving to the next group. Mark a checkbox on
 
 ### Step 4: Connect successful buyer payments to seller earnings
 
-- [ ] After trusted payment verification, resolve the item's seller on the backend.
-- [ ] Create exactly one sale earning for a paid design purchase.
-- [ ] Create exactly one sale earning for a paid folder purchase.
-- [ ] Snapshot the applied commission rate and all calculated amounts.
-- [ ] Credit the seller's pending ledger balance.
-- [ ] Set `available_at` using the configured hold period.
-- [ ] Never create earnings for failed, unpaid or unverified purchases.
+- [x] After trusted payment verification, resolve the item's seller on the backend.
+- [x] Create exactly one sale earning for a paid design purchase.
+- [x] Create exactly one sale earning for a paid folder purchase.
+- [x] Snapshot the applied commission rate and all calculated amounts.
+- [x] Credit the seller's pending ledger balance.
+- [x] Set `available_at` using the configured hold period.
+- [x] Never create earnings for failed, unpaid or unverified purchases.
 - [ ] Test duplicate verify calls and duplicate webhooks.
 
 ### Step 5: Release held earnings

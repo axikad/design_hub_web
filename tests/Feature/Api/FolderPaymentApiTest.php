@@ -142,6 +142,23 @@ class FolderPaymentApiTest extends TestCase
             ->assertJsonPath('code', 'validation_error');
     }
 
+    public function test_folder_owner_cannot_purchase_their_own_folder(): void
+    {
+        config([
+            'designhub.razorpay_key_id' => 'rzp_test_key',
+            'designhub.razorpay_key_secret' => 'test_secret',
+        ]);
+
+        $owner = User::factory()->create();
+        $folder = $this->folder();
+        $folder->update(['user_id' => $owner->id]);
+        Sanctum::actingAs($owner);
+
+        $this->postJson('/api/v1/payments/orders', ['folderId' => $folder->public_id])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('folderId');
+    }
+
     private function folder(int $pricePaise = 29900): Folder
     {
         return Folder::query()->create([

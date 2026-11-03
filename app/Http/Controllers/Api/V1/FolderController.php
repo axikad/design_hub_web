@@ -7,6 +7,7 @@ use App\Http\Resources\FolderResource;
 use App\Models\Folder;
 use App\Models\FolderPurchase;
 use App\Services\FolderArchiveService;
+use App\Services\MarketplacePaymentSettings;
 use App\Support\ApiResponse;
 use App\Support\FolderFilePreview;
 use App\Support\Pagination;
@@ -22,7 +23,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class FolderController extends Controller
 {
-    public function __construct(private readonly FolderArchiveService $archives) {}
+    public function __construct(
+        private readonly FolderArchiveService $archives,
+        private readonly MarketplacePaymentSettings $paymentSettings,
+    ) {}
 
     public function index(Request $request)
     {
@@ -88,6 +92,7 @@ class FolderController extends Controller
             : (int) round(((float) ($validated['priceRupees'] ?? $validated['price'])) * 100);
 
         $folder = Folder::query()->create([
+            'user_id' => $request->user()->id,
             'name' => $validated['name'],
             'price_paise' => $pricePaise,
             'zip_name' => '',
@@ -154,6 +159,7 @@ class FolderController extends Controller
             ->where('buyer_id', $request->user()->id)
             ->where('folder_id', $folder->id)
             ->where('status', 'paid')
+            ->where('payment_environment', $this->paymentSettings->environment())
             ->exists();
 
         if (! $purchased) {

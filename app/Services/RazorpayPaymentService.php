@@ -11,6 +11,11 @@ use Razorpay\Api\Api;
 
 class RazorpayPaymentService
 {
+    public function __construct(
+        private readonly MarketplacePaymentSettings $settings,
+        private readonly SaleEarningService $earnings,
+    ) {}
+
     public function isConfigured(): bool
     {
         return filled(config('designhub.razorpay_key_id'))
@@ -20,10 +25,12 @@ class RazorpayPaymentService
     public function createOrder(User $buyer, Design $design): array
     {
         $this->guardCheckout($buyer, $design);
+        $environment = $this->settings->environment();
 
         $existing = PaymentOrder::query()
             ->where('buyer_id', $buyer->id)
             ->where('design_id', $design->id)
+            ->where('payment_environment', $environment)
             ->whereIn('status', ['created', 'pending'])
             ->latest('id')
             ->first();
@@ -46,6 +53,8 @@ class RazorpayPaymentService
             'razorpay_order_id' => $razorpayOrder['id'],
             'amount_paise' => $amount,
             'currency' => 'INR',
+            'payment_environment' => $environment,
+            'commission_basis_points' => $this->settings->commissionBasisPoints(),
             'status' => 'created',
         ]);
 
@@ -58,6 +67,7 @@ class RazorpayPaymentService
             ->where('buyer_id', $buyer->id)
             ->where('design_id', $design->id)
             ->where('razorpay_order_id', $orderId)
+            ->where('payment_environment', $this->settings->environment())
             ->first();
 
         if ($paymentOrder === null) {
@@ -91,6 +101,7 @@ class RazorpayPaymentService
         $paymentOrder = PaymentOrder::query()
             ->where('buyer_id', $buyer->id)
             ->where('design_id', $design->id)
+            ->where('payment_environment', $this->settings->environment())
             ->latest('id')
             ->first();
 
@@ -188,17 +199,22 @@ class RazorpayPaymentService
                 'last_reconciled_at' => now(),
             ]);
 
-            return Purchase::query()->firstOrCreate(
+            $purchase = Purchase::query()->firstOrCreate(
                 ['buyer_id' => $buyer->id, 'design_id' => $design->id],
                 [
                     'payment_order_id' => $paymentOrder->id,
                     'razorpay_payment_id' => $paymentId,
                     'amount_paise' => $paymentOrder->amount_paise,
                     'currency' => $paymentOrder->currency,
+                    'payment_environment' => $paymentOrder->payment_environment,
                     'status' => 'paid',
                     'purchased_at' => now(),
                 ],
             );
+
+            $this->earnings->createForDesignPurchase($purchase, $design);
+
+            return $purchase;
         });
     }
 
@@ -208,6 +224,7 @@ class RazorpayPaymentService
             ->where('buyer_id', $buyer->id)
             ->where('design_id', $design->id)
             ->where('status', 'paid')
+            ->where('payment_environment', $this->settings->environment())
             ->first();
 
         return $purchase === null ? null : [
@@ -240,6 +257,8 @@ class RazorpayPaymentService
             'keyId' => config('designhub.razorpay_key_id'),
             'amount' => (int) $order->amount_paise,
             'currency' => $order->currency,
+            'environment' => $order->payment_environment,
+            'isRealMoney' => $order->payment_environment === 'live',
         ];
     }
 

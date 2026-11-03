@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -10,6 +11,7 @@ class Folder extends Model
 {
     protected $fillable = [
         'public_id',
+        'user_id',
         'name',
         'price_paise',
         'zip_name',
@@ -39,6 +41,11 @@ class Folder extends Model
     public function files(): HasMany
     {
         return $this->hasMany(FolderFile::class)->orderBy('relative_path');
+    }
+
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function previewFiles(): HasMany

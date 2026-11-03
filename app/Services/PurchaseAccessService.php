@@ -8,6 +8,8 @@ use App\Models\User;
 
 class PurchaseAccessService
 {
+    public function __construct(private readonly MarketplacePaymentSettings $settings) {}
+
     public function canDownloadStitch(User $user, Design $design): bool
     {
         if ($design->user_id === $user->id) {
@@ -18,6 +20,7 @@ class PurchaseAccessService
             ->where('buyer_id', $user->id)
             ->where('design_id', $design->id)
             ->where('status', 'paid')
+            ->where('payment_environment', $this->settings->environment())
             ->exists();
     }
 
@@ -26,6 +29,7 @@ class PurchaseAccessService
         $purchase = Purchase::query()
             ->where('buyer_id', $buyer->id)
             ->where('design_id', $design->id)
+            ->where('payment_environment', $this->settings->environment())
             ->latest('id')
             ->first();
 

@@ -16,6 +16,8 @@ class FolderPaymentOrder extends Model
         'razorpay_payment_id',
         'amount_paise',
         'currency',
+        'payment_environment',
+        'commission_basis_points',
         'status',
         'last_reconciled_at',
     ];
@@ -24,6 +26,7 @@ class FolderPaymentOrder extends Model
     {
         return [
             'amount_paise' => 'integer',
+            'commission_basis_points' => 'integer',
             'last_reconciled_at' => 'datetime',
         ];
     }

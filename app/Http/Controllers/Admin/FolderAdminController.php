@@ -93,6 +93,7 @@ class FolderAdminController extends Controller
     {
         $validated = $this->validated($request, true);
         $folder = Folder::query()->create([
+            'user_id' => $request->user()->id,
             'name' => $validated['name'],
             'price_paise' => $this->pricePaise($validated['priceRupees']),
             'zip_name' => '',

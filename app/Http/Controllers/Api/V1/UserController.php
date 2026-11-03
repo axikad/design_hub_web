@@ -13,6 +13,7 @@ use App\Models\ProfileContactChallenge;
 use App\Models\Purchase;
 use App\Models\SavedDesign;
 use App\Models\User;
+use App\Services\MarketplacePaymentSettings;
 use App\Services\UploadService;
 use App\Support\ApiResponse;
 use App\Support\Pagination;
@@ -24,7 +25,10 @@ use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
 {
-    public function __construct(private readonly UploadService $uploads) {}
+    public function __construct(
+        private readonly UploadService $uploads,
+        private readonly MarketplacePaymentSettings $paymentSettings,
+    ) {}
 
     public function me(Request $request)
     {
@@ -185,6 +189,7 @@ class UserController extends Controller
             ->with(['design.owner'])
             ->where('buyer_id', $request->user()->id)
             ->where('status', 'paid')
+            ->where('payment_environment', $this->paymentSettings->environment())
             ->latest('purchased_at')
             ->paginate(Pagination::perPage($request))
             ->withQueryString();
