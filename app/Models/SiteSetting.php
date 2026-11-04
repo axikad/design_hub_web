@@ -8,6 +8,21 @@ use Illuminate\Support\Facades\Cache;
 
 class SiteSetting extends Model
 {
+    protected $attributes = [
+        'seller_payouts_enabled' => false,
+        'platform_commission_basis_points' => 2500,
+        'earning_hold_days' => 7,
+        'minimum_withdrawal_paise' => 50000,
+        'buyer_gst_enabled' => false,
+        'buyer_gst_basis_points' => 0,
+        'commission_gst_enabled' => false,
+        'commission_gst_basis_points' => 0,
+        'tds_enabled' => false,
+        'tds_basis_points' => 0,
+        'gst_tcs_enabled' => false,
+        'gst_tcs_basis_points' => 0,
+    ];
+
     protected $fillable = [
         'name',
         'logo_path',

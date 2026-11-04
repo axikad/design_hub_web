@@ -3,7 +3,22 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { Archive, Cog, Cpu, FileText, FileType2, FolderTree, Layers, LayoutGrid, Palette, Settings, ShieldCheck, ShoppingBag, UsersRound } from 'lucide-react';
+import {
+    Archive,
+    Cog,
+    Cpu,
+    FileText,
+    FileType2,
+    FolderTree,
+    Layers,
+    LayoutGrid,
+    Palette,
+    Settings,
+    ShieldCheck,
+    ShoppingBag,
+    UsersRound,
+    WalletCards,
+} from 'lucide-react';
 import AppLogo from './app-logo';
 
 const workspaceNavItems: NavItem[] = [
@@ -73,6 +88,12 @@ const administrationNavItems: NavItem[] = [
         url: '/admin/roles',
         icon: ShieldCheck,
         permission: 'roles.read',
+    },
+    {
+        title: 'Seller payments',
+        url: '/admin/settings/seller-payments',
+        icon: WalletCards,
+        permission: 'seller_payments.read',
     },
     {
         title: 'Content pages',

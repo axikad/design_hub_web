@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\MachineAdminController;
 use App\Http\Controllers\Admin\MachineTypeAdminController;
 use App\Http\Controllers\Admin\PurchaseAdminController;
 use App\Http\Controllers\Admin\RoleAdminController;
+use App\Http\Controllers\Admin\SellerPaymentSettingController;
 use App\Http\Controllers\Admin\SiteSettingController;
 use App\Http\Controllers\Admin\TypeAdminController;
 use App\Http\Controllers\Admin\UserAdminController;
@@ -42,6 +43,13 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('admin/settings/site', [SiteSettingController::class, 'update'])
         ->middleware('permission:branding.update')
         ->name('admin.settings.site.update');
+
+    Route::get('admin/settings/seller-payments', [SellerPaymentSettingController::class, 'edit'])
+        ->middleware('permission:seller_payments.read')
+        ->name('admin.settings.seller-payments.edit');
+    Route::put('admin/settings/seller-payments', [SellerPaymentSettingController::class, 'update'])
+        ->middleware('permission:seller_payments.update')
+        ->name('admin.settings.seller-payments.update');
 
     Route::get('admin/content-pages', [ContentPageAdminController::class, 'index'])
         ->middleware('permission:branding.read')

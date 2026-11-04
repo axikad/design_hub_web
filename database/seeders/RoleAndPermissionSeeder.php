@@ -33,6 +33,7 @@ class RoleAndPermissionSeeder extends Seeder
             'design_file_types' => ['name' => 'Design File Types', 'sortOrder' => 90, 'actions' => ['read', 'create', 'update', 'delete']],
             'purchases' => ['name' => 'Purchases', 'sortOrder' => 100, 'actions' => ['read', 'update', 'delete']],
             'branding' => ['name' => 'Site Branding', 'sortOrder' => 110, 'actions' => ['read', 'update']],
+            'seller_payments' => ['name' => 'Seller Payments', 'sortOrder' => 115, 'actions' => ['read', 'update']],
         ];
 
         $permissions = collect();

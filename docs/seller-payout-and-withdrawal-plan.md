@@ -825,8 +825,8 @@ Complete and test each group before moving to the next group. Mark a checkbox on
 - [x] Add the 7-day earning hold setting.
 - [x] Add the INR 500 minimum withdrawal setting.
 - [ ] Add `test`/`live` environment and `simulated`/`manual`/`provider` payout modes.
-- [ ] Build permission-protected Admin settings UI.
-- [ ] Ensure setting changes affect only future purchases.
+- [x] Build permission-protected Admin settings UI.
+- [x] Ensure setting changes affect only future purchases.
 - [x] Add separate disabled/zero Test Mode settings for buyer GST, commission GST, TDS and GST TCS.
 - [ ] Add versioned tax configuration and effective dates.
 - [ ] Return a server-calculated pricing preview for seller create/edit forms.
@@ -892,15 +892,15 @@ Complete and test each group before moving to the next group. Mark a checkbox on
 
 ### Step 8: Build permission-based Admin management
 
-- [ ] Register seller wallet, earning, withdrawal, payout and setting permissions.
-- [ ] Add Admin navigation only for authorized roles.
+- [x] Register seller payment setting read/update permissions. Wallet, earning, withdrawal and payout permissions remain pending.
+- [x] Add Admin navigation only for authorized roles.
 - [ ] Add all-seller wallet and earning views.
 - [ ] Add withdrawal queue with seller and ledger details.
 - [ ] Add approve, reject and simulated-failure actions with mandatory notes.
 - [ ] Record the admin actor and timestamp for every action.
-- [ ] Add payout settings page restricted to authorized administrators.
-- [ ] Ensure ordinary admin roles without financial permissions receive `403`.
-- [ ] Add tests for each finance permission and forbidden role.
+- [x] Add payout settings page restricted to authorized administrators.
+- [x] Ensure ordinary admin roles without financial permissions receive `403`.
+- [x] Add tests for seller payment setting read/update permissions and forbidden roles. Other finance permission tests remain pending.
 - [ ] Add Super Admin payment-gateway connection management.
 - [ ] Add test-connection, activate, deactivate and audit actions.
 - [ ] Prevent deletion of gateway connections referenced by financial records.
