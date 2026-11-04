@@ -21,6 +21,10 @@ Route::middleware('guest')->group(function () {
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
 
+    Route::post('login/resolve', [AuthenticatedSessionController::class, 'resolveLogin'])
+        ->middleware('throttle:10,1')
+        ->name('login.resolve');
+
     Route::post('login/otp/request', [AuthenticatedSessionController::class, 'requestOtp'])
         ->middleware('throttle:6,1')
         ->name('login.otp.request');

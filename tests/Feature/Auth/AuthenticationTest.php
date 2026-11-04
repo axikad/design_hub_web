@@ -17,6 +17,23 @@ class AuthenticationTest extends TestCase
         $response->assertStatus(200);
     }
 
+    public function test_login_identifier_resolves_only_the_methods_enabled_for_the_user(): void
+    {
+        $user = User::factory()->create([
+            'allow_password_login' => true,
+            'allow_otp_login' => false,
+        ]);
+
+        $this->from('/login')->post(route('login.resolve'), [
+            'loginType' => 'email',
+            'email' => $user->email,
+        ])->assertRedirect('/login')
+            ->assertSessionHas('loginResolution', [
+                'password' => true,
+                'otp' => false,
+            ]);
+    }
+
     public function test_users_can_authenticate_using_the_login_screen()
     {
         $user = User::factory()->create();
@@ -102,6 +119,35 @@ class AuthenticationTest extends TestCase
             ->assertRedirect(route('dashboard', absolute: false));
 
         $this->assertAuthenticated();
+    }
+
+    public function test_email_identifier_can_send_otp_to_the_registered_mobile_number(): void
+    {
+        config([
+            'designhub.otp_static_enabled' => true,
+            'designhub.otp_static_code' => '1234',
+        ]);
+
+        $user = User::factory()->create([
+            'country_code' => '+91',
+            'mobile_number' => '9876543210',
+            'phone_key' => '+919876543210',
+            'allow_otp_login' => true,
+        ]);
+
+        $payload = [
+            'loginType' => 'email',
+            'email' => $user->email,
+        ];
+
+        $this->from('/login')->post(route('login.otp.request'), $payload)
+            ->assertRedirect('/login')
+            ->assertSessionHasNoErrors();
+
+        $this->post(route('login.otp.verify'), $payload + ['code' => '1234'])
+            ->assertRedirect(route('dashboard', absolute: false));
+
+        $this->assertAuthenticatedAs($user);
     }
 
     public function test_otp_login_is_rejected_when_disabled_for_the_user(): void
