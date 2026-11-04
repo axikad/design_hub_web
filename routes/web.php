@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\SellerPaymentSettingController;
 use App\Http\Controllers\Admin\SiteSettingController;
 use App\Http\Controllers\Admin\TypeAdminController;
 use App\Http\Controllers\Admin\UserAdminController;
+use App\Http\Controllers\Admin\WithdrawalAdminController;
 use App\Http\Controllers\ContentPageController;
 use Illuminate\Support\Facades\Route;
 
@@ -175,6 +176,22 @@ Route::middleware(['auth', 'admin'])->group(function () {
         ->middlewareFor('index', 'permission:purchases.read')
         ->middlewareFor(['edit', 'update'], 'permission:purchases.update')
         ->middlewareFor('destroy', 'permission:purchases.delete');
+
+    Route::get('admin/withdrawals', [WithdrawalAdminController::class, 'index'])
+        ->middleware('permission:withdrawals.view_any')
+        ->name('admin.withdrawals.index');
+    Route::get('admin/withdrawals/{withdrawal}', [WithdrawalAdminController::class, 'show'])
+        ->middleware('permission:withdrawals.view_any')
+        ->name('admin.withdrawals.show');
+    Route::post('admin/withdrawals/{withdrawal}/approve', [WithdrawalAdminController::class, 'approve'])
+        ->middleware('permission:withdrawals.manage')
+        ->name('admin.withdrawals.approve');
+    Route::post('admin/withdrawals/{withdrawal}/reject', [WithdrawalAdminController::class, 'reject'])
+        ->middleware('permission:withdrawals.manage')
+        ->name('admin.withdrawals.reject');
+    Route::post('admin/withdrawals/{withdrawal}/complete-simulated', [WithdrawalAdminController::class, 'completeSimulated'])
+        ->middleware('permission:withdrawals.manage')
+        ->name('admin.withdrawals.complete-simulated');
 });
 
 require __DIR__.'/settings.php';

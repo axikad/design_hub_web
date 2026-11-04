@@ -840,7 +840,7 @@ Complete and test each group before moving to the next group. Mark a checkbox on
 - [x] Add `withdrawals` table with status history and idempotency key.
 - [ ] Add webhook event/audit storage.
 - [x] Implement `CommissionCalculator` using integer paise and basis points.
-- [ ] Implement common earning, ledger, wallet, withdrawal and refund services. Earning, ledger, wallet and seller request/cancel withdrawal services are complete; refund/admin payout processing remains.
+- [ ] Implement common earning, ledger, wallet, withdrawal and refund services. Earning, ledger, wallet, seller request/cancel, and Admin approve/reject/test-payout processing are complete; refund and live-provider payout processing remain.
 - [x] Use database transactions and row locks for withdrawal balance-changing operations.
 - [ ] Add unit tests for rounding, INR 100 -> INR 25/75 split and boundary values.
 - [ ] Add the versioned payment-gateway connection structure.
@@ -892,15 +892,15 @@ Complete and test each group before moving to the next group. Mark a checkbox on
 
 ### Step 8: Build permission-based Admin management
 
-- [x] Register seller payment setting plus own wallet, earning, ledger and withdrawal permissions. Admin payout-processing permissions remain pending.
+- [x] Register seller payment setting plus own wallet, earning, ledger and withdrawal permissions, including separate Admin view/manage permissions.
 - [x] Add Admin navigation only for authorized roles.
 - [ ] Add all-seller wallet and earning views.
-- [ ] Add withdrawal queue with seller and ledger details.
+- [x] Add withdrawal queue with seller and ledger details.
 - [ ] Add approve, reject and simulated-failure actions with mandatory notes.
-- [ ] Record the admin actor and timestamp for every action.
+- [x] Record the admin actor, mandatory note and timestamp for every implemented action.
 - [x] Add payout settings page restricted to authorized administrators.
 - [x] Ensure ordinary admin roles without financial permissions receive `403`.
-- [x] Add tests for seller payment setting read/update permissions and forbidden roles. Other finance permission tests remain pending.
+- [x] Add tests for seller payment settings, withdrawal view/manage permissions, read-only finance roles and forbidden roles.
 - [ ] Add Super Admin payment-gateway connection management.
 - [ ] Add test-connection, activate, deactivate and audit actions.
 - [ ] Prevent deletion of gateway connections referenced by financial records.
@@ -912,8 +912,8 @@ Complete and test each group before moving to the next group. Mark a checkbox on
 - [ ] Seller sees only their own pending earning.
 - [ ] Hold release makes the earning available exactly once.
 - [ ] Withdrawal atomically moves money from available to reserved.
-- [ ] Admin approves and completes a simulated payout.
-- [ ] Rejection/failure restores the reserved amount.
+- [x] Admin approves and completes a simulated payout.
+- [x] Rejection restores the reserved amount. Simulated failure remains pending.
 - [ ] Refund behavior is correct before and after earning release.
 - [ ] Two sellers cannot access each other's financial data.
 - [ ] Test and live records cannot be mixed.
@@ -987,7 +987,7 @@ The test-mode marketplace MVP is ready when all of these are true:
 - [ ] Refunds reverse the correct earning and ledger entries.
 - [ ] Every financial record identifies whether it belongs to test or live mode.
 - [ ] Seller APIs expose only the authenticated seller's financial data.
-- [ ] Admin financial pages and actions require explicit permissions.
+- [x] Admin financial pages and actions require explicit permissions.
 - [ ] The UI clearly states that test-mode balances and withdrawals are not real money.
 - [ ] Mobile and web clients display backend-calculated pricing and never submit trusted tax/commission amounts.
 - [ ] Every transaction snapshots its Test/Live environment and gateway connection.

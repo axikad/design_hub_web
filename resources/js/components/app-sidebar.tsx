@@ -10,6 +10,7 @@ import {
     FileText,
     FileType2,
     FolderTree,
+    Landmark,
     Layers,
     LayoutGrid,
     Palette,
@@ -45,6 +46,12 @@ const workspaceNavItems: NavItem[] = [
         url: '/admin/purchases',
         icon: ShoppingBag,
         permission: 'purchases.read',
+    },
+    {
+        title: 'Withdrawals',
+        url: '/admin/withdrawals',
+        icon: Landmark,
+        permission: 'withdrawals.view_any',
     },
 ];
 

@@ -132,6 +132,110 @@ class SellerWithdrawalService
         }, 3);
     }
 
+    public function approve(Withdrawal $withdrawal, User $admin, string $note): Withdrawal
+    {
+        return DB::transaction(function () use ($withdrawal, $admin, $note) {
+            User::query()->whereKey($withdrawal->seller_id)->lockForUpdate()->firstOrFail();
+            $locked = Withdrawal::query()->whereKey($withdrawal->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->status === 'approved') {
+                return $locked;
+            }
+
+            if ($locked->status !== 'requested') {
+                throw ValidationException::withMessages([
+                    'withdrawal' => ['Only a requested withdrawal can be approved.'],
+                ]);
+            }
+
+            $fromStatus = $locked->status;
+            $locked->update([
+                'status' => 'approved',
+                'approved_at' => now(),
+                'approved_by' => $admin->id,
+            ]);
+            $this->history($locked, $fromStatus, 'approved', $admin, $note);
+
+            return $locked->fresh();
+        }, 3);
+    }
+
+    public function reject(Withdrawal $withdrawal, User $admin, string $reason): Withdrawal
+    {
+        return DB::transaction(function () use ($withdrawal, $admin, $reason) {
+            User::query()->whereKey($withdrawal->seller_id)->lockForUpdate()->firstOrFail();
+            $locked = Withdrawal::query()->whereKey($withdrawal->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->status === 'rejected') {
+                return $locked;
+            }
+
+            if (! in_array($locked->status, ['requested', 'approved'], true)) {
+                throw ValidationException::withMessages([
+                    'withdrawal' => ['Only a requested or approved withdrawal can be rejected.'],
+                ]);
+            }
+
+            $this->ledger($locked, 'withdrawal_reject_reserved_debit', 'reserved', -$locked->amount_paise);
+            $this->ledger($locked, 'withdrawal_reject_available_credit', 'available', $locked->amount_paise);
+
+            $fromStatus = $locked->status;
+            $locked->update([
+                'status' => 'rejected',
+                'rejection_reason' => $reason,
+                'processed_at' => now(),
+            ]);
+            $this->history($locked, $fromStatus, 'rejected', $admin, $reason);
+
+            return $locked->fresh();
+        }, 3);
+    }
+
+    public function completeSimulated(Withdrawal $withdrawal, User $admin, string $note): Withdrawal
+    {
+        return DB::transaction(function () use ($withdrawal, $admin, $note) {
+            User::query()->whereKey($withdrawal->seller_id)->lockForUpdate()->firstOrFail();
+            $locked = Withdrawal::query()->whereKey($withdrawal->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->status === 'paid') {
+                return $locked;
+            }
+
+            if ($locked->payment_environment !== 'test' || $locked->payout_mode !== 'simulated') {
+                throw ValidationException::withMessages([
+                    'withdrawal' => ['Simulated completion is available only for test-mode withdrawals.'],
+                ]);
+            }
+
+            if ($locked->status !== 'approved') {
+                throw ValidationException::withMessages([
+                    'withdrawal' => ['Approve the withdrawal before completing its simulated payout.'],
+                ]);
+            }
+
+            $this->ledger($locked, 'withdrawal_paid_reserved_debit', 'reserved', -$locked->amount_paise);
+            $this->ledger($locked, 'withdrawal_paid_credit', 'paid', $locked->amount_paise);
+
+            $fromStatus = $locked->status;
+            $processedAt = now();
+            $locked->update([
+                'status' => 'paid',
+                'processed_at' => $processedAt,
+                'provider' => 'internal_simulator',
+                'provider_transfer_id' => "simulated_{$locked->public_id}",
+                'provider_status' => 'simulated_paid',
+                'payout_snapshot' => [
+                    'completedBy' => $admin->id,
+                    'completedAt' => $processedAt->toIso8601String(),
+                    'mode' => 'simulated',
+                ],
+            ]);
+            $this->history($locked, $fromStatus, 'paid', $admin, $note);
+
+            return $locked->fresh();
+        }, 3);
+    }
+
     private function ledger(Withdrawal $withdrawal, string $type, string $bucket, int $amount): void
     {
         SellerLedgerEntry::query()->firstOrCreate(
