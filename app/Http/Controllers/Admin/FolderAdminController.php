@@ -24,10 +24,13 @@ class FolderAdminController extends Controller
 
     public function index(Request $request): Response
     {
+        $actor = $request->user();
+        $ownContentOnly = $actor->mustScopeMarketplaceContentToSelf();
         $search = trim((string) $request->string('search'));
 
         $folders = Folder::query()
             ->with('owner')
+            ->when($ownContentOnly, fn ($query) => $query->where('user_id', $actor->id))
             ->withCount(['purchases as paid_purchase_count' => fn ($query) => $query->where('status', 'paid')])
             ->withSum(['purchases as paid_revenue_paise' => fn ($query) => $query->where('status', 'paid')], 'amount_paise')
             ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search) {
@@ -58,6 +61,7 @@ class FolderAdminController extends Controller
         return Inertia::render('admin/folders/index', [
             'folders' => $folders,
             'filters' => ['search' => $search],
+            'ownContentOnly' => $ownContentOnly,
         ]);
     }
 
@@ -70,18 +74,18 @@ class FolderAdminController extends Controller
         ]);
     }
 
-    public function show(string $folder): Response
+    public function show(Request $request, string $folder): Response
     {
-        $model = $this->find($folder);
+        $model = $this->find($folder, $request->user());
 
         return Inertia::render('admin/folders/show', [
             'folder' => $this->folderPayload($model),
         ]);
     }
 
-    public function preview(string $folder, int $file): BinaryFileResponse
+    public function preview(Request $request, string $folder, int $file): BinaryFileResponse
     {
-        $model = $this->find($folder);
+        $model = $this->find($folder, $request->user());
         $folderFile = $model->files()->whereKey($file)->firstOrFail();
         $mimeType = FolderFilePreview::mimeType($folderFile);
 
@@ -137,7 +141,7 @@ class FolderAdminController extends Controller
 
     public function edit(Request $request, string $folder): Response
     {
-        $model = $this->find($folder);
+        $model = $this->find($folder, $request->user());
 
         return Inertia::render('admin/folders/form', [
             'folder' => $this->folderPayload($model),
@@ -148,7 +152,7 @@ class FolderAdminController extends Controller
 
     public function update(Request $request, string $folder): RedirectResponse
     {
-        $model = $this->find($folder);
+        $model = $this->find($folder, $request->user());
         $validated = $this->validated($request, false, $model);
         $archive = null;
 
@@ -196,18 +200,21 @@ class FolderAdminController extends Controller
         return redirect()->route('admin.folders.index')->with('success', 'Folder updated.');
     }
 
-    public function destroy(string $folder): RedirectResponse
+    public function destroy(Request $request, string $folder): RedirectResponse
     {
-        $model = $this->find($folder);
+        $model = $this->find($folder, $request->user());
         $this->archives->deleteFolder($model);
         $model->delete();
 
         return redirect()->route('admin.folders.index')->with('success', 'Folder and its stored files deleted.');
     }
 
-    private function find(string $publicId): Folder
+    private function find(string $publicId, User $actor): Folder
     {
-        return Folder::query()->where('public_id', $publicId)->firstOrFail();
+        return Folder::query()
+            ->where('public_id', $publicId)
+            ->when($actor->mustScopeMarketplaceContentToSelf(), fn ($query) => $query->where('user_id', $actor->id))
+            ->firstOrFail();
     }
 
     /** @return array<string, mixed> */

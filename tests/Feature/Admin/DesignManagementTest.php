@@ -14,6 +14,7 @@ use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class DesignManagementTest extends TestCase
@@ -113,6 +114,45 @@ class DesignManagementTest extends TestCase
         $this->assertSame(['front.jpg', 'back.png'], collect($createdDesign->images)->pluck('name')->all());
         $this->assertSame($createdDesign->images[0]['path'], $createdDesign->preview_path);
         $this->assertCount(2, $createdDesign->files);
+    }
+
+    public function test_marketplace_user_only_sees_and_manages_their_own_designs(): void
+    {
+        $marketplaceRole = Role::query()->where('slug', 'marketplace_user')->firstOrFail();
+        $seller = User::factory()->create(['role_id' => $marketplaceRole->id]);
+        $otherSeller = User::factory()->create();
+        $ownDesign = Design::query()->create([
+            'user_id' => $seller->id,
+            'title' => 'My Design',
+            'price_paise' => 10000,
+            'size' => '',
+            'color' => '',
+            'details' => [],
+            'images' => [],
+            'files' => [],
+        ]);
+        $otherDesign = Design::query()->create([
+            'user_id' => $otherSeller->id,
+            'title' => 'Private Other Design',
+            'price_paise' => 20000,
+            'size' => '',
+            'color' => '',
+            'details' => [],
+            'images' => [],
+            'files' => [],
+        ]);
+
+        $this->actingAs($seller)
+            ->get(route('admin.designs.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('ownContentOnly', true)
+                ->has('designs.data', 1)
+                ->where('designs.data.0.id', $ownDesign->public_id));
+
+        $this->actingAs($seller)->get(route('admin.designs.edit', $otherDesign->public_id))->assertNotFound();
+        $this->actingAs($seller)->delete(route('admin.designs.destroy', $otherDesign->public_id))->assertNotFound();
+        $this->assertDatabaseHas('designs', ['id' => $otherDesign->id, 'deleted_at' => null]);
     }
 
     public function test_admin_design_rejects_a_machine_type_from_another_machine(): void

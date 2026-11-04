@@ -51,7 +51,9 @@ class PermissionRoleMigrationTest extends TestCase
 
         $this->assertEqualsCanonicalizing(
             [
+                'marketplace.manage_own', 'dashboard.read',
                 'designs.read', 'designs.create', 'designs.update', 'designs.delete',
+                'folders.read', 'folders.create', 'folders.update', 'folders.delete',
                 'wallet.view_own', 'earnings.view_own', 'ledger.view_own',
                 'withdrawals.view_own', 'withdrawals.create_own', 'withdrawals.cancel_own',
             ],

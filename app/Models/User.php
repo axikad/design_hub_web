@@ -145,6 +145,17 @@ class User extends Authenticatable
         return $this->hasPermission('dashboard.read');
     }
 
+    public function mustScopeMarketplaceContentToSelf(): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return false;
+        }
+
+        $this->loadMissing('role');
+
+        return $this->role?->hasPermission('marketplace.manage_own') ?? false;
+    }
+
     public function ownerKey(): ?string
     {
         if ($this->country_code === null || $this->mobile_number === null) {

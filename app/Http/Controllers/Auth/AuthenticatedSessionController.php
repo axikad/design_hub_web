@@ -56,7 +56,7 @@ class AuthenticatedSessionController extends Controller
         }
 
         $user = $query->first();
-        if ($user === null || (! $user->allow_otp_login && ! $user->allow_password_login)) {
+        if ($user === null || ! $user->canAccessPanel() || (! $user->allow_otp_login && ! $user->allow_password_login)) {
             throw ValidationException::withMessages([
                 $errorKey => 'No active account is available for these login details.',
             ]);
@@ -174,7 +174,7 @@ class AuthenticatedSessionController extends Controller
                 ->where('email', Str::lower(trim($validated['email'])))
                 ->first();
 
-            if ($user === null || $user->country_code === null || $user->mobile_number === null) {
+            if ($user === null || ! $user->canAccessPanel() || $user->country_code === null || $user->mobile_number === null) {
                 throw ValidationException::withMessages([
                     'email' => 'OTP login is not available for this account.',
                 ]);
@@ -186,9 +186,24 @@ class AuthenticatedSessionController extends Controller
             ];
         }
 
+        $phoneKey = PhoneNormalizer::key($validated['countryCode'], $validated['mobileNumber']);
+        $user = $phoneKey === null
+            ? null
+            : User::query()
+                ->where('status', 'active')
+                ->where('allow_otp_login', true)
+                ->where('phone_key', $phoneKey)
+                ->first();
+
+        if ($user === null || ! $user->canAccessPanel() || $user->country_code === null || $user->mobile_number === null) {
+            throw ValidationException::withMessages([
+                'mobileNumber' => 'OTP login is not available for this account.',
+            ]);
+        }
+
         return [
-            'countryCode' => $validated['countryCode'],
-            'mobileNumber' => $validated['mobileNumber'],
+            'countryCode' => $user->country_code,
+            'mobileNumber' => $user->mobile_number,
         ];
     }
 

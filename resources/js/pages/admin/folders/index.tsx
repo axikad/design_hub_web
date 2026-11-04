@@ -29,6 +29,7 @@ type FolderRow = {
 type Props = {
     folders: { data: FolderRow[]; links: { url: string | null; label: string; active: boolean }[] };
     filters: { search: string };
+    ownContentOnly: boolean;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -52,7 +53,7 @@ function formatBytes(bytes: number) {
     return `${value.toFixed(value >= 10 ? 1 : 2)} ${unit}`;
 }
 
-export default function AdminFoldersIndex({ folders, filters }: Props) {
+export default function AdminFoldersIndex({ folders, filters, ownContentOnly }: Props) {
     const permissions = usePage<SharedData>().props.auth.permissions ?? [];
     const canCreate = permissions.includes('folders.create');
     const canUpdate = permissions.includes('folders.update');
@@ -74,8 +75,12 @@ export default function AdminFoldersIndex({ folders, filters }: Props) {
             <Head title="Folders" />
             <div className="space-y-6 p-4 md:p-6">
                 <AdminPageHeader
-                    title="Folders"
-                    description="Upload priced ZIP or RAR packages and manage the files extracted from each archive."
+                    title={ownContentOnly ? 'My folders' : 'Folders'}
+                    description={
+                        ownContentOnly
+                            ? 'Upload and manage your priced ZIP or RAR packages.'
+                            : 'Upload priced ZIP or RAR packages and manage the files extracted from each archive.'
+                    }
                     createHref={canCreate ? route('admin.folders.create') : undefined}
                     createLabel="Add folder"
                 />
@@ -109,16 +114,24 @@ export default function AdminFoldersIndex({ folders, filters }: Props) {
                         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                             <thead className="bg-slate-50/80 dark:bg-slate-950/60">
                                 <tr>
-                                    {['Folder', 'Seller', 'Price', 'Purchases', 'Revenue', 'Archive', 'Files', 'Total size', 'Actions'].map(
-                                        (heading) => (
-                                            <th
-                                                key={heading}
-                                                className="px-5 py-3.5 text-left text-[11px] font-bold tracking-wider text-slate-500 uppercase"
-                                            >
-                                                {heading}
-                                            </th>
-                                        ),
-                                    )}
+                                    {[
+                                        'Folder',
+                                        ...(!ownContentOnly ? ['Seller'] : []),
+                                        'Price',
+                                        'Purchases',
+                                        'Revenue',
+                                        'Archive',
+                                        'Files',
+                                        'Total size',
+                                        'Actions',
+                                    ].map((heading) => (
+                                        <th
+                                            key={heading}
+                                            className="px-5 py-3.5 text-left text-[11px] font-bold tracking-wider text-slate-500 uppercase"
+                                        >
+                                            {heading}
+                                        </th>
+                                    ))}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -135,12 +148,14 @@ export default function AdminFoldersIndex({ folders, filters }: Props) {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-5 py-4">
-                                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                                                {folder.ownerName || 'Unassigned'}
-                                            </p>
-                                            <p className="mt-0.5 text-xs text-slate-400">{folder.ownerPhone || 'No phone'}</p>
-                                        </td>
+                                        {!ownContentOnly ? (
+                                            <td className="px-5 py-4">
+                                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                                    {folder.ownerName || 'Unassigned'}
+                                                </p>
+                                                <p className="mt-0.5 text-xs text-slate-400">{folder.ownerPhone || 'No phone'}</p>
+                                            </td>
+                                        ) : null}
                                         <td className="px-5 py-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
                                             {money.format(Number(folder.priceRupees))}
                                         </td>

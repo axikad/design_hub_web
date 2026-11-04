@@ -24,6 +24,7 @@ class RoleAndPermissionSeeder extends Seeder
             'dashboard' => ['name' => 'Dashboard', 'sortOrder' => 10, 'actions' => ['read']],
             'users' => ['name' => 'User Management', 'sortOrder' => 20, 'actions' => ['read', 'create', 'update', 'delete']],
             'roles' => ['name' => 'Roles & Permissions', 'sortOrder' => 30, 'actions' => ['read', 'create', 'update', 'delete', 'assign_permissions']],
+            'marketplace' => ['name' => 'Marketplace Panel', 'sortOrder' => 39, 'actions' => ['manage_own']],
             'designs' => ['name' => 'Design Management', 'sortOrder' => 40, 'actions' => ['read', 'create', 'update', 'delete']],
             'folders' => ['name' => 'Folder Management', 'sortOrder' => 45, 'actions' => ['read', 'create', 'update', 'delete']],
             'machines' => ['name' => 'Machines', 'sortOrder' => 50, 'actions' => ['read', 'create', 'update', 'delete']],
@@ -95,7 +96,10 @@ class RoleAndPermissionSeeder extends Seeder
             'purchases.read',
         ], $permissions);
         $this->syncPermissions($roles['marketplace_user'], [
+            'marketplace.manage_own',
+            'dashboard.read',
             'designs.read', 'designs.create', 'designs.update', 'designs.delete',
+            'folders.read', 'folders.create', 'folders.update', 'folders.delete',
             'wallet.view_own', 'earnings.view_own', 'ledger.view_own',
             'withdrawals.view_own', 'withdrawals.create_own', 'withdrawals.cancel_own',
         ], $permissions);

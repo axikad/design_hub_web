@@ -38,6 +38,7 @@ type Props = {
     fileTypes: Option[];
     filters: { search: string; owner: string; machine: string; fileType: string };
     imageSearchActive?: boolean;
+    ownContentOnly: boolean;
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -50,7 +51,7 @@ function formatInr(paise: number | null): string {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(paise / 100);
 }
 
-export default function AdminDesignsIndex({ designs, owners, machines, fileTypes, filters, imageSearchActive = false }: Props) {
+export default function AdminDesignsIndex({ designs, owners, machines, fileTypes, filters, imageSearchActive = false, ownContentOnly }: Props) {
     const page = usePage<SharedData & { errors: Record<string, string> }>();
     const permissions = page.props.auth.permissions ?? [];
     const canCreate = permissions.includes('designs.create');
@@ -84,7 +85,7 @@ export default function AdminDesignsIndex({ designs, owners, machines, fileTypes
             route('admin.designs.index'),
             {
                 search: search || undefined,
-                owner: owner === 'all' ? undefined : owner,
+                owner: ownContentOnly || owner === 'all' ? undefined : owner,
                 machine: machine === 'all' ? undefined : machine,
                 fileType: fileType === 'all' ? undefined : fileType,
             },
@@ -162,8 +163,12 @@ export default function AdminDesignsIndex({ designs, owners, machines, fileTypes
             ) : null}
             <div className="space-y-6 p-4 md:p-6">
                 <AdminPageHeader
-                    title="Designs"
-                    description="Create, review, and manage marketplace design listings."
+                    title={ownContentOnly ? 'My designs' : 'Designs'}
+                    description={
+                        ownContentOnly
+                            ? 'Create and manage your marketplace design listings.'
+                            : 'Create, review, and manage marketplace design listings.'
+                    }
                     createHref={canCreate ? route('admin.designs.create') : undefined}
                     createLabel="Add design"
                 />
@@ -202,21 +207,23 @@ export default function AdminDesignsIndex({ designs, owners, machines, fileTypes
                             value={search}
                             onChange={(event) => setSearch(event.target.value)}
                             onClear={() => setSearch('')}
-                            placeholder="Search title, ID, file, or seller..."
+                            placeholder={ownContentOnly ? 'Search title, ID, or file...' : 'Search title, ID, file, or seller...'}
                         />
-                        <Select value={owner} onValueChange={setOwner}>
-                            <SelectTrigger className="h-10 rounded-xl border-slate-200 sm:w-48 dark:border-slate-700">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All sellers</SelectItem>
-                                {owners.map((option) => (
-                                    <SelectItem key={option.id} value={option.id}>
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        {!ownContentOnly ? (
+                            <Select value={owner} onValueChange={setOwner}>
+                                <SelectTrigger className="h-10 rounded-xl border-slate-200 sm:w-48 dark:border-slate-700">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All sellers</SelectItem>
+                                    {owners.map((option) => (
+                                        <SelectItem key={option.id} value={option.id}>
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        ) : null}
                         <Select value={machine} onValueChange={setMachine}>
                             <SelectTrigger className="h-10 rounded-xl border-slate-200 sm:w-44 dark:border-slate-700">
                                 <SelectValue />
@@ -277,7 +284,15 @@ export default function AdminDesignsIndex({ designs, owners, machines, fileTypes
                         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                             <thead className="bg-slate-50/80 dark:bg-slate-950/60">
                                 <tr>
-                                    {['Design', 'Machine', 'Category / Type', 'File type', 'Price', 'Seller', 'Actions'].map((heading) => (
+                                    {[
+                                        'Design',
+                                        'Machine',
+                                        'Category / Type',
+                                        'File type',
+                                        'Price',
+                                        ...(!ownContentOnly ? ['Seller'] : []),
+                                        'Actions',
+                                    ].map((heading) => (
                                         <th
                                             key={heading}
                                             className="px-5 py-3.5 text-left text-[11px] font-bold tracking-wider text-slate-500 uppercase"
@@ -332,9 +347,11 @@ export default function AdminDesignsIndex({ designs, owners, machines, fileTypes
                                         <td className="px-5 py-4 text-sm font-semibold text-slate-800 dark:text-slate-100">
                                             {formatInr(design.pricePaise)}
                                         </td>
-                                        <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">
-                                            {design.ownerName || design.ownerKey || 'Not assigned'}
-                                        </td>
+                                        {!ownContentOnly ? (
+                                            <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">
+                                                {design.ownerName || design.ownerKey || 'Not assigned'}
+                                            </td>
+                                        ) : null}
                                         <td className="px-5 py-4">
                                             <div className="flex gap-2">
                                                 {canUpdate ? (

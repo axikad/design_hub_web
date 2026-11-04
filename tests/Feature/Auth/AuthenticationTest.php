@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -19,7 +20,7 @@ class AuthenticationTest extends TestCase
 
     public function test_login_identifier_resolves_only_the_methods_enabled_for_the_user(): void
     {
-        $user = User::factory()->create([
+        $user = User::factory()->superAdmin()->create([
             'allow_password_login' => true,
             'allow_otp_login' => false,
         ]);
@@ -42,7 +43,7 @@ class AuthenticationTest extends TestCase
             'designhub.otp_static_code' => '1234',
         ]);
 
-        $user = User::factory()->create([
+        $user = User::factory()->superAdmin()->create([
             'country_code' => '+91',
             'mobile_number' => '9876543210',
             'phone_key' => '+919876543210',
@@ -72,7 +73,7 @@ class AuthenticationTest extends TestCase
 
     public function test_users_can_authenticate_using_the_login_screen()
     {
-        $user = User::factory()->create();
+        $user = User::factory()->superAdmin()->create();
 
         $response = $this->post('/login', [
             'email' => $user->email,
@@ -85,7 +86,7 @@ class AuthenticationTest extends TestCase
 
     public function test_users_can_not_authenticate_with_invalid_password()
     {
-        $user = User::factory()->create();
+        $user = User::factory()->superAdmin()->create();
 
         $this->post('/login', [
             'email' => $user->email,
@@ -97,7 +98,7 @@ class AuthenticationTest extends TestCase
 
     public function test_users_can_authenticate_with_mobile_number_and_password(): void
     {
-        User::factory()->create([
+        User::factory()->superAdmin()->create([
             'country_code' => '+91',
             'mobile_number' => '9876543210',
             'phone_key' => '+919876543210',
@@ -117,7 +118,7 @@ class AuthenticationTest extends TestCase
 
     public function test_password_login_is_rejected_when_disabled_for_the_user(): void
     {
-        $user = User::factory()->create(['allow_password_login' => false]);
+        $user = User::factory()->superAdmin()->create(['allow_password_login' => false]);
         $this->assertFalse($user->allow_password_login);
 
         $this->post('/login', [
@@ -135,7 +136,7 @@ class AuthenticationTest extends TestCase
             'designhub.otp_static_code' => '1234',
         ]);
 
-        User::factory()->create([
+        User::factory()->superAdmin()->create([
             'country_code' => '+91',
             'mobile_number' => '9876543210',
             'phone_key' => '+919876543210',
@@ -164,7 +165,7 @@ class AuthenticationTest extends TestCase
             'designhub.otp_static_code' => '1234',
         ]);
 
-        $user = User::factory()->create([
+        $user = User::factory()->superAdmin()->create([
             'country_code' => '+91',
             'mobile_number' => '9876543210',
             'phone_key' => '+919876543210',
@@ -188,7 +189,7 @@ class AuthenticationTest extends TestCase
 
     public function test_otp_login_is_rejected_when_disabled_for_the_user(): void
     {
-        User::factory()->create([
+        User::factory()->superAdmin()->create([
             'country_code' => '+91',
             'mobile_number' => '9876543210',
             'phone_key' => '+919876543210',
@@ -211,5 +212,44 @@ class AuthenticationTest extends TestCase
 
         $this->assertGuest();
         $response->assertRedirect('/');
+    }
+
+    public function test_marketplace_user_can_log_in_to_the_owner_scoped_web_panel(): void
+    {
+        config([
+            'designhub.otp_static_enabled' => true,
+            'designhub.otp_static_code' => '1234',
+        ]);
+
+        $marketplaceRole = Role::query()->where('slug', 'marketplace_user')->firstOrFail();
+        $user = User::factory()->create([
+            'role_id' => $marketplaceRole->id,
+            'country_code' => '+91',
+            'mobile_number' => '9876543210',
+            'phone_key' => '+919876543210',
+            'allow_password_login' => false,
+            'allow_otp_login' => true,
+        ]);
+
+        $this->from('/login')->post(route('login.resolve'), [
+            'loginType' => 'mobile',
+            'countryCode' => '+91',
+            'mobileNumber' => '9876543210',
+        ])->assertRedirect('/login')
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('loginResolution', [
+                'password' => false,
+                'otp' => true,
+                'otpSent' => true,
+            ]);
+
+        $this->post(route('login.otp.verify'), [
+            'countryCode' => '+91',
+            'mobileNumber' => '9876543210',
+            'code' => '1234',
+        ])->assertRedirect(route('dashboard', absolute: false));
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertNotNull($user->fresh()->last_login_at);
     }
 }

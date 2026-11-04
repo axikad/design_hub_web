@@ -7,7 +7,8 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowRight, CreditCard, IndianRupee, Palette, ShoppingBag, UsersRound } from 'lucide-react';
 
 type Props = {
-    stats: { users: number; designs: number; purchases: number; pendingPayments: number; revenuePaise: number };
+    ownContentOnly: boolean;
+    stats: { users: number; designs: number; folders: number; purchases: number; pendingPayments: number; revenuePaise: number };
     recentDesigns: { id: string; title: string; owner: string | null; fileType: string | null; createdAt: string | null }[];
     recentPurchases: {
         id: string;
@@ -24,50 +25,89 @@ type Props = {
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Overview', href: '/dashboard' }];
 const formatMoney = (paise: number, currency = 'INR') => new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format(paise / 100);
 
-export default function AdminDashboard({ stats, recentDesigns, recentPurchases }: Props) {
+export default function AdminDashboard({ ownContentOnly, stats, recentDesigns, recentPurchases }: Props) {
     const permissions = usePage<SharedData>().props.auth.permissions ?? [];
-    const cards = [
-        {
-            label: 'Marketplace users',
-            value: stats.users.toLocaleString('en-IN'),
-            icon: UsersRound,
-            tone: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300',
-        },
-        {
-            label: 'Live designs',
-            value: stats.designs.toLocaleString('en-IN'),
-            icon: Palette,
-            tone: 'bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-300',
-        },
-        {
-            label: 'Paid purchases',
-            value: stats.purchases.toLocaleString('en-IN'),
-            icon: ShoppingBag,
-            tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300',
-        },
-        {
-            label: 'Pending payments',
-            value: stats.pendingPayments.toLocaleString('en-IN'),
-            icon: CreditCard,
-            tone: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300',
-        },
-        {
-            label: 'Gross revenue',
-            value: formatMoney(stats.revenuePaise),
-            icon: IndianRupee,
-            tone: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300',
-        },
-    ];
+    const cards = ownContentOnly
+        ? [
+              {
+                  label: 'My designs',
+                  value: stats.designs.toLocaleString('en-IN'),
+                  icon: Palette,
+                  tone: 'bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-300',
+              },
+              {
+                  label: 'My folders',
+                  value: stats.folders.toLocaleString('en-IN'),
+                  icon: ShoppingBag,
+                  tone: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300',
+              },
+              {
+                  label: 'Paid sales',
+                  value: stats.purchases.toLocaleString('en-IN'),
+                  icon: ShoppingBag,
+                  tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300',
+              },
+              {
+                  label: 'Pending sales',
+                  value: stats.pendingPayments.toLocaleString('en-IN'),
+                  icon: CreditCard,
+                  tone: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300',
+              },
+              {
+                  label: 'Gross sales',
+                  value: formatMoney(stats.revenuePaise),
+                  icon: IndianRupee,
+                  tone: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300',
+              },
+          ]
+        : [
+              {
+                  label: 'Marketplace users',
+                  value: stats.users.toLocaleString('en-IN'),
+                  icon: UsersRound,
+                  tone: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300',
+              },
+              {
+                  label: 'Live designs',
+                  value: stats.designs.toLocaleString('en-IN'),
+                  icon: Palette,
+                  tone: 'bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-300',
+              },
+              {
+                  label: 'Paid purchases',
+                  value: stats.purchases.toLocaleString('en-IN'),
+                  icon: ShoppingBag,
+                  tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300',
+              },
+              {
+                  label: 'Pending payments',
+                  value: stats.pendingPayments.toLocaleString('en-IN'),
+                  icon: CreditCard,
+                  tone: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300',
+              },
+              {
+                  label: 'Gross revenue',
+                  value: formatMoney(stats.revenuePaise),
+                  icon: IndianRupee,
+                  tone: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300',
+              },
+          ];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Textile Design Hub" />
             <div className="space-y-7 p-4 md:p-6">
                 <div className="rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 p-6 text-white shadow-lg shadow-indigo-500/15 md:p-8">
-                    <p className="text-sm font-semibold text-indigo-100">Textile Design Hub administration</p>
-                    <h1 className="mt-2 text-2xl font-bold tracking-tight md:text-3xl">Marketplace overview</h1>
+                    <p className="text-sm font-semibold text-indigo-100">
+                        {ownContentOnly ? 'Textile Design Hub seller panel' : 'Textile Design Hub administration'}
+                    </p>
+                    <h1 className="mt-2 text-2xl font-bold tracking-tight md:text-3xl">
+                        {ownContentOnly ? 'Your marketplace overview' : 'Marketplace overview'}
+                    </h1>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-indigo-100">
-                        Monitor designs, customers, purchases, and server-side payment activity from one place.
+                        {ownContentOnly
+                            ? 'Create and manage your own designs and folders from one place.'
+                            : 'Monitor designs, customers, purchases, and server-side payment activity from one place.'}
                     </p>
                 </div>
 
@@ -87,7 +127,10 @@ export default function AdminDashboard({ stats, recentDesigns, recentPurchases }
                 </div>
 
                 <div className="grid gap-5 xl:grid-cols-2">
-                    <ActivityPanel title="Recent designs" href={permissions.includes('designs.read') ? route('admin.designs.index') : undefined}>
+                    <ActivityPanel
+                        title={ownContentOnly ? 'My recent designs' : 'Recent designs'}
+                        href={permissions.includes('designs.read') ? route('admin.designs.index') : undefined}
+                    >
                         {recentDesigns.length ? (
                             recentDesigns.map((design) => (
                                 <div
@@ -111,7 +154,7 @@ export default function AdminDashboard({ stats, recentDesigns, recentPurchases }
                     </ActivityPanel>
 
                     <ActivityPanel
-                        title="Recent purchases"
+                        title={ownContentOnly ? 'Recent sales' : 'Recent purchases'}
                         href={permissions.includes('purchases.read') ? route('admin.purchases.index') : undefined}
                     >
                         {recentPurchases.length ? (

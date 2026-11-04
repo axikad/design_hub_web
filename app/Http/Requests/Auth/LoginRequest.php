@@ -72,7 +72,7 @@ class LoginRequest extends FormRequest
         }
 
         $user = $query->first();
-        $authenticated = $user !== null && Auth::attempt([
+        $authenticated = $user !== null && $user->canAccessPanel() && Auth::attempt([
             'id' => $user->id,
             'password' => $this->string('password')->toString(),
         ], $this->boolean('remember'));

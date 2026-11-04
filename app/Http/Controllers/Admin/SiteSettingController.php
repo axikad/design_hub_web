@@ -29,11 +29,12 @@ class SiteSettingController extends Controller
             'registrationRoles' => Role::query()
                 ->where('slug', '!=', 'super_admin')
                 ->whereHas('permissions', fn ($query) => $query->where('slug', 'dashboard.read')->where('is_active', true))
+                ->whereDoesntHave('permissions', fn ($query) => $query->where('slug', 'marketplace.manage_own')->where('is_active', true))
                 ->orderBy('name')
                 ->get(['id', 'name', 'slug']),
             'mobileRegistrationRoles' => Role::query()
                 ->where('slug', '!=', 'super_admin')
-                ->whereDoesntHave('permissions', fn ($query) => $query->where('slug', 'dashboard.read')->where('is_active', true))
+                ->whereHas('permissions', fn ($query) => $query->where('slug', 'marketplace.manage_own')->where('is_active', true))
                 ->orderBy('name')
                 ->get(['id', 'name', 'slug']),
         ]);
@@ -69,9 +70,9 @@ class SiteSettingController extends Controller
             ]);
         }
 
-        if ($mobileRegistrationRole->hasPermission('dashboard.read')) {
+        if (! $mobileRegistrationRole->hasPermission('marketplace.manage_own')) {
             return back()->withErrors([
-                'defaultMobileRegistrationRoleId' => 'The mobile registration role cannot have dashboard access.',
+                'defaultMobileRegistrationRoleId' => 'The mobile registration role must use owner-only marketplace access.',
             ]);
         }
 

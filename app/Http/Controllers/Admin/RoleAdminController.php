@@ -85,16 +85,16 @@ class RoleAdminController extends Controller
             ],
         ]);
 
-        $assignsDashboardAccess = Permission::query()
+        $assignsOwnMarketplaceScope = Permission::query()
             ->whereIn('id', $validated['permissionIds'])
-            ->where('slug', 'dashboard.read')
+            ->where('slug', 'marketplace.manage_own')
             ->exists();
         $isMobileRegistrationRole = $role->slug === 'marketplace_user'
             || SiteSetting::current()->default_mobile_registration_role_id === $role->id;
 
-        if ($assignsDashboardAccess && $isMobileRegistrationRole) {
+        if ($isMobileRegistrationRole && ! $assignsOwnMarketplaceScope) {
             return back()->withErrors([
-                'role' => 'The mobile registration role cannot be given dashboard access.',
+                'role' => 'The mobile registration role must keep Manage Own Marketplace Content enabled.',
             ]);
         }
 

@@ -98,15 +98,18 @@ class ApiResponseContractTest extends TestCase
 
         $this->postJson('/api/v1/auth/request-otp', $payload)->assertOk();
 
-        $this->postJson('/api/v1/auth/verify-otp', $payload + ['code' => '1234'])
+        $response = $this->postJson('/api/v1/auth/verify-otp', $payload + ['code' => '1234'])
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.user.name', 'Rajvi')
             ->assertJsonPath('data.user.role.slug', 'marketplace_user')
-            ->assertJsonPath('data.user.permissions.0', 'designs.read')
-            ->assertJsonPath('data.user.permissions.1', 'designs.create')
             ->assertJsonPath('data.user.selectedMachineIds.0', 'embroidery')
             ->assertJsonStructure(['data' => ['accessToken']]);
+
+        $this->assertContains('marketplace.manage_own', $response->json('data.user.permissions'));
+        $this->assertContains('dashboard.read', $response->json('data.user.permissions'));
+        $this->assertContains('designs.read', $response->json('data.user.permissions'));
+        $this->assertContains('folders.create', $response->json('data.user.permissions'));
 
         $this->assertDatabaseHas('users', [
             'phone_key' => '+919054632726',

@@ -25,6 +25,7 @@ class SiteSettingManagementTest extends TestCase
                 ->where('mobileRegistrationRoles.0.slug', 'marketplace_user'));
 
         $marketplaceRole = Role::query()->where('slug', 'marketplace_user')->firstOrFail();
-        $this->assertFalse($marketplaceRole->hasPermission('dashboard.read'));
+        $this->assertTrue($marketplaceRole->hasPermission('dashboard.read'));
+        $this->assertTrue($marketplaceRole->hasPermission('marketplace.manage_own'));
     }
 }

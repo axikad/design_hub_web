@@ -130,6 +130,40 @@ class FolderManagementTest extends TestCase
         ]);
     }
 
+    public function test_marketplace_user_only_sees_and_manages_their_own_folders(): void
+    {
+        $marketplaceRole = Role::query()->where('slug', 'marketplace_user')->firstOrFail();
+        $seller = User::factory()->create(['role_id' => $marketplaceRole->id]);
+        $otherSeller = User::factory()->create();
+        $ownFolder = Folder::query()->create([
+            'user_id' => $seller->id,
+            'name' => 'My Pack',
+            'price_paise' => 10000,
+            'zip_name' => 'mine.zip',
+            'zip_path' => 'folders/mine.zip',
+        ]);
+        $otherFolder = Folder::query()->create([
+            'user_id' => $otherSeller->id,
+            'name' => 'Private Other Pack',
+            'price_paise' => 20000,
+            'zip_name' => 'other.zip',
+            'zip_path' => 'folders/other.zip',
+        ]);
+
+        $this->actingAs($seller)
+            ->get(route('admin.folders.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('ownContentOnly', true)
+                ->has('folders.data', 1)
+                ->where('folders.data.0.id', $ownFolder->public_id));
+
+        $this->actingAs($seller)->get(route('admin.folders.show', $otherFolder->public_id))->assertNotFound();
+        $this->actingAs($seller)->get(route('admin.folders.edit', $otherFolder->public_id))->assertNotFound();
+        $this->actingAs($seller)->delete(route('admin.folders.destroy', $otherFolder->public_id))->assertNotFound();
+        $this->assertDatabaseHas('folders', ['id' => $otherFolder->id]);
+    }
+
     /** @param array<string, string> $files */
     private function zipUpload(string $name, array $files): UploadedFile
     {

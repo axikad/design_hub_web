@@ -34,8 +34,10 @@ class DesignAdminController extends Controller
 
     public function index(Request $request): Response
     {
+        $actor = $request->user();
+        $ownContentOnly = $actor->mustScopeMarketplaceContentToSelf();
         $search = trim((string) $request->string('search'));
-        $ownerId = (string) $request->string('owner');
+        $ownerId = $ownContentOnly ? $actor->public_id : (string) $request->string('owner');
         $machineId = (string) $request->string('machine');
         $fileTypeId = (string) $request->string('fileType');
 
@@ -44,7 +46,7 @@ class DesignAdminController extends Controller
 
             if (is_array($imageSearch) && is_array($imageSearch['matches'] ?? null)) {
                 return Inertia::render('admin/designs/index', $this->designIndexProps(
-                    $this->imageSearchPaginator($imageSearch['matches']),
+                    $this->imageSearchPaginator($imageSearch['matches'], $actor),
                     [
                         'search' => '',
                         'owner' => '',
@@ -52,6 +54,7 @@ class DesignAdminController extends Controller
                         'fileType' => '',
                     ],
                     true,
+                    $actor,
                 ));
             }
         } else {
@@ -61,6 +64,7 @@ class DesignAdminController extends Controller
         $designs = Design::query()
             ->listed()
             ->with(['owner', 'type.category', 'machine', 'machineType.machine', 'fileType'])
+            ->when($ownContentOnly, fn ($query) => $query->where('user_id', $actor->id))
             ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search) {
                 $searchQuery
                     ->where('title', 'like', "%{$search}%")
@@ -94,6 +98,8 @@ class DesignAdminController extends Controller
                 'machine' => $machineId,
                 'fileType' => $fileTypeId,
             ],
+            false,
+            $actor,
         ));
     }
 
@@ -136,11 +142,11 @@ class DesignAdminController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function designIndexProps(LengthAwarePaginator $designs, array $filters, bool $imageSearchActive = false): array
+    private function designIndexProps(LengthAwarePaginator $designs, array $filters, bool $imageSearchActive, User $actor): array
     {
         return [
             'designs' => $designs,
-            'owners' => $this->ownerOptions(),
+            'owners' => $this->ownerOptions($actor),
             'machines' => Machine::query()->orderBy('sort_order')->orderBy('name')->get()->map(fn (Machine $machine) => [
                 'id' => $machine->public_id,
                 'name' => $machine->name,
@@ -148,16 +154,18 @@ class DesignAdminController extends Controller
             'fileTypes' => $this->fileTypeOptions(),
             'filters' => $filters,
             'imageSearchActive' => $imageSearchActive,
+            'ownContentOnly' => $actor->mustScopeMarketplaceContentToSelf(),
         ];
     }
 
     /** @param list<array{designId: string, score: float}> $matches */
-    private function imageSearchPaginator(array $matches): LengthAwarePaginator
+    private function imageSearchPaginator(array $matches, User $actor): LengthAwarePaginator
     {
         $matches = collect($matches);
         $designs = Design::query()
             ->listed()
             ->with(['owner', 'type.category', 'machine', 'machineType.machine', 'fileType'])
+            ->when($actor->mustScopeMarketplaceContentToSelf(), fn ($query) => $query->where('user_id', $actor->id))
             ->whereIn('public_id', $matches->pluck('designId'))
             ->get()
             ->keyBy('public_id');
@@ -252,6 +260,7 @@ class DesignAdminController extends Controller
         $model = Design::query()
             ->listed()
             ->with(['owner', 'type.category', 'fileType', 'machine', 'machineType.machine', 'variants.type'])
+            ->when($request->user()->mustScopeMarketplaceContentToSelf(), fn ($query) => $query->where('user_id', $request->user()->id))
             ->where('public_id', $design)
             ->firstOrFail();
 
@@ -288,6 +297,7 @@ class DesignAdminController extends Controller
     public function update(Request $request, string $design): RedirectResponse
     {
         $model = Design::query()->listed()->where('public_id', $design)->firstOrFail();
+        abort_if($request->user()->mustScopeMarketplaceContentToSelf() && $model->user_id !== $request->user()->id, 404);
         $validated = $this->validateDesign($request, false, $model);
 
         $owner = User::query()->where('public_id', $validated['ownerId'])->firstOrFail();
@@ -352,9 +362,13 @@ class DesignAdminController extends Controller
         return redirect()->route('admin.designs.index')->with('success', 'Design updated.');
     }
 
-    public function destroy(string $design): RedirectResponse
+    public function destroy(Request $request, string $design): RedirectResponse
     {
-        $model = Design::query()->listed()->where('public_id', $design)->firstOrFail();
+        $model = Design::query()
+            ->listed()
+            ->when($request->user()->mustScopeMarketplaceContentToSelf(), fn ($query) => $query->where('user_id', $request->user()->id))
+            ->where('public_id', $design)
+            ->firstOrFail();
         $model->update(['deleted_at' => now()]);
         $this->imageMatching->removeDesign($model);
 
