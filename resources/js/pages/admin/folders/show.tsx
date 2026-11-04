@@ -17,6 +17,7 @@ import {
     IndianRupee,
     Pencil,
     ShoppingBag,
+    UserRound,
     WalletCards,
     type LucideIcon,
 } from 'lucide-react';
@@ -34,6 +35,8 @@ type ExtractedFile = {
 type FolderDetails = {
     id: string;
     name: string;
+    ownerName: string | null;
+    ownerPhone: string | null;
     priceRupees: string;
     zipName: string;
     fileCount: number;
@@ -98,6 +101,7 @@ export default function AdminFolderShow({ folder }: Props) {
     ];
     const summaries = [
         { label: 'Price', value: money.format(Number(folder.priceRupees)), icon: IndianRupee },
+        { label: 'Seller', value: folder.ownerName || 'Unassigned', icon: UserRound },
         { label: 'Extracted files', value: String(folder.fileCount), icon: Files },
         { label: 'Total size', value: formatBytes(folder.totalSize), icon: HardDrive },
         { label: 'Paid purchases', value: String(folder.paidPurchaseCount), icon: ShoppingBag },
@@ -129,7 +133,7 @@ export default function AdminFolderShow({ folder }: Props) {
                     }
                 />
 
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
                     {summaries.map(({ label, value, icon: Icon }) => (
                         <div
                             key={label}

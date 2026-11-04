@@ -8,7 +8,9 @@ use App\Models\DesignFileType;
 use App\Models\DesignType;
 use App\Models\Machine;
 use App\Models\MachineType;
+use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -182,6 +184,40 @@ class DesignManagementTest extends TestCase
         $this->assertNull($design->preview_path);
         $this->assertNull($design->stitch_path);
         $this->assertCount(0, $design->variants);
+    }
+
+    public function test_non_super_admin_is_the_seller_and_cannot_submit_another_owner(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $this->seed(RoleAndPermissionSeeder::class);
+        $adminRole = Role::query()->where('slug', 'admin')->firstOrFail();
+        $admin = User::factory()->create(['role_id' => $adminRole->id]);
+        $otherSeller = User::factory()->create();
+        $machine = Machine::query()->create([
+            'name' => 'Admin Simple Machine',
+            'design_form_config' => [
+                'machineType' => false,
+                'category' => false,
+                'designTypes' => false,
+                'designSpecifications' => false,
+                'sequenceType' => false,
+                'designFileType' => false,
+                'previewImages' => false,
+                'stitchFiles' => false,
+                'pricing' => false,
+            ],
+        ]);
+
+        $this->actingAs($admin)->post('/admin/designs', [
+            'ownerId' => $otherSeller->public_id,
+            'machineId' => $machine->public_id,
+        ])->assertRedirect(route('admin.designs.index'));
+
+        $this->assertDatabaseHas('designs', [
+            'user_id' => $admin->id,
+            'machine_id' => $machine->id,
+        ]);
     }
 
     public function test_admin_can_replace_design_type_variants_when_editing(): void

@@ -61,6 +61,7 @@ type DesignForm = {
 type Props = {
     design: DesignForm | null;
     owners: OwnerOption[];
+    canChooseSeller: boolean;
     catalog: MachineOption[];
     fileTypes: FileTypeOption[];
 };
@@ -86,7 +87,7 @@ const emptyCustomVariant = (): VariantInput => ({
     customTypeName: '',
 });
 
-export default function AdminDesignForm({ design, owners, catalog, fileTypes }: Props) {
+export default function AdminDesignForm({ design, owners, canChooseSeller, catalog, fileTypes }: Props) {
     const initialMachine =
         catalog.find((machine) => machine.id === design?.machineId || machine.machineTypes.some((type) => type.id === design?.machineTypeId)) ??
         catalog[0];
@@ -229,42 +230,52 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                     }
                 />
                 <form onSubmit={submit} className="space-y-5">
-                    <AdminFormPanel title="Seller" description="Choose the marketplace user who owns this design." icon={UserRound}>
-                        <div className={`grid gap-5 ${config?.title ? 'sm:grid-cols-2' : ''}`}>
-                            <div className="grid gap-2">
-                                <Label>Seller</Label>
-                                <Select value={data.ownerId} onValueChange={(value) => setData('ownerId', value)}>
-                                    <SelectTrigger className={selectClass}>
-                                        <SelectValue placeholder="Select user" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {owners.map((owner) => (
-                                            <SelectItem key={owner.id} value={owner.id}>
-                                                {owner.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <InputError message={errors.ownerId} />
-                                {!owners.length ? <p className="text-sm text-amber-700">Create a marketplace user before adding designs.</p> : null}
+                    {canChooseSeller || config?.title ? (
+                        <AdminFormPanel
+                            title={canChooseSeller ? 'Seller' : 'Design details'}
+                            description={canChooseSeller ? 'Choose the marketplace user who owns this design.' : 'Enter the enabled design details.'}
+                            icon={UserRound}
+                        >
+                            <div className={`grid gap-5 ${config?.title ? 'sm:grid-cols-2' : ''}`}>
+                                {canChooseSeller ? (
+                                    <div className="grid gap-2">
+                                        <Label>Seller</Label>
+                                        <Select value={data.ownerId} onValueChange={(value) => setData('ownerId', value)}>
+                                            <SelectTrigger className={selectClass}>
+                                                <SelectValue placeholder="Select user" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {owners.map((owner) => (
+                                                    <SelectItem key={owner.id} value={owner.id}>
+                                                        {owner.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError message={errors.ownerId} />
+                                        {!owners.length ? (
+                                            <p className="text-sm text-amber-700">Create a marketplace user before adding designs.</p>
+                                        ) : null}
+                                    </div>
+                                ) : null}
+                                {config?.title ? (
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="title">Title</Label>
+                                        <Input
+                                            id="title"
+                                            value={data.title}
+                                            maxLength={120}
+                                            required={config.required.title}
+                                            onChange={(event) => setData('title', event.target.value)}
+                                            placeholder="Enter design title"
+                                            className={inputClass}
+                                        />
+                                        <InputError message={errors.title} />
+                                    </div>
+                                ) : null}
                             </div>
-                            {config?.title ? (
-                                <div className="grid gap-2">
-                                    <Label htmlFor="title">Title</Label>
-                                    <Input
-                                        id="title"
-                                        value={data.title}
-                                        maxLength={120}
-                                        required={config.required.title}
-                                        onChange={(event) => setData('title', event.target.value)}
-                                        placeholder="Enter design title"
-                                        className={inputClass}
-                                    />
-                                    <InputError message={errors.title} />
-                                </div>
-                            ) : null}
-                        </div>
-                    </AdminFormPanel>
+                        </AdminFormPanel>
+                    ) : null}
 
                     <AdminFormPanel
                         title="Catalog classification"

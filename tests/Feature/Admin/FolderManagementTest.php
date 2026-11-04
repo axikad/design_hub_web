@@ -3,7 +3,9 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Folder;
+use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -33,10 +35,16 @@ class FolderManagementTest extends TestCase
     {
         Storage::fake('local');
         $admin = User::factory()->superAdmin()->create();
+        $seller = User::factory()->create([
+            'country_code' => '+91',
+            'mobile_number' => '9876543210',
+            'phone_key' => '+919876543210',
+        ]);
 
         $this->actingAs($admin)->get('/admin/folders/create')->assertOk();
 
         $this->actingAs($admin)->post('/admin/folders', [
+            'ownerId' => $seller->public_id,
             'name' => 'Bridal Pack',
             'priceRupees' => '299.50',
             'zipFile' => $this->zipUpload('bridal.zip', [
@@ -46,6 +54,7 @@ class FolderManagementTest extends TestCase
         ])->assertRedirect(route('admin.folders.index'));
 
         $folder = Folder::query()->where('name', 'Bridal Pack')->firstOrFail();
+        $this->assertSame($seller->id, $folder->user_id);
         $this->assertSame(29950, $folder->price_paise);
         $this->assertSame(2, $folder->file_count);
         $this->assertSame(['front/preview.svg', 'notes.txt'], $folder->files()->pluck('relative_path')->all());
@@ -69,6 +78,7 @@ class FolderManagementTest extends TestCase
         $oldZipPath = $folder->zip_path;
 
         $this->actingAs($admin)->put("/admin/folders/{$folder->public_id}", [
+            'ownerId' => $seller->public_id,
             'name' => 'Updated Bridal Pack',
             'priceRupees' => '399',
             'zipFile' => $this->zipUpload('updated.zip', [
@@ -90,6 +100,34 @@ class FolderManagementTest extends TestCase
 
         $this->assertDatabaseMissing('folders', ['id' => $folder->id]);
         Storage::disk('local')->assertMissing($folderRoot);
+    }
+
+    public function test_non_super_admin_cannot_assign_a_folder_to_another_seller(): void
+    {
+        Storage::fake('local');
+        $this->seed(RoleAndPermissionSeeder::class);
+        $adminRole = Role::query()->where('slug', 'admin')->firstOrFail();
+        $admin = User::factory()->create(['role_id' => $adminRole->id]);
+        $otherSeller = User::factory()->create();
+
+        $this->actingAs($admin)
+            ->get('/admin/folders/create')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('canChooseSeller', false)
+                ->where('owners.0.id', $admin->public_id));
+
+        $this->actingAs($admin)->post('/admin/folders', [
+            'ownerId' => $otherSeller->public_id,
+            'name' => 'Admin-owned Pack',
+            'priceRupees' => '100',
+            'zipFile' => $this->zipUpload('admin.zip', ['design.dst' => 'data']),
+        ])->assertRedirect(route('admin.folders.index'));
+
+        $this->assertDatabaseHas('folders', [
+            'name' => 'Admin-owned Pack',
+            'user_id' => $admin->id,
+        ]);
     }
 
     /** @param array<string, string> $files */

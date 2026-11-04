@@ -15,6 +15,8 @@ import { type FormEventHandler, useState } from 'react';
 type FolderRow = {
     id: string;
     name: string;
+    ownerName: string | null;
+    ownerPhone: string | null;
     priceRupees: string;
     zipName: string;
     fileCount: number;
@@ -107,14 +109,16 @@ export default function AdminFoldersIndex({ folders, filters }: Props) {
                         <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                             <thead className="bg-slate-50/80 dark:bg-slate-950/60">
                                 <tr>
-                                    {['Folder', 'Price', 'Purchases', 'Revenue', 'Archive', 'Files', 'Total size', 'Actions'].map((heading) => (
-                                        <th
-                                            key={heading}
-                                            className="px-5 py-3.5 text-left text-[11px] font-bold tracking-wider text-slate-500 uppercase"
-                                        >
-                                            {heading}
-                                        </th>
-                                    ))}
+                                    {['Folder', 'Seller', 'Price', 'Purchases', 'Revenue', 'Archive', 'Files', 'Total size', 'Actions'].map(
+                                        (heading) => (
+                                            <th
+                                                key={heading}
+                                                className="px-5 py-3.5 text-left text-[11px] font-bold tracking-wider text-slate-500 uppercase"
+                                            >
+                                                {heading}
+                                            </th>
+                                        ),
+                                    )}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -130,6 +134,12 @@ export default function AdminFoldersIndex({ folders, filters }: Props) {
                                                     <p className="mt-0.5 text-xs text-slate-400">{folder.id}</p>
                                                 </div>
                                             </div>
+                                        </td>
+                                        <td className="px-5 py-4">
+                                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                                {folder.ownerName || 'Unassigned'}
+                                            </p>
+                                            <p className="mt-0.5 text-xs text-slate-400">{folder.ownerPhone || 'No phone'}</p>
                                         </td>
                                         <td className="px-5 py-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
                                             {money.format(Number(folder.priceRupees))}

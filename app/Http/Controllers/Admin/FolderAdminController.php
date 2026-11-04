@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Folder;
+use App\Models\User;
 use App\Services\FolderArchiveService;
 use App\Support\FolderFilePreview;
 use Illuminate\Http\RedirectResponse;
@@ -26,12 +27,16 @@ class FolderAdminController extends Controller
         $search = trim((string) $request->string('search'));
 
         $folders = Folder::query()
+            ->with('owner')
             ->withCount(['purchases as paid_purchase_count' => fn ($query) => $query->where('status', 'paid')])
             ->withSum(['purchases as paid_revenue_paise' => fn ($query) => $query->where('status', 'paid')], 'amount_paise')
             ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search) {
                 $searchQuery
                     ->where('name', 'like', "%{$search}%")
-                    ->orWhere('zip_name', 'like', "%{$search}%");
+                    ->orWhere('zip_name', 'like', "%{$search}%")
+                    ->orWhereHas('owner', fn ($ownerQuery) => $ownerQuery
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('mobile_number', 'like', "%{$search}%"));
             }))
             ->latest()
             ->paginate(20)
@@ -39,6 +44,8 @@ class FolderAdminController extends Controller
             ->through(fn (Folder $folder) => [
                 'id' => $folder->public_id,
                 'name' => $folder->name,
+                'ownerName' => $folder->owner?->name,
+                'ownerPhone' => $folder->owner === null ? null : trim($folder->owner->country_code.$folder->owner->mobile_number),
                 'priceRupees' => number_format($folder->price_paise / 100, 2, '.', ''),
                 'zipName' => $folder->zip_name,
                 'fileCount' => $folder->file_count,
@@ -54,9 +61,13 @@ class FolderAdminController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
-        return Inertia::render('admin/folders/form', ['folder' => null]);
+        return Inertia::render('admin/folders/form', [
+            'folder' => null,
+            'owners' => $this->ownerOptions($request->user()),
+            'canChooseSeller' => $request->user()->isSuperAdmin(),
+        ]);
     }
 
     public function show(string $folder): Response
@@ -92,8 +103,9 @@ class FolderAdminController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $this->validated($request, true);
+        $owner = User::query()->where('public_id', $validated['ownerId'])->firstOrFail();
         $folder = Folder::query()->create([
-            'user_id' => $request->user()->id,
+            'user_id' => $owner->id,
             'name' => $validated['name'],
             'price_paise' => $this->pricePaise($validated['priceRupees']),
             'zip_name' => '',
@@ -123,12 +135,14 @@ class FolderAdminController extends Controller
         return redirect()->route('admin.folders.index')->with('success', 'Folder created and archive files extracted.');
     }
 
-    public function edit(string $folder): Response
+    public function edit(Request $request, string $folder): Response
     {
         $model = $this->find($folder);
 
         return Inertia::render('admin/folders/form', [
             'folder' => $this->folderPayload($model),
+            'owners' => $this->ownerOptions($request->user()),
+            'canChooseSeller' => $request->user()->isSuperAdmin(),
         ]);
     }
 
@@ -147,6 +161,7 @@ class FolderAdminController extends Controller
 
             DB::transaction(function () use ($model, $validated, $archive): void {
                 $attributes = [
+                    'user_id' => User::query()->where('public_id', $validated['ownerId'])->value('id'),
                     'name' => $validated['name'],
                     'price_paise' => $this->pricePaise($validated['priceRupees']),
                 ];
@@ -198,12 +213,18 @@ class FolderAdminController extends Controller
     /** @return array<string, mixed> */
     private function folderPayload(Folder $folder): array
     {
-        $folder->load(['purchases' => fn ($query) => $query
-            ->with(['buyer', 'paymentOrder'])
-            ->latest('purchased_at')]);
+        $folder->load([
+            'owner',
+            'purchases' => fn ($query) => $query
+                ->with(['buyer', 'paymentOrder'])
+                ->latest('purchased_at'),
+        ]);
 
         return [
             'id' => $folder->public_id,
+            'ownerId' => $folder->owner?->public_id,
+            'ownerName' => $folder->owner?->name,
+            'ownerPhone' => $folder->owner === null ? null : trim($folder->owner->country_code.$folder->owner->mobile_number),
             'name' => $folder->name,
             'priceRupees' => number_format($folder->price_paise / 100, 2, '.', ''),
             'zipName' => $folder->zip_name,
@@ -241,15 +262,21 @@ class FolderAdminController extends Controller
         ];
     }
 
-    /** @return array{name: string, priceRupees: string} */
+    /** @return array{ownerId: string, name: string, priceRupees: string} */
     private function validated(Request $request, bool $creating, ?Folder $folder = null): array
     {
+        $ownerId = $request->user()->isSuperAdmin()
+            ? trim((string) $request->input('ownerId'))
+            : ($folder?->owner?->public_id ?? $request->user()->public_id);
+
         $request->merge([
+            'ownerId' => $ownerId,
             'name' => trim((string) $request->input('name')),
             'priceRupees' => trim((string) $request->input('priceRupees')),
         ]);
 
         return $request->validate([
+            'ownerId' => ['required', 'string', Rule::exists('users', 'public_id')],
             'name' => ['required', 'string', 'max:150', Rule::unique('folders', 'name')->ignore($folder?->id)],
             'priceRupees' => ['required', 'numeric', 'min:0', 'max:99999999.99', 'decimal:0,2'],
             'zipFile' => [$creating ? 'required' : 'nullable', 'file', 'extensions:zip,rar'],
@@ -259,5 +286,28 @@ class FolderAdminController extends Controller
     private function pricePaise(string $price): int
     {
         return (int) round(((float) $price) * 100);
+    }
+
+    /** @return list<array{id: string, label: string}> */
+    private function ownerOptions(User $actor): array
+    {
+        if (! $actor->isSuperAdmin()) {
+            return [[
+                'id' => $actor->public_id,
+                'label' => $actor->name,
+            ]];
+        }
+
+        return User::query()
+            ->whereNotNull('phone_key')
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (User $user) => [
+                'id' => $user->public_id,
+                'label' => trim($user->name.' · '.$user->country_code.$user->mobile_number),
+            ])
+            ->values()
+            ->all();
     }
 }

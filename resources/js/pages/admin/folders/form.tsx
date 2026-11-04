@@ -5,10 +5,11 @@ import { MarketplacePricingPreview } from '@/components/marketplace-pricing-prev
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { Archive, ArrowLeft, File as FileIcon, LoaderCircle, Save } from 'lucide-react';
+import { Archive, ArrowLeft, File as FileIcon, LoaderCircle, Save, UserRound } from 'lucide-react';
 import { type FormEventHandler } from 'react';
 
 type ExtractedFile = {
@@ -21,6 +22,7 @@ type ExtractedFile = {
 
 type FolderForm = {
     id: string;
+    ownerId: string | null;
     name: string;
     priceRupees: string;
     zipName: string;
@@ -29,7 +31,8 @@ type FolderForm = {
     files: ExtractedFile[];
 };
 
-type Props = { folder: FolderForm | null };
+type OwnerOption = { id: string; label: string };
+type Props = { folder: FolderForm | null; owners: OwnerOption[]; canChooseSeller: boolean };
 
 function formatBytes(bytes: number) {
     if (bytes < 1024) return `${bytes} B`;
@@ -45,7 +48,7 @@ function formatBytes(bytes: number) {
     return `${value.toFixed(value >= 10 ? 1 : 2)} ${unit}`;
 }
 
-export default function AdminFolderForm({ folder }: Props) {
+export default function AdminFolderForm({ folder, owners, canChooseSeller }: Props) {
     const editing = Boolean(folder?.id);
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Overview', href: '/dashboard' },
@@ -54,6 +57,7 @@ export default function AdminFolderForm({ folder }: Props) {
     ];
     const { data, setData, post, processing, errors, progress } = useForm({
         _method: editing ? 'put' : 'post',
+        ownerId: folder?.ownerId ?? owners[0]?.id ?? '',
         name: folder?.name ?? '',
         priceRupees: folder?.priceRupees ?? '',
         zipFile: null as File | null,
@@ -83,8 +87,30 @@ export default function AdminFolderForm({ folder }: Props) {
                 />
 
                 <form onSubmit={submit} className="space-y-5">
+                    {canChooseSeller ? (
+                        <AdminFormPanel title="Seller" description="Choose the marketplace user who owns this folder." icon={UserRound}>
+                            <div className="grid gap-2">
+                                <Label>Seller</Label>
+                                <Select value={data.ownerId} onValueChange={(value) => setData('ownerId', value)}>
+                                    <SelectTrigger className="h-11 rounded-xl border-slate-200 dark:border-slate-700">
+                                        <SelectValue placeholder="Select user" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {owners.map((owner) => (
+                                            <SelectItem key={owner.id} value={owner.id}>
+                                                {owner.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.ownerId} />
+                                {!owners.length ? <p className="text-sm text-amber-700">Create a marketplace user before adding folders.</p> : null}
+                            </div>
+                        </AdminFormPanel>
+                    ) : null}
+
                     <AdminFormPanel title="Folder details" description="The price is entered in rupees and stored safely in paise." icon={Archive}>
-                        <div className="grid gap-5 sm:grid-cols-2">
+                        <div className="grid items-start gap-5 sm:grid-cols-2">
                             <div className="grid gap-2">
                                 <Label htmlFor="name">Folder name</Label>
                                 <Input

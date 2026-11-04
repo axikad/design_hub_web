@@ -193,11 +193,12 @@ class DesignAdminController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
         return Inertia::render('admin/designs/form', [
             'design' => null,
-            'owners' => $this->ownerOptions(),
+            'owners' => $this->ownerOptions($request->user()),
+            'canChooseSeller' => $request->user()->isSuperAdmin(),
             'catalog' => $this->catalogForForm(),
             'fileTypes' => $this->fileTypeOptions(),
         ]);
@@ -246,7 +247,7 @@ class DesignAdminController extends Controller
         return redirect()->route('admin.designs.index')->with('success', 'Design created.');
     }
 
-    public function edit(string $design): Response
+    public function edit(Request $request, string $design): Response
     {
         $model = Design::query()
             ->listed()
@@ -277,7 +278,8 @@ class DesignAdminController extends Controller
                     'thumbnailUri' => $image['thumbnailUri'],
                 ])->values()->all(),
             ],
-            'owners' => $this->ownerOptions(),
+            'owners' => $this->ownerOptions($request->user()),
+            'canChooseSeller' => $request->user()->isSuperAdmin(),
             'catalog' => $this->catalogForForm(),
             'fileTypes' => $this->fileTypeOptions($model->design_file_type_id),
         ]);
@@ -360,10 +362,18 @@ class DesignAdminController extends Controller
     }
 
     /** @return list<array{id: string, label: string}> */
-    private function ownerOptions(): array
+    private function ownerOptions(?User $actor = null): array
     {
+        if ($actor !== null && ! $actor->isSuperAdmin()) {
+            return [[
+                'id' => $actor->public_id,
+                'label' => $actor->name,
+            ]];
+        }
+
         return User::query()
             ->whereNotNull('phone_key')
+            ->where('status', 'active')
             ->orderBy('name')
             ->get()
             ->map(fn (User $user) => [
@@ -377,6 +387,12 @@ class DesignAdminController extends Controller
     /** @return array<string, mixed> */
     private function validateDesign(Request $request, bool $creating, ?Design $existingDesign = null): array
     {
+        $request->merge([
+            'ownerId' => $request->user()->isSuperAdmin()
+                ? trim((string) $request->input('ownerId'))
+                : ($existingDesign?->owner?->public_id ?? $request->user()->public_id),
+        ]);
+
         $machineInput = $request->validate([
             'machineId' => ['required', 'string', Rule::exists('machines', 'public_id')->where('is_active', true)],
         ]);
