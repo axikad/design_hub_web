@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\SaleEarning;
 use App\Models\SellerLedgerEntry;
 use App\Models\User;
+use App\Models\Withdrawal;
 use Illuminate\Support\Carbon;
 
 class SellerWalletService
@@ -28,6 +29,11 @@ class SellerWalletService
         $paid = (int) ($balances['paid'] ?? 0);
         $minimumWithdrawal = (int) ($this->settings->minimumWithdrawalPaise());
         $payoutsEnabled = $this->settings->sellerPayoutsEnabled();
+        $hasOpenWithdrawal = Withdrawal::query()
+            ->where('seller_id', $seller->id)
+            ->where('payment_environment', $environment)
+            ->whereIn('status', Withdrawal::OPEN_STATUSES)
+            ->exists();
         $nextReleaseAt = SaleEarning::query()
             ->where('seller_id', $seller->id)
             ->where('payment_environment', $environment)
@@ -47,7 +53,10 @@ class SellerWalletService
                 'paidPaise' => $paid,
             ],
             'minimumWithdrawalPaise' => $minimumWithdrawal,
-            'canWithdraw' => $payoutsEnabled && $available >= $minimumWithdrawal,
+            'hasOpenWithdrawal' => $hasOpenWithdrawal,
+            'canWithdraw' => $payoutsEnabled
+                && ! $hasOpenWithdrawal
+                && $available >= $minimumWithdrawal,
             'nextReleaseAt' => $nextReleaseAt === null ? null : Carbon::parse($nextReleaseAt)->toIso8601String(),
         ];
     }

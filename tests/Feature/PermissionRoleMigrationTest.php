@@ -53,6 +53,7 @@ class PermissionRoleMigrationTest extends TestCase
             [
                 'designs.read', 'designs.create', 'designs.update', 'designs.delete',
                 'wallet.view_own', 'earnings.view_own', 'ledger.view_own',
+                'withdrawals.view_own', 'withdrawals.create_own', 'withdrawals.cancel_own',
             ],
             $marketplaceUser->permissions()->pluck('slug')->all(),
         );

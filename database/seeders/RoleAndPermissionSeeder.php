@@ -37,6 +37,7 @@ class RoleAndPermissionSeeder extends Seeder
             'wallet' => ['name' => 'Seller Wallet', 'sortOrder' => 116, 'actions' => ['view_own']],
             'earnings' => ['name' => 'Seller Earnings', 'sortOrder' => 117, 'actions' => ['view_own']],
             'ledger' => ['name' => 'Seller Transactions', 'sortOrder' => 118, 'actions' => ['view_own']],
+            'withdrawals' => ['name' => 'Seller Withdrawals', 'sortOrder' => 119, 'actions' => ['view_own', 'create_own', 'cancel_own', 'view_any', 'manage']],
         ];
 
         $permissions = collect();
@@ -96,6 +97,7 @@ class RoleAndPermissionSeeder extends Seeder
         $this->syncPermissions($roles['marketplace_user'], [
             'designs.read', 'designs.create', 'designs.update', 'designs.delete',
             'wallet.view_own', 'earnings.view_own', 'ledger.view_own',
+            'withdrawals.view_own', 'withdrawals.create_own', 'withdrawals.cancel_own',
         ], $permissions);
 
         User::query()

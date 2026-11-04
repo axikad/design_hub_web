@@ -837,11 +837,11 @@ Complete and test each group before moving to the next group. Mark a checkbox on
 - [ ] Add seller profile and payout-account tables.
 - [x] Add `sale_earnings` purchase-time snapshot table.
 - [x] Add immutable `seller_ledger_entries` table.
-- [ ] Add `withdrawals` table with status history and idempotency key.
+- [x] Add `withdrawals` table with status history and idempotency key.
 - [ ] Add webhook event/audit storage.
 - [x] Implement `CommissionCalculator` using integer paise and basis points.
-- [ ] Implement common earning, ledger, wallet, withdrawal and refund services.
-- [ ] Use database transactions and row locks for balance-changing operations.
+- [ ] Implement common earning, ledger, wallet, withdrawal and refund services. Earning, ledger, wallet and seller request/cancel withdrawal services are complete; refund/admin payout processing remains.
+- [x] Use database transactions and row locks for withdrawal balance-changing operations.
 - [ ] Add unit tests for rounding, INR 100 -> INR 25/75 split and boundary values.
 - [ ] Add the versioned payment-gateway connection structure.
 - [ ] Encrypt provider secrets and add masked Admin serialization.
@@ -871,13 +871,13 @@ Complete and test each group before moving to the next group. Mark a checkbox on
 - [x] Add authenticated seller wallet summary API.
 - [x] Add paginated seller earnings API.
 - [x] Add paginated seller ledger/transactions API.
-- [ ] Add paginated seller withdrawal-history API.
-- [ ] Add withdrawal detail API with ownership checks.
-- [ ] Add create-withdrawal API.
-- [ ] Add cancel-withdrawal API for allowed statuses.
-- [ ] Return action flags such as `canWithdraw` and server-calculated limits.
-- [ ] Add `403`, validation, insufficient-balance and idempotency response tests.
-- [ ] Update the Postman collection and mobile handoff documentation.
+- [x] Add paginated seller withdrawal-history API.
+- [x] Add withdrawal detail API with ownership checks.
+- [x] Add create-withdrawal API.
+- [x] Add cancel-withdrawal API for allowed statuses.
+- [x] Return action flags such as `canWithdraw` and server-calculated limits.
+- [x] Add `403`, validation, insufficient-balance and idempotency response tests.
+- [x] Update the Postman collection and mobile handoff documentation.
 
 ### Step 7: Build the seller mobile experience
 
@@ -892,7 +892,7 @@ Complete and test each group before moving to the next group. Mark a checkbox on
 
 ### Step 8: Build permission-based Admin management
 
-- [x] Register seller payment setting read/update permissions. Wallet, earning, withdrawal and payout permissions remain pending.
+- [x] Register seller payment setting plus own wallet, earning, ledger and withdrawal permissions. Admin payout-processing permissions remain pending.
 - [x] Add Admin navigation only for authorized roles.
 - [ ] Add all-seller wallet and earning views.
 - [ ] Add withdrawal queue with seller and ledger details.

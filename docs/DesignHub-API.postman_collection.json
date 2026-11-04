@@ -104,6 +104,10 @@
         {
             "key": "design_file_type_id",
             "value": "dst"
+        },
+        {
+            "key": "withdrawal_id",
+            "value": "withdrawal_example"
         }
     ],
     "auth": {
@@ -1519,7 +1523,7 @@
                             "_postman_previewlanguage": "json",
                             "header": [],
                             "cookie": [],
-                            "body": "{\n  \"success\": true,\n  \"message\": \"Seller wallet retrieved successfully.\",\n  \"data\": {\n    \"currency\": \"INR\",\n    \"paymentEnvironment\": \"test\",\n    \"isTestMode\": true,\n    \"payoutsEnabled\": false,\n    \"balances\": {\n      \"pendingPaise\": 7500,\n      \"availablePaise\": 0,\n      \"reservedPaise\": 0,\n      \"paidPaise\": 0\n    },\n    \"minimumWithdrawalPaise\": 50000,\n    \"canWithdraw\": false,\n    \"nextReleaseAt\": \"2026-11-10T12:57:22+00:00\"\n  }\n}"
+                            "body": "{\n  \"success\": true,\n  \"message\": \"Seller wallet retrieved successfully.\",\n  \"data\": {\n    \"currency\": \"INR\",\n    \"paymentEnvironment\": \"test\",\n    \"isTestMode\": true,\n    \"payoutsEnabled\": false,\n    \"balances\": {\n      \"pendingPaise\": 7500,\n      \"availablePaise\": 0,\n      \"reservedPaise\": 0,\n      \"paidPaise\": 0\n    },\n    \"minimumWithdrawalPaise\": 50000,\n    \"hasOpenWithdrawal\": false,\n    \"canWithdraw\": false,\n    \"nextReleaseAt\": \"2026-11-10T12:57:22+00:00\"\n  }\n}"
                         }
                     ]
                 },
@@ -1540,6 +1544,65 @@
                         "header": [{ "key": "Accept", "value": "application/json" }],
                         "url": "{{base_url}}/seller/transactions?page={{page}}&per_page={{per_page}}",
                         "description": "Paginated immutable seller ledger entries. Optional balanceBucket filter: pending, available, reserved, or paid."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Withdrawal History",
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Accept", "value": "application/json" }],
+                        "url": "{{base_url}}/seller/withdrawals?page={{page}}&per_page={{per_page}}",
+                        "description": "Paginated withdrawals owned by the authenticated seller. Optional status filter: requested, approved, processing, paid, rejected, cancelled, or failed."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Request Withdrawal",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const json = pm.response.json();",
+                                    "if (json.data && json.data.id) { pm.collectionVariables.set('withdrawal_id', json.data.id); }"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            { "key": "Content-Type", "value": "application/json" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"amountPaise\": 50000,\n  \"idempotencyKey\": \"postman-withdrawal-0001\"\n}"
+                        },
+                        "url": "{{base_url}}/seller/withdrawals",
+                        "description": "Creates one withdrawal and atomically moves its amount from available to reserved. Reuse the same idempotency key only when retrying the exact request."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Withdrawal Detail",
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Accept", "value": "application/json" }],
+                        "url": "{{base_url}}/seller/withdrawals/{{withdrawal_id}}",
+                        "description": "Returns only the authenticated seller's withdrawal and its status history."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Cancel Withdrawal",
+                    "request": {
+                        "method": "POST",
+                        "header": [{ "key": "Accept", "value": "application/json" }],
+                        "url": "{{base_url}}/seller/withdrawals/{{withdrawal_id}}/cancel",
+                        "description": "Cancels a requested withdrawal and atomically returns reserved funds to available. Repeated cancellation is safe."
                     },
                     "response": []
                 }

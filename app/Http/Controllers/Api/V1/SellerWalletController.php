@@ -77,7 +77,7 @@ class SellerWalletController extends Controller
         ]);
 
         $rows = SellerLedgerEntry::query()
-            ->with('saleEarning:id,public_id')
+            ->with(['saleEarning:id,public_id', 'withdrawal:id,public_id'])
             ->where('seller_id', $request->user()->id)
             ->where('payment_environment', $this->settings->environment())
             ->when(
@@ -93,6 +93,7 @@ class SellerWalletController extends Controller
             $rows->getCollection()->map(fn (SellerLedgerEntry $entry) => [
                 'id' => $entry->public_id,
                 'earningId' => $entry->saleEarning?->public_id,
+                'withdrawalId' => $entry->withdrawal?->public_id,
                 'type' => $entry->entry_type,
                 'balanceBucket' => $entry->balance_bucket,
                 'amountPaise' => $entry->amount_paise,

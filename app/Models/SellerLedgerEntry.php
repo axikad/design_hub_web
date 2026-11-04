@@ -13,6 +13,7 @@ class SellerLedgerEntry extends Model
         'public_id',
         'seller_id',
         'sale_earning_id',
+        'withdrawal_id',
         'entry_type',
         'balance_bucket',
         'amount_paise',
@@ -50,5 +51,10 @@ class SellerLedgerEntry extends Model
     public function saleEarning(): BelongsTo
     {
         return $this->belongsTo(SaleEarning::class);
+    }
+
+    public function withdrawal(): BelongsTo
+    {
+        return $this->belongsTo(Withdrawal::class);
     }
 }

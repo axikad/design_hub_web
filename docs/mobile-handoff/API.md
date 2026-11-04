@@ -256,5 +256,20 @@ These Bearer-authenticated endpoints expose only the authenticated seller's reco
 - `GET /seller/wallet`: pending, available, reserved and paid balances plus withdrawal action flags.
 - `GET /seller/earnings?page=1&per_page=20`: paginated purchase-time earning snapshots. Optional `status` filter.
 - `GET /seller/transactions?page=1&per_page=20`: paginated immutable ledger entries. Optional `balanceBucket` filter.
+- `GET /seller/withdrawals?page=1&per_page=20`: paginated withdrawal history. Optional `status` filter.
+- `POST /seller/withdrawals`: reserve available balance and create a withdrawal request.
+- `GET /seller/withdrawals/{withdrawalId}`: withdrawal detail and status history.
+- `POST /seller/withdrawals/{withdrawalId}/cancel`: cancel a request that is still in `requested` status and return the reserved amount.
 
-All money values use integer paise. The app must display `paymentEnvironment` and clearly label `isTestMode: true` balances as simulated money. It must not calculate balances, commission or withdrawal eligibility locally. `canWithdraw` and `minimumWithdrawalPaise` come from the backend. These endpoints require the own-wallet permissions assigned to the marketplace user role.
+All money values use integer paise. The app must display `paymentEnvironment` and clearly label `isTestMode: true` balances and withdrawals as simulated money. It must not calculate balances, commission or withdrawal eligibility locally. `canWithdraw`, `hasOpenWithdrawal` and `minimumWithdrawalPaise` come from the backend. These endpoints require the applicable own-finance permissions assigned to the marketplace user role.
+
+Create request body:
+
+```json
+{
+  "amountPaise": 50000,
+  "idempotencyKey": "withdraw-1730700000-random"
+}
+```
+
+Generate one stable, unique `idempotencyKey` when the seller taps submit and reuse the same key only when retrying that exact request. A successful create returns `201`; an idempotent retry returns the same withdrawal with `200`. Only one open withdrawal is allowed per seller and payment environment. Creation moves the amount from `available` to `reserved`; cancellation moves it back. The backend enforces payout enablement, minimum amount and available balance.

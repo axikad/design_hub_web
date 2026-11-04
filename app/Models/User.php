@@ -105,6 +105,11 @@ class User extends Authenticatable
         return $this->hasMany(SellerLedgerEntry::class, 'seller_id');
     }
 
+    public function withdrawals(): HasMany
+    {
+        return $this->hasMany(Withdrawal::class, 'seller_id');
+    }
+
     public function machines(): BelongsToMany
     {
         return $this->belongsToMany(Machine::class)

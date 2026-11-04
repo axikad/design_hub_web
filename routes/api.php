@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\HomeController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\ProfileContactController;
 use App\Http\Controllers\Api\V1\SellerWalletController;
+use App\Http\Controllers\Api\V1\SellerWithdrawalController;
 use App\Http\Controllers\Api\V1\UploadController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
@@ -88,5 +89,13 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
             ->middleware('permission:earnings.view_own');
         Route::get('seller/transactions', [SellerWalletController::class, 'transactions'])
             ->middleware('permission:ledger.view_own');
+        Route::get('seller/withdrawals', [SellerWithdrawalController::class, 'index'])
+            ->middleware('permission:withdrawals.view_own');
+        Route::post('seller/withdrawals', [SellerWithdrawalController::class, 'store'])
+            ->middleware('permission:withdrawals.create_own');
+        Route::get('seller/withdrawals/{withdrawalId}', [SellerWithdrawalController::class, 'show'])
+            ->middleware('permission:withdrawals.view_own');
+        Route::post('seller/withdrawals/{withdrawalId}/cancel', [SellerWithdrawalController::class, 'cancel'])
+            ->middleware('permission:withdrawals.cancel_own');
     });
 });
