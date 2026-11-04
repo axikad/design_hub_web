@@ -25,11 +25,21 @@ class MarketplacePaymentSettings
 
     public function commissionBasisPoints(): int
     {
-        return (int) SiteSetting::current()->platform_commission_basis_points;
+        return (int) (SiteSetting::current()->platform_commission_basis_points ?? 2500);
     }
 
     public function earningHoldDays(): int
     {
-        return (int) SiteSetting::current()->earning_hold_days;
+        return (int) (SiteSetting::current()->earning_hold_days ?? 7);
+    }
+
+    public function minimumWithdrawalPaise(): int
+    {
+        return (int) (SiteSetting::current()->minimum_withdrawal_paise ?? 50000);
+    }
+
+    public function sellerPayoutsEnabled(): bool
+    {
+        return (bool) (SiteSetting::current()->seller_payouts_enabled ?? false);
     }
 }

@@ -248,3 +248,13 @@ Implementation references: [Expo environment variables](https://docs.expo.dev/gu
 ## Prices and purchases
 
 New and edited designs require a price in INR. The form converts rupees to integer `pricePaise`; ₹299.99 is 29999. Legacy designs with a null/missing price are not offered for sale. Payment endpoints and server implementation requirements are documented in [RAZORPAY.md](./RAZORPAY.md).
+
+## Seller wallet and earnings
+
+These Bearer-authenticated endpoints expose only the authenticated seller's records in the server's current payment environment:
+
+- `GET /seller/wallet`: pending, available, reserved and paid balances plus withdrawal action flags.
+- `GET /seller/earnings?page=1&per_page=20`: paginated purchase-time earning snapshots. Optional `status` filter.
+- `GET /seller/transactions?page=1&per_page=20`: paginated immutable ledger entries. Optional `balanceBucket` filter.
+
+All money values use integer paise. The app must display `paymentEnvironment` and clearly label `isTestMode: true` balances as simulated money. It must not calculate balances, commission or withdrawal eligibility locally. `canWithdraw` and `minimumWithdrawalPaise` come from the backend. These endpoints require the own-wallet permissions assigned to the marketplace user role.

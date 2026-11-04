@@ -50,7 +50,10 @@ class PermissionRoleMigrationTest extends TestCase
         $marketplaceUser = Role::query()->where('slug', 'marketplace_user')->firstOrFail();
 
         $this->assertEqualsCanonicalizing(
-            ['designs.read', 'designs.create', 'designs.update', 'designs.delete'],
+            [
+                'designs.read', 'designs.create', 'designs.update', 'designs.delete',
+                'wallet.view_own', 'earnings.view_own', 'ledger.view_own',
+            ],
             $marketplaceUser->permissions()->pluck('slug')->all(),
         );
     }

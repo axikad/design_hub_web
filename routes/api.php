@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\FolderController;
 use App\Http\Controllers\Api\V1\HomeController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\ProfileContactController;
+use App\Http\Controllers\Api\V1\SellerWalletController;
 use App\Http\Controllers\Api\V1\UploadController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
@@ -80,5 +81,12 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('purchases/folders/{folderId}', [PaymentController::class, 'folderPurchaseStatus']);
         Route::post('payments/orders', [PaymentController::class, 'createOrder']);
         Route::post('payments/verify', [PaymentController::class, 'verify']);
+
+        Route::get('seller/wallet', [SellerWalletController::class, 'show'])
+            ->middleware('permission:wallet.view_own');
+        Route::get('seller/earnings', [SellerWalletController::class, 'earnings'])
+            ->middleware('permission:earnings.view_own');
+        Route::get('seller/transactions', [SellerWalletController::class, 'transactions'])
+            ->middleware('permission:ledger.view_own');
     });
 });

@@ -860,17 +860,17 @@ Complete and test each group before moving to the next group. Mark a checkbox on
 
 ### Step 5: Release held earnings
 
-- [ ] Add a scheduled command/job to release eligible held earnings.
+- [x] Add a scheduled command/job to release eligible held earnings.
 - [ ] Skip refunded, disputed, administratively held or reversed earnings.
-- [ ] Move released money from pending/held to available through ledger entries.
-- [ ] Make the release operation idempotent.
+- [x] Move released money from pending/held to available through ledger entries.
+- [x] Make the release operation idempotent.
 - [ ] Add an Admin action for an audited manual hold/release when permitted.
 
 ### Step 6: Build seller mobile APIs
 
-- [ ] Add authenticated seller wallet summary API.
-- [ ] Add paginated seller earnings API.
-- [ ] Add paginated seller ledger/transactions API.
+- [x] Add authenticated seller wallet summary API.
+- [x] Add paginated seller earnings API.
+- [x] Add paginated seller ledger/transactions API.
 - [ ] Add paginated seller withdrawal-history API.
 - [ ] Add withdrawal detail API with ownership checks.
 - [ ] Add create-withdrawal API.

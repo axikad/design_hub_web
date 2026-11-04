@@ -1496,6 +1496,56 @@
             ]
         },
         {
+            "name": "Seller Wallet",
+            "item": [
+                {
+                    "name": "Wallet Summary",
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Accept", "value": "application/json" }],
+                        "url": "{{base_url}}/seller/wallet",
+                        "description": "Returns only the authenticated seller's balances for the current test/live environment. All amounts are integer paise."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - Wallet Retrieved",
+                            "originalRequest": {
+                                "method": "GET",
+                                "header": [{ "key": "Accept", "value": "application/json" }],
+                                "url": "{{base_url}}/seller/wallet"
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [],
+                            "cookie": [],
+                            "body": "{\n  \"success\": true,\n  \"message\": \"Seller wallet retrieved successfully.\",\n  \"data\": {\n    \"currency\": \"INR\",\n    \"paymentEnvironment\": \"test\",\n    \"isTestMode\": true,\n    \"payoutsEnabled\": false,\n    \"balances\": {\n      \"pendingPaise\": 7500,\n      \"availablePaise\": 0,\n      \"reservedPaise\": 0,\n      \"paidPaise\": 0\n    },\n    \"minimumWithdrawalPaise\": 50000,\n    \"canWithdraw\": false,\n    \"nextReleaseAt\": \"2026-11-10T12:57:22+00:00\"\n  }\n}"
+                        }
+                    ]
+                },
+                {
+                    "name": "Earnings",
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Accept", "value": "application/json" }],
+                        "url": "{{base_url}}/seller/earnings?page={{page}}&per_page={{per_page}}",
+                        "description": "Paginated earning snapshots owned by the authenticated seller. Optional status filter: pending, available, reserved, paid, refunded, reversed, or held."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Transactions",
+                    "request": {
+                        "method": "GET",
+                        "header": [{ "key": "Accept", "value": "application/json" }],
+                        "url": "{{base_url}}/seller/transactions?page={{page}}&per_page={{per_page}}",
+                        "description": "Paginated immutable seller ledger entries. Optional balanceBucket filter: pending, available, reserved, or paid."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
             "name": "Catalog",
             "item": [
                 {
