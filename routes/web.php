@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\MachineTypeAdminController;
 use App\Http\Controllers\Admin\PurchaseAdminController;
 use App\Http\Controllers\Admin\RoleAdminController;
 use App\Http\Controllers\Admin\SellerPaymentSettingController;
+use App\Http\Controllers\Admin\SellerWalletController;
 use App\Http\Controllers\Admin\SiteSettingController;
 use App\Http\Controllers\Admin\TypeAdminController;
 use App\Http\Controllers\Admin\UserAdminController;
@@ -37,6 +38,16 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('dashboard', DashboardController::class)
         ->middleware('permission:dashboard.read')
         ->name('dashboard');
+
+    Route::get('admin/wallet', [SellerWalletController::class, 'index'])
+        ->middleware('permission:wallet.view_own')
+        ->name('admin.wallet.index');
+    Route::post('admin/wallet/withdrawals', [SellerWalletController::class, 'store'])
+        ->middleware('permission:withdrawals.create_own')
+        ->name('admin.wallet.withdrawals.store');
+    Route::post('admin/wallet/withdrawals/{withdrawal}/cancel', [SellerWalletController::class, 'cancel'])
+        ->middleware('permission:withdrawals.cancel_own')
+        ->name('admin.wallet.withdrawals.cancel');
 
     Route::get('admin/settings/site', [SiteSettingController::class, 'edit'])
         ->middleware('permission:branding.read')
