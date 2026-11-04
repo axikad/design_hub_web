@@ -84,6 +84,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('payments/orders', [PaymentController::class, 'createOrder']);
         Route::post('payments/verify', [PaymentController::class, 'verify']);
 
+        Route::get('seller/pricing-preview', [SellerPricingController::class, 'preview']);
         Route::post('seller/pricing-preview', [SellerPricingController::class, 'preview']);
 
         Route::get('seller/wallet', [SellerWalletController::class, 'show'])

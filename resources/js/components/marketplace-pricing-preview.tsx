@@ -25,33 +25,34 @@ const formatMoney = (paise: number, currency: string) => new Intl.NumberFormat('
 export function MarketplacePricingPreview({ priceRupees }: { priceRupees: string }) {
     const [preview, setPreview] = useState<Preview | null>(null);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const numericPrice = Number(priceRupees);
     const pricePaise = priceRupees.trim() !== '' && Number.isFinite(numericPrice) && numericPrice >= 0 ? Math.round(numericPrice * 100) : null;
 
     useEffect(() => {
         if (pricePaise === null) {
             setPreview(null);
+            setError(null);
             return;
         }
 
         const controller = new AbortController();
         const timeout = window.setTimeout(async () => {
             setLoading(true);
+            setError(null);
 
             try {
-                const response = await fetch('/api/v1/seller/pricing-preview', {
-                    method: 'POST',
+                const response = await fetch(`/api/v1/seller/pricing-preview?pricePaise=${pricePaise}`, {
                     credentials: 'same-origin',
                     headers: {
                         Accept: 'application/json',
-                        'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ pricePaise }),
                     signal: controller.signal,
                 });
 
                 if (!response.ok) {
                     setPreview(null);
+                    setError('Pricing preview is unavailable. Refresh the page and try again.');
                     return;
                 }
 
@@ -60,6 +61,7 @@ export function MarketplacePricingPreview({ priceRupees }: { priceRupees: string
             } catch (error) {
                 if (!(error instanceof DOMException && error.name === 'AbortError')) {
                     setPreview(null);
+                    setError('Pricing preview is unavailable. Refresh the page and try again.');
                 }
             } finally {
                 if (!controller.signal.aborted) setLoading(false);
@@ -92,6 +94,8 @@ export function MarketplacePricingPreview({ priceRupees }: { priceRupees: string
                 <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
                     <LoaderCircle className="size-4 animate-spin" /> Calculating preview...
                 </div>
+            ) : error ? (
+                <p className="mt-3 text-sm text-rose-600 dark:text-rose-400">{error}</p>
             ) : preview ? (
                 <>
                     <dl className="mt-4 space-y-2 text-sm">

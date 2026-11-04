@@ -63,7 +63,7 @@ class SellerPricingPreviewApiTest extends TestCase
     public function test_admin_web_session_can_request_a_pricing_preview(): void
     {
         $this->actingAs(User::factory()->create())
-            ->postJson('/api/v1/seller/pricing-preview', ['pricePaise' => 10000])
+            ->getJson('/api/v1/seller/pricing-preview?pricePaise=10000')
             ->assertOk()
             ->assertJsonPath('data.itemPricePaise', 10000);
     }
