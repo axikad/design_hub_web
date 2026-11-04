@@ -75,6 +75,8 @@ class UserAdminController extends Controller
             'role_id' => $role->id,
             'email' => $validated['email'],
             'password' => $validated['password'],
+            'allow_otp_login' => $validated['allowOtpLogin'],
+            'allow_password_login' => $validated['allowPasswordLogin'],
             'country_code' => $validated['countryCode'],
             'mobile_number' => $validated['mobileNumber'],
             'phone_key' => $validated['phoneKey'],
@@ -112,6 +114,8 @@ class UserAdminController extends Controller
             'country_code' => $validated['countryCode'],
             'mobile_number' => $validated['mobileNumber'],
             'phone_key' => $validated['phoneKey'],
+            'allow_otp_login' => $validated['allowOtpLogin'],
+            'allow_password_login' => $validated['allowPasswordLogin'],
             'status' => $validated['status'],
         ];
 
@@ -199,6 +203,8 @@ class UserAdminController extends Controller
      *     countryCode: string|null,
      *     mobileNumber: string|null,
      *     phoneKey: string|null,
+     *     allowOtpLogin: bool,
+     *     allowPasswordLogin: bool,
      *     machineIds: list<string>
      * }
      */
@@ -209,6 +215,8 @@ class UserAdminController extends Controller
             'roleId' => ['required', 'integer', Rule::exists('roles', 'id')],
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($ignoreUserId)],
             'password' => ['nullable', 'confirmed', Password::defaults()],
+            'allowOtpLogin' => ['sometimes', 'boolean'],
+            'allowPasswordLogin' => ['sometimes', 'boolean'],
             'countryCode' => ['nullable', 'string', 'max:8'],
             'mobileNumber' => ['nullable', 'string', 'max:20'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
@@ -223,6 +231,18 @@ class UserAdminController extends Controller
 
         $role = Role::query()->findOrFail($validated['roleId']);
         $isMarketplace = $role->slug === 'marketplace_user';
+        $allowOtpLogin = array_key_exists('allowOtpLogin', $validated)
+            ? (bool) $validated['allowOtpLogin']
+            : $isMarketplace;
+        $allowPasswordLogin = array_key_exists('allowPasswordLogin', $validated)
+            ? (bool) $validated['allowPasswordLogin']
+            : ! $isMarketplace;
+
+        if (! $allowOtpLogin && ! $allowPasswordLogin) {
+            throw ValidationException::withMessages([
+                'allowOtpLogin' => 'Enable OTP login or password login. At least one login method is required.',
+            ]);
+        }
 
         if ($isMarketplace) {
             $request->validate([
@@ -230,11 +250,28 @@ class UserAdminController extends Controller
                 'mobileNumber' => ['required', 'string', 'max:20'],
                 'machineIds' => ['required', 'array', 'min:1', 'max:50'],
             ]);
-        } else {
+        }
+
+        if ($allowOtpLogin) {
             $request->validate([
-                'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($ignoreUserId)],
-                'password' => [$ignoreUserId ? 'nullable' : 'required', 'confirmed', Password::defaults()],
+                'countryCode' => ['required', 'string', 'max:8'],
+                'mobileNumber' => ['required', 'string', 'max:20'],
             ]);
+        }
+
+        if ($allowPasswordLogin) {
+            $hasExistingPassword = $ignoreUserId !== null
+                && User::query()->whereKey($ignoreUserId)->whereNotNull('password')->exists();
+
+            $request->validate([
+                'password' => [$hasExistingPassword ? 'nullable' : 'required', 'confirmed', Password::defaults()],
+            ]);
+
+            if (blank($validated['email'] ?? null) && blank($validated['mobileNumber'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'email' => 'Enter an email address or mobile number for password login.',
+                ]);
+            }
         }
 
         $phoneKey = null;
@@ -266,6 +303,8 @@ class UserAdminController extends Controller
             'roleId' => (int) $validated['roleId'],
             'email' => $validated['email'] ?? null,
             'password' => $validated['password'] ?? null,
+            'allowOtpLogin' => $allowOtpLogin,
+            'allowPasswordLogin' => $allowPasswordLogin,
             'countryCode' => $countryCode,
             'mobileNumber' => $mobileNumber,
             'phoneKey' => $phoneKey,

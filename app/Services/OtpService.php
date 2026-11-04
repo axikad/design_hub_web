@@ -37,6 +37,10 @@ class OtpService
             if ($existingUser === null) {
                 throw new \InvalidArgumentException('No account found for this mobile number. Register first.');
             }
+
+            if ($existingUser->status !== 'active' || ! $existingUser->allow_otp_login) {
+                throw new \InvalidArgumentException('OTP login is not available for this account.');
+            }
         } else {
             throw new \InvalidArgumentException('Invalid authentication flow.');
         }
@@ -136,6 +140,8 @@ class OtpService
                 'phone_key' => $phoneKey,
                 'email' => null,
                 'password' => null,
+                'allow_otp_login' => true,
+                'allow_password_login' => false,
             ]);
 
             $machineDatabaseIds = Machine::query()
@@ -150,6 +156,10 @@ class OtpService
         $user = User::query()->where('phone_key', $phoneKey)->first();
         if ($user === null) {
             throw new \InvalidArgumentException('No account found for this mobile number.');
+        }
+
+        if ($user->status !== 'active' || ! $user->allow_otp_login) {
+            throw new \InvalidArgumentException('OTP login is not available for this account.');
         }
 
         return $user;

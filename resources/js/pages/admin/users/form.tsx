@@ -1,5 +1,6 @@
 import { AdminFormPanel } from '@/components/admin/admin-form-panel';
 import { AdminPageHeader } from '@/components/admin/page-header';
+import CountryCodeSelect from '@/components/country-code-select';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -25,6 +26,9 @@ type UserForm = {
     roleSlug: string | null;
     status: 'active' | 'inactive';
     machineIds: string[];
+    allowOtpLogin: boolean;
+    allowPasswordLogin: boolean;
+    hasPassword: boolean;
 };
 
 type Props = {
@@ -53,6 +57,8 @@ export default function AdminUserForm({ user, roles, machines }: Props) {
         countryCode: user?.countryCode ?? '+91',
         mobileNumber: user?.mobileNumber ?? '',
         machineIds: user?.machineIds ?? [],
+        allowOtpLogin: user?.allowOtpLogin ?? roles[0]?.slug === 'marketplace_user',
+        allowPasswordLogin: user?.allowPasswordLogin ?? roles[0]?.slug !== 'marketplace_user',
     });
 
     const { data, setData, post, put, processing, errors } = form;
@@ -69,7 +75,11 @@ export default function AdminUserForm({ user, roles, machines }: Props) {
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
-        editing && user?.id ? put(route('admin.users.update', user.id)) : post(route('admin.users.store'));
+        if (editing && user?.id) {
+            put(route('admin.users.update', user.id));
+        } else {
+            post(route('admin.users.store'));
+        }
     };
 
     const fieldClass = 'h-11 rounded-xl border-slate-200 focus-visible:border-indigo-500 focus-visible:ring-indigo-500/20 dark:border-slate-700';
@@ -161,15 +171,51 @@ export default function AdminUserForm({ user, roles, machines }: Props) {
                         </AdminFormPanel>
                     </div>
 
+                    <AdminFormPanel
+                        title="Login methods"
+                        description="Choose how this user can sign in. At least one method must remain enabled."
+                        icon={LockKeyhole}
+                    >
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+                                <Checkbox
+                                    checked={data.allowOtpLogin}
+                                    disabled={data.allowOtpLogin && !data.allowPasswordLogin}
+                                    onCheckedChange={(value) => setData('allowOtpLogin', value === true)}
+                                />
+                                <span>
+                                    <span className="block text-sm font-semibold text-slate-900 dark:text-white">Allow OTP login</span>
+                                    <span className="mt-1 block text-xs text-slate-500">Use the verified mobile number and a one-time code.</span>
+                                </span>
+                            </label>
+                            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+                                <Checkbox
+                                    checked={data.allowPasswordLogin}
+                                    disabled={data.allowPasswordLogin && !data.allowOtpLogin}
+                                    onCheckedChange={(value) => setData('allowPasswordLogin', value === true)}
+                                />
+                                <span>
+                                    <span className="block text-sm font-semibold text-slate-900 dark:text-white">Allow password login</span>
+                                    <span className="mt-1 block text-xs text-slate-500">Use an email or mobile number together with a password.</span>
+                                </span>
+                            </label>
+                        </div>
+                        {!data.allowOtpLogin && !data.allowPasswordLogin ? (
+                            <p className="mt-3 text-sm font-medium text-red-600">Enable at least one login method.</p>
+                        ) : null}
+                        <InputError message={errors.allowOtpLogin} />
+                        <InputError message={errors.allowPasswordLogin} />
+                    </AdminFormPanel>
+
                     <div className="grid gap-5 lg:grid-cols-2">
                         <AdminFormPanel
                             title="Panel credentials"
-                            description="Required for users who can sign in to the admin panel."
+                            description="Used when password login is enabled. Email is optional when a mobile number is available."
                             icon={LockKeyhole}
                         >
                             <div className="space-y-5">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="email">Email {isMarketplace ? '(optional)' : '(required)'}</Label>
+                                    <Label htmlFor="email">Email (optional)</Label>
                                     <div className="relative">
                                         <Mail className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
                                         <Input
@@ -177,7 +223,6 @@ export default function AdminUserForm({ user, roles, machines }: Props) {
                                             type="email"
                                             value={data.email}
                                             onChange={(event) => setData('email', event.target.value)}
-                                            required={!isMarketplace}
                                             autoComplete="email"
                                             className={`${fieldClass} pl-10`}
                                         />
@@ -186,13 +231,15 @@ export default function AdminUserForm({ user, roles, machines }: Props) {
                                 </div>
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="password">{editing ? 'New password' : 'Password'}</Label>
+                                        <Label htmlFor="password">
+                                            {editing ? 'New password' : 'Password'} {data.allowPasswordLogin ? '(required)' : '(optional)'}
+                                        </Label>
                                         <Input
                                             id="password"
                                             type="password"
                                             value={data.password}
                                             onChange={(event) => setData('password', event.target.value)}
-                                            required={!editing && !isMarketplace}
+                                            required={data.allowPasswordLogin && (!editing || !user?.hasPassword)}
                                             autoComplete="new-password"
                                             placeholder={editing ? 'Leave blank to keep' : ''}
                                             className={fieldClass}
@@ -222,22 +269,22 @@ export default function AdminUserForm({ user, roles, machines }: Props) {
                             <div className="grid gap-4 sm:grid-cols-[120px_1fr]">
                                 <div className="grid gap-2">
                                     <Label htmlFor="countryCode">Country code</Label>
-                                    <Input
-                                        id="countryCode"
+                                    <CountryCodeSelect
                                         value={data.countryCode}
-                                        onChange={(event) => setData('countryCode', event.target.value)}
-                                        required={isMarketplace}
+                                        onValueChange={(value) => setData('countryCode', value)}
                                         className={fieldClass}
                                     />
                                     <InputError message={errors.countryCode} />
                                 </div>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="mobileNumber">Mobile number {isMarketplace ? '(required)' : '(optional)'}</Label>
+                                    <Label htmlFor="mobileNumber">
+                                        Mobile number {data.allowOtpLogin || isMarketplace ? '(required)' : '(optional)'}
+                                    </Label>
                                     <Input
                                         id="mobileNumber"
                                         value={data.mobileNumber}
                                         onChange={(event) => setData('mobileNumber', event.target.value)}
-                                        required={isMarketplace}
+                                        required={data.allowOtpLogin || isMarketplace}
                                         className={fieldClass}
                                     />
                                     <InputError message={errors.mobileNumber} />
@@ -295,7 +342,9 @@ export default function AdminUserForm({ user, roles, machines }: Props) {
                                                     <Cpu className="size-4" />
                                                 </span>
                                             )}
-                                            <span className="min-w-0 truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{machine.name}</span>
+                                            <span className="min-w-0 truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                                {machine.name}
+                                            </span>
                                         </label>
                                     );
                                 })}

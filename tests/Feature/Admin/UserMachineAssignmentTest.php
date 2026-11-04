@@ -72,4 +72,22 @@ class UserMachineAssignmentTest extends TestCase
             'machineIds' => [],
         ])->assertSessionHasErrors('machineIds');
     }
+
+    public function test_admin_must_enable_at_least_one_user_login_method(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+        $role = Role::query()->where('slug', 'marketplace_user')->firstOrFail();
+        $machine = Machine::query()->create(['name' => 'Embroidery', 'is_active' => true]);
+
+        $this->actingAs($admin)->post(route('admin.users.store'), [
+            'name' => 'Marketplace Seller',
+            'roleId' => $role->id,
+            'countryCode' => '+91',
+            'mobileNumber' => '9876543210',
+            'allowOtpLogin' => false,
+            'allowPasswordLogin' => false,
+            'status' => 'active',
+            'machineIds' => [$machine->public_id],
+        ])->assertSessionHasErrors('allowOtpLogin');
+    }
 }

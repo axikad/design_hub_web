@@ -33,6 +33,8 @@ class User extends Authenticatable
         'email',
         'avatar_path',
         'password',
+        'allow_otp_login',
+        'allow_password_login',
         'status',
         'last_login_at',
     ];
@@ -48,6 +50,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
             'password' => 'hashed',
+            'allow_otp_login' => 'boolean',
+            'allow_password_login' => 'boolean',
         ];
     }
 
@@ -188,6 +192,10 @@ class User extends Authenticatable
                 ])
                 ->values()
                 ->all(),
+            'loginMethods' => [
+                'otp' => (bool) $this->allow_otp_login,
+                'password' => (bool) $this->allow_password_login,
+            ],
         ];
     }
 
@@ -208,6 +216,9 @@ class User extends Authenticatable
             'roleId' => $this->role_id,
             'roleName' => $this->role?->name,
             'roleSlug' => $this->role?->slug,
+            'allowOtpLogin' => (bool) $this->allow_otp_login,
+            'allowPasswordLogin' => (bool) $this->allow_password_login,
+            'hasPassword' => $this->password !== null,
         ];
     }
 }
