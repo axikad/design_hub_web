@@ -1,0 +1,11 @@
+import{j as e}from"./app-Bldo3OE8.js";import{c as n,a as l}from"./app-logo-icon-CkK7caQj.js";import{I as o}from"./input-JdBQVF-3.js";import{X as c}from"./app-layout-DeHo5OfR.js";/**
+ * @license lucide-react v0.475.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const d=[["polyline",{points:"22 12 16 12 14 15 10 15 8 12 2 12",key:"o97t9d"}],["path",{d:"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z",key:"oot6mr"}]],x=n("Inbox",d);/**
+ * @license lucide-react v0.475.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const m=[["circle",{cx:"11",cy:"11",r:"8",key:"4ej97u"}],["path",{d:"m21 21-4.3-4.3",key:"1qie3q"}]],h=n("Search",m);function g({title:r,description:t,icon:s=x,action:a}){return e.jsxs("div",{className:"flex min-h-72 flex-col items-center justify-center px-6 py-12 text-center",children:[e.jsx("div",{className:"flex size-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-300",children:e.jsx(s,{className:"size-6"})}),e.jsx("h3",{className:"mt-5 text-base font-bold text-slate-900 dark:text-white",children:r}),e.jsx("p",{className:"mt-2 max-w-sm text-sm leading-6 text-slate-500 dark:text-slate-400",children:t}),a?e.jsx("div",{className:"mt-5 [&_[data-slot=button]]:rounded-xl",children:a}):null]})}function j({className:r,value:t,onClear:s,...a}){const i=typeof t=="string"&&t.length>0;return e.jsxs("div",{className:"relative min-w-0 flex-1 sm:max-w-sm",children:[e.jsx(h,{className:"pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"}),e.jsx(o,{type:"search",value:t,className:l("h-10 rounded-xl border-slate-200 bg-slate-50 pr-9 pl-9 focus-visible:border-indigo-500 focus-visible:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-950",r),...a}),i&&s?e.jsx("button",{type:"button",onClick:s,className:"absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200","aria-label":"Clear search",children:e.jsx(c,{className:"size-3.5"})}):null]})}export{j as A,h as S,g as a};

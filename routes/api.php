@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\FolderController;
 use App\Http\Controllers\Api\V1\HomeController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\ProfileContactController;
+use App\Http\Controllers\Api\V1\SellerPricingController;
 use App\Http\Controllers\Api\V1\SellerWalletController;
 use App\Http\Controllers\Api\V1\SellerWithdrawalController;
 use App\Http\Controllers\Api\V1\UploadController;
@@ -82,6 +83,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('purchases/folders/{folderId}', [PaymentController::class, 'folderPurchaseStatus']);
         Route::post('payments/orders', [PaymentController::class, 'createOrder']);
         Route::post('payments/verify', [PaymentController::class, 'verify']);
+
+        Route::post('seller/pricing-preview', [SellerPricingController::class, 'preview']);
 
         Route::get('seller/wallet', [SellerWalletController::class, 'show'])
             ->middleware('permission:wallet.view_own');

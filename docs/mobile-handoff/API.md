@@ -249,6 +249,18 @@ Implementation references: [Expo environment variables](https://docs.expo.dev/gu
 
 New and edited designs require a price in INR. The form converts rupees to integer `pricePaise`; ₹299.99 is 29999. Legacy designs with a null/missing price are not offered for sale. Payment endpoints and server implementation requirements are documented in [RAZORPAY.md](./RAZORPAY.md).
 
+Before saving a seller-owned design or folder, request the server-calculated commission preview:
+
+```http
+POST /seller/pricing-preview
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{ "pricePaise": 10000 }
+```
+
+For the current commission-only test flow, a ₹100 price at 25% commission returns `buyerPayablePaise: 10000`, `platformCommission.amountPaise: 2500`, and `estimatedSellerEarningPaise: 7500`. Display Selling price, Platform commission and Estimated earning from this response. Do not calculate them in the app. Tax objects remain disabled with zero amounts and must not be rendered. Debounce calls while the seller edits the price; the preview is an estimate and the final commission is snapshotted when payment succeeds.
+
 ## Seller wallet and earnings
 
 These Bearer-authenticated endpoints expose only the authenticated seller's records in the server's current payment environment:

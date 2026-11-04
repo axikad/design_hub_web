@@ -829,7 +829,7 @@ Complete and test each group before moving to the next group. Mark a checkbox on
 - [x] Ensure setting changes affect only future purchases.
 - [x] Add separate disabled/zero Test Mode settings for buyer GST, commission GST, TDS and GST TCS.
 - [ ] Add versioned tax configuration and effective dates.
-- [ ] Return a server-calculated pricing preview for seller create/edit forms.
+- [x] Return a server-calculated commission-only pricing preview for seller create/edit forms; Admin Design/Folder forms are connected and mobile can consume the same API.
 - [ ] Return a server-calculated buyer checkout breakdown.
 
 ### Step 3: Build the common financial domain

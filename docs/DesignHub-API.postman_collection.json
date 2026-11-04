@@ -1503,6 +1503,43 @@
             "name": "Seller Wallet",
             "item": [
                 {
+                    "name": "Pricing Preview",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Accept", "value": "application/json" },
+                            { "key": "Content-Type", "value": "application/json" }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"pricePaise\": 10000\n}",
+                            "options": { "raw": { "language": "json" } }
+                        },
+                        "url": "{{base_url}}/seller/pricing-preview",
+                        "description": "Returns the server-calculated commission-only seller earning estimate. Tax components are disabled and zero until the tax phase is implemented."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - Pricing Preview",
+                            "originalRequest": {
+                                "method": "POST",
+                                "header": [
+                                    { "key": "Accept", "value": "application/json" },
+                                    { "key": "Content-Type", "value": "application/json" }
+                                ],
+                                "body": { "mode": "raw", "raw": "{\n  \"pricePaise\": 10000\n}" },
+                                "url": "{{base_url}}/seller/pricing-preview"
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [],
+                            "cookie": [],
+                            "body": "{\n  \"success\": true,\n  \"message\": \"Seller pricing preview calculated successfully.\",\n  \"data\": {\n    \"currency\": \"INR\",\n    \"paymentEnvironment\": \"test\",\n    \"isTestMode\": true,\n    \"itemPricePaise\": 10000,\n    \"buyerPayablePaise\": 10000,\n    \"platformCommission\": {\n      \"enabled\": true,\n      \"basisPoints\": 2500,\n      \"percent\": 25,\n      \"amountPaise\": 2500\n    },\n    \"sellerGrossPaise\": 7500,\n    \"sellerDeductionsPaise\": 0,\n    \"estimatedSellerEarningPaise\": 7500,\n    \"taxes\": {\n      \"buyerGst\": { \"enabled\": false, \"amountPaise\": 0 },\n      \"commissionGst\": { \"enabled\": false, \"amountPaise\": 0 },\n      \"tds\": { \"enabled\": false, \"amountPaise\": 0 },\n      \"gstTcs\": { \"enabled\": false, \"amountPaise\": 0 }\n    }\n  }\n}"
+                        }
+                    ]
+                },
+                {
                     "name": "Wallet Summary",
                     "request": {
                         "method": "GET",

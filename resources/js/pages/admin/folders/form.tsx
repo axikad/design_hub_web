@@ -1,6 +1,7 @@
 import { AdminFormPanel } from '@/components/admin/admin-form-panel';
 import { AdminPageHeader } from '@/components/admin/page-header';
 import InputError from '@/components/input-error';
+import { MarketplacePricingPreview } from '@/components/marketplace-pricing-preview';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -111,6 +112,7 @@ export default function AdminFolderForm({ folder }: Props) {
                                     className="h-11 rounded-xl border-slate-200 focus-visible:border-indigo-500 dark:border-slate-700"
                                 />
                                 <InputError message={errors.priceRupees} />
+                                <MarketplacePricingPreview priceRupees={data.priceRupees} />
                             </div>
                         </div>
                     </AdminFormPanel>

@@ -1,6 +1,7 @@
 import { AdminFormPanel } from '@/components/admin/admin-form-panel';
 import { AdminPageHeader } from '@/components/admin/page-header';
 import InputError from '@/components/input-error';
+import { MarketplacePricingPreview } from '@/components/marketplace-pricing-preview';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -489,6 +490,7 @@ export default function AdminDesignForm({ design, owners, catalog, fileTypes }: 
                                             className={inputClass}
                                         />
                                         <InputError message={errors.priceRupees} />
+                                        <MarketplacePricingPreview priceRupees={data.priceRupees} />
                                     </div>
                                 ) : null}
                                 {config?.designFileType ? (
