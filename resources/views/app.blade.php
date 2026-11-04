@@ -10,6 +10,22 @@
             <link rel="icon" href="{{ $branding->faviconUrl() }}" type="image/png">
         @endif
 
+        <script>
+            (() => {
+                try {
+                    const appearance = localStorage.getItem('appearance') || 'dark';
+                    const isDark = appearance === 'dark'
+                        || (appearance === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+                    document.documentElement.classList.toggle('dark', isDark);
+                    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+                } catch {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.style.colorScheme = 'dark';
+                }
+            })();
+        </script>
+
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
 
