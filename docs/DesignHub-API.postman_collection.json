@@ -3849,6 +3849,41 @@
                     ]
                 },
                 {
+                    "name": "Buyer Checkout Preview",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/payments/checkout-preview?designId={{design_id}}",
+                        "description": "Returns the backend-calculated buyer checkout breakdown before Razorpay is opened. Send exactly one designId or folderId. Taxes and buyer fees are currently disabled and zero."
+                    },
+                    "response": [
+                        {
+                            "name": "200 - Checkout Preview",
+                            "originalRequest": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Accept",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "url": "{{base_url}}/payments/checkout-preview?designId={{design_id}}"
+                            },
+                            "status": "OK",
+                            "code": 200,
+                            "_postman_previewlanguage": "json",
+                            "header": [],
+                            "cookie": [],
+                            "body": "{\n    \"success\": true,\n    \"message\": \"Buyer checkout breakdown calculated successfully.\",\n    \"data\": {\n        \"currency\": \"INR\",\n        \"paymentEnvironment\": \"test\",\n        \"isTestMode\": true,\n        \"item\": {\n            \"type\": \"design\",\n            \"id\": \"design_example\",\n            \"name\": \"Example Design\"\n        },\n        \"itemPricePaise\": 10000,\n        \"taxes\": {\n            \"enabled\": false,\n            \"totalPaise\": 0,\n            \"lines\": []\n        },\n        \"buyerFee\": {\n            \"enabled\": false,\n            \"amountPaise\": 0\n        },\n        \"totalPayablePaise\": 10000,\n        \"notice\": \"No tax or additional buyer fee is currently applied. The final payable amount is calculated by the backend.\"\n    }\n}"
+                        }
+                    ]
+                },
+                {
                     "name": "Create Payment Order",
                     "event": [
                         {

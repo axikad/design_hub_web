@@ -40,9 +40,20 @@ class FolderPaymentApiTest extends TestCase
             ->assertJsonPath('data.folderId', $folder->public_id)
             ->assertJsonPath('data.orderId', 'order_folder_test')
             ->assertJsonPath('data.amount', 29900)
-            ->assertJsonPath('data.currency', 'INR');
+            ->assertJsonPath('data.currency', 'INR')
+            ->assertJsonPath('data.checkoutBreakdown.item.type', 'folder')
+            ->assertJsonPath('data.checkoutBreakdown.item.id', $folder->public_id)
+            ->assertJsonPath('data.checkoutBreakdown.itemPricePaise', 29900)
+            ->assertJsonPath('data.checkoutBreakdown.taxes.enabled', false)
+            ->assertJsonPath('data.checkoutBreakdown.taxes.totalPaise', 0)
+            ->assertJsonPath('data.checkoutBreakdown.buyerFee.amountPaise', 0)
+            ->assertJsonPath('data.checkoutBreakdown.totalPayablePaise', 29900);
 
         $this->assertIsInt($response->json('data.amount'));
+        $this->assertSame(
+            $response->json('data.amount'),
+            $response->json('data.checkoutBreakdown.totalPayablePaise'),
+        );
     }
 
     public function test_folder_status_supports_unpaid_pending_and_paid_payloads(): void

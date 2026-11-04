@@ -7,6 +7,7 @@ use App\Models\Design;
 use App\Models\Folder;
 use App\Models\FolderPaymentOrder;
 use App\Models\WebhookEvent;
+use App\Services\BuyerCheckoutPricingService;
 use App\Services\RazorpayFolderPaymentService;
 use App\Services\RazorpayPaymentService;
 use App\Support\ApiResponse;
@@ -18,7 +19,58 @@ class PaymentController extends Controller
     public function __construct(
         private readonly RazorpayPaymentService $razorpay,
         private readonly RazorpayFolderPaymentService $folderRazorpay,
+        private readonly BuyerCheckoutPricingService $checkoutPricing,
     ) {}
+
+    public function checkoutPreview(Request $request)
+    {
+        $this->ensureSinglePurchasable($request);
+
+        $validated = $request->validate([
+            'designId' => ['required_without:folderId', 'string'],
+            'folderId' => ['required_without:designId', 'string'],
+        ]);
+
+        if (isset($validated['folderId'])) {
+            $folder = Folder::query()->where('public_id', $validated['folderId'])->first();
+
+            if ($folder === null) {
+                return ApiResponse::error('Folder not found.', 'folder_not_found', 404);
+            }
+
+            if ($folder->price_paise < 100) {
+                throw ValidationException::withMessages(['folderId' => 'This folder is not available for purchase.']);
+            }
+
+            if ($folder->user_id === $request->user()->id) {
+                throw ValidationException::withMessages(['folderId' => 'You cannot purchase your own folder.']);
+            }
+
+            return ApiResponse::data(
+                $this->checkoutPricing->preview('folder', $folder->public_id, $folder->name, (int) $folder->price_paise),
+                message: 'Buyer checkout breakdown calculated successfully.',
+            );
+        }
+
+        $design = Design::query()->listed()->where('public_id', $validated['designId'])->first();
+
+        if ($design === null) {
+            return ApiResponse::error('Design not found.', 'design_not_found', 404);
+        }
+
+        if ($design->price_paise === null) {
+            throw ValidationException::withMessages(['designId' => 'This design is not available for purchase.']);
+        }
+
+        if ($design->user_id === $request->user()->id) {
+            throw ValidationException::withMessages(['designId' => 'You cannot purchase your own design.']);
+        }
+
+        return ApiResponse::data(
+            $this->checkoutPricing->preview('design', $design->public_id, $design->title, (int) $design->price_paise),
+            message: 'Buyer checkout breakdown calculated successfully.',
+        );
+    }
 
     public function purchaseStatus(Request $request, string $designId)
     {
@@ -77,6 +129,13 @@ class PaymentController extends Controller
 
             return ApiResponse::error('Payment provider is temporarily unavailable.', 'payment_provider_unavailable', 503);
         }
+
+        $payload['checkoutBreakdown'] = $this->checkoutPricing->preview(
+            'design',
+            $design->public_id,
+            $design->title,
+            (int) ($payload['amount'] ?? $design->price_paise),
+        );
 
         return ApiResponse::data($payload, message: 'Payment order created successfully.');
     }
@@ -216,6 +275,13 @@ class PaymentController extends Controller
 
             return ApiResponse::error('Payment provider is temporarily unavailable.', 'payment_provider_unavailable', 503);
         }
+
+        $payload['checkoutBreakdown'] = $this->checkoutPricing->preview(
+            'folder',
+            $folder->public_id,
+            $folder->name,
+            (int) ($payload['amount'] ?? $folder->price_paise),
+        );
 
         return ApiResponse::data($payload, message: 'Payment order created successfully.');
     }

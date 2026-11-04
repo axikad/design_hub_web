@@ -81,6 +81,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::get('purchases/designs/{designId}', [PaymentController::class, 'purchaseStatus']);
         Route::get('purchases/folders/{folderId}', [PaymentController::class, 'folderPurchaseStatus']);
+        Route::get('payments/checkout-preview', [PaymentController::class, 'checkoutPreview']);
         Route::post('payments/orders', [PaymentController::class, 'createOrder']);
         Route::post('payments/verify', [PaymentController::class, 'verify']);
 

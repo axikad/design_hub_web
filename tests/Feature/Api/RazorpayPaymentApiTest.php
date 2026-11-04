@@ -64,10 +64,36 @@ class RazorpayPaymentApiTest extends TestCase
                     'keyId' => 'rzp_test_public_key',
                     'amount' => 29900,
                     'currency' => 'INR',
+                    'checkoutBreakdown' => [
+                        'currency' => 'INR',
+                        'paymentEnvironment' => 'test',
+                        'isTestMode' => true,
+                        'item' => [
+                            'type' => 'design',
+                            'id' => $design->public_id,
+                            'name' => 'Paid Design',
+                        ],
+                        'itemPricePaise' => 29900,
+                        'taxes' => [
+                            'enabled' => false,
+                            'totalPaise' => 0,
+                            'lines' => [],
+                        ],
+                        'buyerFee' => [
+                            'enabled' => false,
+                            'amountPaise' => 0,
+                        ],
+                        'totalPayablePaise' => 29900,
+                        'notice' => 'No tax or additional buyer fee is currently applied. The final payable amount is calculated by the backend.',
+                    ],
                 ],
             ]);
 
         $this->assertIsInt($response->json('data.amount'));
+        $this->assertSame(
+            $response->json('data.amount'),
+            $response->json('data.checkoutBreakdown.totalPayablePaise'),
+        );
     }
 
     public function test_status_endpoint_returns_reconciled_payment_state(): void

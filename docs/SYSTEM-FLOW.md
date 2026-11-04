@@ -31,7 +31,8 @@ flowchart TD
 
   subgraph buy [Buy and download]
     J --> Q[GET /purchases/designs/:id]
-    Q -->|unpaid| R[POST /payments/orders]
+    Q -->|unpaid| CP[GET /payments/checkout-preview]
+    CP --> R[POST /payments/orders]
     R --> S[Razorpay checkout]
     S --> T[POST /payments/verify]
     Q -->|paid| U[POST /designs/:id/download]
