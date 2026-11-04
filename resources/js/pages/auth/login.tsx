@@ -12,7 +12,7 @@ import { type FormEventHandler, useState } from 'react';
 type IdentifierType = 'email' | 'mobile';
 type LoginMethod = 'password' | 'otp';
 type LoginStep = 'identifier' | 'method' | LoginMethod;
-type LoginResolution = { password: boolean; otp: boolean };
+type LoginResolution = { password: boolean; otp: boolean; otpSent?: boolean };
 type LoginForm = {
     loginType: IdentifierType;
     email: string;
@@ -53,7 +53,11 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                 if (!resolution) return;
                 setMethods(resolution);
                 if (resolution.password && resolution.otp) setStep('method');
-                else setStep(resolution.otp ? 'otp' : 'password');
+                else if (resolution.otp) {
+                    setOtpSent(resolution.otpSent === true);
+                    setData('code', '');
+                    setStep('otp');
+                } else setStep('password');
             },
         });
     };
@@ -63,13 +67,14 @@ export default function Login({ status, canResetPassword }: LoginProps) {
         post(route('login'), { onFinish: () => reset('password') });
     };
 
-    const requestOtp = () => {
+    const requestOtp = (showOtpStep = false) => {
         clearErrors();
         post(route('login.otp.request'), {
             preserveScroll: true,
             onSuccess: () => {
                 setOtpSent(true);
                 setData('code', '');
+                if (showOtpStep) setStep('otp');
             },
         });
     };
@@ -199,7 +204,8 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                         </button>
                         <button
                             type="button"
-                            onClick={() => setStep('otp')}
+                            onClick={() => requestOtp(true)}
+                            disabled={processing}
                             className="flex w-full items-center gap-4 rounded-xl border border-slate-200 p-4 text-left transition hover:border-indigo-400 hover:bg-indigo-50 dark:border-slate-700 dark:hover:bg-indigo-950/30"
                         >
                             <span className="rounded-lg bg-indigo-100 p-2 text-indigo-600">
@@ -254,11 +260,6 @@ export default function Login({ status, canResetPassword }: LoginProps) {
 
                 {step === 'otp' ? (
                     <form className="space-y-5" onSubmit={verifyOtp}>
-                        {!otpSent ? (
-                            <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                We will send a 4-digit OTP to your registered mobile number.
-                            </p>
-                        ) : null}
                         {otpSent ? (
                             <div className="grid gap-2">
                                 <Label htmlFor="code">4-digit OTP</Label>
@@ -277,21 +278,15 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                             </div>
                         ) : null}
                         <Remember checked={data.remember} setChecked={(value) => setData('remember', value)} />
+                        {otpSent ? <SubmitButton processing={processing} label="Verify OTP" /> : null}
                         {otpSent ? (
-                            <SubmitButton processing={processing} label="Verify OTP" />
-                        ) : (
                             <Button
                                 type="button"
-                                className="h-11 w-full rounded-xl bg-indigo-600 font-semibold hover:bg-indigo-700"
+                                variant="outline"
+                                className="h-11 w-full rounded-xl"
                                 disabled={processing}
-                                onClick={requestOtp}
+                                onClick={() => requestOtp()}
                             >
-                                {processing ? <LoaderCircle className="size-4 animate-spin" /> : <KeyRound className="size-4" />}
-                                {processing ? 'Sending...' : 'Send OTP'}
-                            </Button>
-                        )}
-                        {otpSent ? (
-                            <Button type="button" variant="outline" className="h-11 w-full rounded-xl" disabled={processing} onClick={requestOtp}>
                                 Resend OTP
                             </Button>
                         ) : null}

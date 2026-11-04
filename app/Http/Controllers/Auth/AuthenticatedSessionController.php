@@ -62,9 +62,33 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
+        $otpSent = false;
+        if ($user->allow_otp_login && ! $user->allow_password_login) {
+            if ($user->country_code === null || $user->mobile_number === null) {
+                throw ValidationException::withMessages([
+                    $errorKey => 'OTP login is not available for this account.',
+                ]);
+            }
+
+            try {
+                $this->otp->request(
+                    'login',
+                    null,
+                    $user->country_code,
+                    $user->mobile_number,
+                );
+                $otpSent = true;
+            } catch (\InvalidArgumentException $exception) {
+                throw ValidationException::withMessages([
+                    $errorKey => $exception->getMessage(),
+                ]);
+            }
+        }
+
         return back()->with('loginResolution', [
             'password' => (bool) $user->allow_password_login,
             'otp' => (bool) $user->allow_otp_login,
+            'otpSent' => $otpSent,
         ]);
     }
 

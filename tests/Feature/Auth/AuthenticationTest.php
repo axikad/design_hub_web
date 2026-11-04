@@ -31,7 +31,43 @@ class AuthenticationTest extends TestCase
             ->assertSessionHas('loginResolution', [
                 'password' => true,
                 'otp' => false,
+                'otpSent' => false,
             ]);
+    }
+
+    public function test_otp_is_sent_immediately_when_it_is_the_only_enabled_login_method(): void
+    {
+        config([
+            'designhub.otp_static_enabled' => true,
+            'designhub.otp_static_code' => '1234',
+        ]);
+
+        $user = User::factory()->create([
+            'country_code' => '+91',
+            'mobile_number' => '9876543210',
+            'phone_key' => '+919876543210',
+            'allow_password_login' => false,
+            'allow_otp_login' => true,
+        ]);
+
+        $payload = [
+            'loginType' => 'email',
+            'email' => $user->email,
+        ];
+
+        $this->from('/login')->post(route('login.resolve'), $payload)
+            ->assertRedirect('/login')
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('loginResolution', [
+                'password' => false,
+                'otp' => true,
+                'otpSent' => true,
+            ]);
+
+        $this->post(route('login.otp.verify'), $payload + ['code' => '1234'])
+            ->assertRedirect(route('dashboard', absolute: false));
+
+        $this->assertAuthenticatedAs($user);
     }
 
     public function test_users_can_authenticate_using_the_login_screen()
