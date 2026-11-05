@@ -29,11 +29,20 @@ export type SiteBranding = {
     faviconUrl: string | null;
 };
 
+export type FlashMessages = {
+    success?: string | null;
+    error?: string | null;
+    warning?: string | null;
+    info?: string | null;
+};
+
 export interface SharedData {
     name: string;
     quote: { message: string; author: string };
     auth: Auth;
     siteBranding?: SiteBranding;
+    flash?: FlashMessages;
+    errors?: Record<string, string>;
     [key: string]: unknown;
 }
 
