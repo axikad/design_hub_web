@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\PurchaseAdminController;
 use App\Http\Controllers\Admin\RoleAdminController;
 use App\Http\Controllers\Admin\SellerPaymentSettingController;
 use App\Http\Controllers\Admin\SellerWalletController;
+use App\Http\Controllers\Admin\SettlementEarningController;
 use App\Http\Controllers\Admin\SiteSettingController;
 use App\Http\Controllers\Admin\TypeAdminController;
 use App\Http\Controllers\Admin\UserAdminController;
@@ -62,6 +63,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::put('admin/settings/seller-payments', [SellerPaymentSettingController::class, 'update'])
         ->middleware('permission:seller_payments.update')
         ->name('admin.settings.seller-payments.update');
+    Route::get('admin/settlement-earnings', [SettlementEarningController::class, 'index'])
+        ->middleware('permission:seller_payments.read')
+        ->name('admin.settlement-earnings.index');
     Route::post('admin/settings/seller-payments/earnings/{earning:public_id}/process-now', [SellerPaymentSettingController::class, 'processNow'])
         ->middleware('permission:seller_payments.update')
         ->name('admin.settings.seller-payments.earnings.process-now');

@@ -17,6 +17,7 @@ import {
     Settings,
     ShieldCheck,
     ShoppingBag,
+    TableProperties,
     UsersRound,
     WalletCards,
 } from 'lucide-react';
@@ -106,6 +107,12 @@ const administrationNavItems: NavItem[] = [
         title: 'Seller payments',
         url: '/admin/settings/seller-payments',
         icon: WalletCards,
+        permission: 'seller_payments.read',
+    },
+    {
+        title: 'Settlement earnings',
+        url: '/admin/settlement-earnings',
+        icon: TableProperties,
         permission: 'seller_payments.read',
     },
     {

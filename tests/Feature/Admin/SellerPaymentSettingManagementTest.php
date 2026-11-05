@@ -131,9 +131,10 @@ class SellerPaymentSettingManagementTest extends TestCase
         $earning = $this->createPendingEarning($seller);
 
         $this->actingAs($admin)
-            ->get(route('admin.settings.seller-payments.edit'))
+            ->get(route('admin.settlement-earnings.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/settlement-earnings/index')
                 ->where('marketplaceTimezone', 'Asia/Kolkata')
                 ->where('earnings.data.0.id', $earning->public_id)
                 ->where('earnings.data.0.seller.name', 'Cycle Seller')
@@ -143,6 +144,31 @@ class SellerPaymentSettingManagementTest extends TestCase
                 ->where('earnings.data.0.cycle.endDay', 10)
                 ->where('earnings.data.0.cycle.settlementDay', 12)
                 ->where('earnings.data.0.canProcessNow', true));
+    }
+
+    public function test_admin_can_filter_settlement_earnings_by_applied_cycle(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+        $seller = User::factory()->create();
+        $matching = $this->createPendingEarning($seller);
+        $legacy = $this->createPendingEarning($seller);
+        $legacy->update(['calculation_snapshot' => ['settlement' => ['type' => 'legacy_hold', 'earning_hold_days' => 7]]]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.settlement-earnings.index', ['cycle' => '5-10-12']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.cycle', '5-10-12')
+                ->has('earnings.data', 1)
+                ->where('earnings.data.0.id', $matching->public_id));
+
+        $this->actingAs($admin)
+            ->get(route('admin.settlement-earnings.index', ['cycle' => 'legacy']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.cycle', 'legacy')
+                ->has('earnings.data', 1)
+                ->where('earnings.data.0.id', $legacy->public_id));
     }
 
     public function test_super_admin_can_process_an_automatic_test_settlement_now(): void

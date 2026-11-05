@@ -22,12 +22,6 @@ class SellerPaymentSettingController extends Controller
     {
         $settings = SiteSetting::current();
         $timezone = (string) config('designhub.marketplace_timezone', 'Asia/Kolkata');
-        $earnings = SaleEarning::query()
-            ->with('seller:id,name,seller_settlement_mode')
-            ->latest('id')
-            ->paginate(15, ['*'], 'earningsPage')
-            ->withQueryString()
-            ->through(fn (SaleEarning $earning) => $this->serializeEarning($earning));
 
         return Inertia::render('admin/settings/seller-payments', [
             'settings' => [
@@ -56,7 +50,6 @@ class SellerPaymentSettingController extends Controller
             'paymentEnvironment' => config('designhub.payment_environment', 'test'),
             'marketplaceTimezone' => $timezone,
             'serverTime' => now()->setTimezone($timezone)->toIso8601String(),
-            'earnings' => $earnings,
         ]);
     }
 
@@ -185,41 +178,6 @@ class SellerPaymentSettingController extends Controller
             : 'Test earning moved from waiting settlement to the seller available balance.';
 
         return back()->with('success', $message);
-    }
-
-    /** @return array<string, mixed> */
-    private function serializeEarning(SaleEarning $earning): array
-    {
-        $settlement = data_get($earning->calculation_snapshot, 'settlement', []);
-        $cycleType = (string) data_get($settlement, 'type', 'legacy_hold');
-
-        return [
-            'id' => $earning->public_id,
-            'itemName' => $earning->item_name,
-            'itemType' => $earning->item_type,
-            'seller' => [
-                'name' => $earning->seller?->name ?? 'Unknown seller',
-                'settlementMode' => $earning->seller?->seller_settlement_mode ?? 'manual',
-            ],
-            'buyerPaidPaise' => $earning->buyer_paid_paise,
-            'commissionPaise' => $earning->commission_paise,
-            'sellerNetPaise' => $earning->seller_net_paise,
-            'commissionPercent' => $earning->commission_basis_points / 100,
-            'status' => $earning->status,
-            'paymentEnvironment' => $earning->payment_environment,
-            'createdAt' => $earning->created_at?->toIso8601String(),
-            'availableAt' => $earning->available_at?->toIso8601String(),
-            'cycle' => [
-                'type' => $cycleType,
-                'startDay' => data_get($settlement, 'start_day'),
-                'endDay' => data_get($settlement, 'end_day'),
-                'settlementDay' => data_get($settlement, 'settlement_day'),
-                'holdDays' => data_get($settlement, 'earning_hold_days'),
-            ],
-            'canProcessNow' => config('designhub.payment_environment', 'test') === 'test'
-                && $earning->payment_environment === 'test'
-                && $earning->status === 'pending',
-        ];
     }
 
     private function basisPointsToPercent(int $basisPoints): string
