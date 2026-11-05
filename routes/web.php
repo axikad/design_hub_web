@@ -62,6 +62,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::put('admin/settings/seller-payments', [SellerPaymentSettingController::class, 'update'])
         ->middleware('permission:seller_payments.update')
         ->name('admin.settings.seller-payments.update');
+    Route::post('admin/settings/seller-payments/earnings/{earning:public_id}/process-now', [SellerPaymentSettingController::class, 'processNow'])
+        ->middleware('permission:seller_payments.update')
+        ->name('admin.settings.seller-payments.earnings.process-now');
 
     Route::get('admin/content-pages', [ContentPageAdminController::class, 'index'])
         ->middleware('permission:branding.read')

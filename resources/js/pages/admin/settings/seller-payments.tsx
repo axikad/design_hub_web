@@ -1,5 +1,6 @@
 import { AdminFormPanel } from '@/components/admin/admin-form-panel';
 import { AdminPageHeader } from '@/components/admin/page-header';
+import { PaginationLinks } from '@/components/admin/pagination-links';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -8,9 +9,21 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
-import { Head, useForm, usePage } from '@inertiajs/react';
-import { CalendarClock, FlaskConical, LoaderCircle, Percent, Plus, ReceiptText, Save, ShieldCheck, Trash2, WalletCards } from 'lucide-react';
-import { type FormEventHandler, type ReactNode } from 'react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import {
+    CalendarClock,
+    FlaskConical,
+    LoaderCircle,
+    Percent,
+    PlayCircle,
+    Plus,
+    ReceiptText,
+    Save,
+    ShieldCheck,
+    Trash2,
+    WalletCards,
+} from 'lucide-react';
+import { type FormEventHandler, type ReactNode, useEffect, useState } from 'react';
 
 type SellerPaymentSettings = {
     sellerPayoutsEnabled: boolean;
@@ -31,6 +44,37 @@ type SellerPaymentSettings = {
 type Props = {
     settings: SellerPaymentSettings;
     paymentEnvironment: string;
+    marketplaceTimezone: string;
+    serverTime: string;
+    earnings: PaginatedEarnings;
+};
+
+type SettlementEarning = {
+    id: string;
+    itemName: string;
+    itemType: string;
+    seller: { name: string; settlementMode: 'manual' | 'automatic' };
+    buyerPaidPaise: number;
+    commissionPaise: number;
+    sellerNetPaise: number;
+    commissionPercent: number;
+    status: string;
+    paymentEnvironment: string;
+    createdAt: string | null;
+    availableAt: string | null;
+    cycle: {
+        type: string;
+        startDay: number | null;
+        endDay: number | null;
+        settlementDay: number | null;
+        holdDays: number | null;
+    };
+    canProcessNow: boolean;
+};
+
+type PaginatedEarnings = {
+    data: SettlementEarning[];
+    links: { url: string | null; label: string; active: boolean }[];
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -40,11 +84,18 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const inputClass = 'h-11 rounded-xl border-slate-200 focus-visible:border-indigo-500 dark:border-slate-700';
 
-export default function SellerPaymentSettingsPage({ settings, paymentEnvironment }: Props) {
+export default function SellerPaymentSettingsPage({ settings, paymentEnvironment, marketplaceTimezone, serverTime, earnings }: Props) {
     const permissions = usePage<SharedData>().props.auth.permissions ?? [];
     const canUpdate = permissions.includes('seller_payments.update');
     const form = useForm({ ...settings });
     const { data, setData, put, processing, errors, isDirty } = form;
+    const [currentTime, setCurrentTime] = useState(() => new Date(serverTime));
+    const [processingEarning, setProcessingEarning] = useState<string | null>(null);
+
+    useEffect(() => {
+        const timer = window.setInterval(() => setCurrentTime((value) => new Date(value.getTime() + 1000)), 1000);
+        return () => window.clearInterval(timer);
+    }, []);
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
@@ -70,6 +121,9 @@ export default function SellerPaymentSettingsPage({ settings, paymentEnvironment
                         <p className="mt-1 text-sm opacity-80">
                             Payment mode is controlled by the secure server environment. Saved values apply to future transactions only; existing
                             earnings keep their original snapshot.
+                        </p>
+                        <p className="mt-2 text-xs font-medium">
+                            Marketplace time: {formatDateTime(currentTime, marketplaceTimezone)} ({marketplaceTimezone})
                         </p>
                     </div>
                 </div>
@@ -122,34 +176,78 @@ export default function SellerPaymentSettingsPage({ settings, paymentEnvironment
                                 </div>
                             ) : null}
                             {data.settlementCycles.map((cycle, index) => (
-                                <div key={index} className="grid items-end gap-3 rounded-xl border border-slate-200 p-4 sm:grid-cols-[1fr_1fr_1fr_auto] dark:border-slate-700">
-                                    <DaySelect label="From day" value={cycle.startDay} disabled={!canUpdate} onChange={(value) => {
-                                        const next = [...data.settlementCycles]; next[index] = { ...cycle, startDay: value }; setData('settlementCycles', next);
-                                    }} />
-                                    <DaySelect label="To day" value={cycle.endDay} disabled={!canUpdate} onChange={(value) => {
-                                        const next = [...data.settlementCycles]; next[index] = { ...cycle, endDay: value }; setData('settlementCycles', next);
-                                    }} />
-                                    <DaySelect label="Settlement day" value={cycle.settlementDay} disabled={!canUpdate} onChange={(value) => {
-                                        const next = [...data.settlementCycles]; next[index] = { ...cycle, settlementDay: value }; setData('settlementCycles', next);
-                                    }} />
+                                <div
+                                    key={index}
+                                    className="grid items-end gap-3 rounded-xl border border-slate-200 p-4 sm:grid-cols-[1fr_1fr_1fr_auto] dark:border-slate-700"
+                                >
+                                    <DaySelect
+                                        label="From day"
+                                        value={cycle.startDay}
+                                        disabled={!canUpdate}
+                                        onChange={(value) => {
+                                            const next = [...data.settlementCycles];
+                                            next[index] = { ...cycle, startDay: value };
+                                            setData('settlementCycles', next);
+                                        }}
+                                    />
+                                    <DaySelect
+                                        label="To day"
+                                        value={cycle.endDay}
+                                        disabled={!canUpdate}
+                                        onChange={(value) => {
+                                            const next = [...data.settlementCycles];
+                                            next[index] = { ...cycle, endDay: value };
+                                            setData('settlementCycles', next);
+                                        }}
+                                    />
+                                    <DaySelect
+                                        label="Settlement day"
+                                        value={cycle.settlementDay}
+                                        disabled={!canUpdate}
+                                        onChange={(value) => {
+                                            const next = [...data.settlementCycles];
+                                            next[index] = { ...cycle, settlementDay: value };
+                                            setData('settlementCycles', next);
+                                        }}
+                                    />
                                     {canUpdate ? (
-                                        <Button type="button" variant="outline" size="icon" className="h-11 rounded-xl text-red-600" onClick={() => setData('settlementCycles', data.settlementCycles.filter((_, row) => row !== index))}>
-                                            <Trash2 className="size-4" /><span className="sr-only">Remove cycle</span>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="icon"
+                                            className="h-11 rounded-xl text-red-600"
+                                            onClick={() =>
+                                                setData(
+                                                    'settlementCycles',
+                                                    data.settlementCycles.filter((_, row) => row !== index),
+                                                )
+                                            }
+                                        >
+                                            <Trash2 className="size-4" />
+                                            <span className="sr-only">Remove cycle</span>
                                         </Button>
                                     ) : null}
                                 </div>
                             ))}
                             <InputError message={(errors as Record<string, string>).settlementCycles} />
                             {canUpdate ? (
-                                <Button type="button" variant="outline" className="rounded-xl" onClick={() => {
-                                    const previousEnd = data.settlementCycles.at(-1)?.endDay ?? 0;
-                                    const startDay = Math.min(previousEnd + 1, 31);
-                                    setData('settlementCycles', [...data.settlementCycles, { startDay, endDay: 31, settlementDay: 1 }]);
-                                }}>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="rounded-xl"
+                                    onClick={() => {
+                                        const previousEnd = data.settlementCycles.at(-1)?.endDay ?? 0;
+                                        const startDay = Math.min(previousEnd + 1, 31);
+                                        setData('settlementCycles', [...data.settlementCycles, { startDay, endDay: 31, settlementDay: 1 }]);
+                                    }}
+                                >
                                     <Plus className="size-4" /> Add cycle
                                 </Button>
                             ) : null}
-                            <p className="text-xs text-slate-500">If the settlement day is inside or before the cycle, payout is scheduled in the following month. Day 31 is automatically clamped for shorter months.</p>
+                            <p className="text-xs text-slate-500">
+                                If the settlement day is inside or before the cycle, payout is scheduled in the following month. Day 31 is
+                                automatically clamped for shorter months.
+                            </p>
                         </div>
                     </AdminFormPanel>
 
@@ -245,9 +343,158 @@ export default function SellerPaymentSettingsPage({ settings, paymentEnvironment
                         ) : null}
                     </div>
                 </form>
+
+                <AdminFormPanel
+                    title="Settlement earnings"
+                    description="Review the cycle and scheduled settlement time captured when each sale was paid. Existing earnings keep this snapshot even when cycles change."
+                    icon={WalletCards}
+                >
+                    {earnings.data.length ? (
+                        <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-[1050px] text-left text-sm">
+                                    <thead className="bg-slate-50 text-xs tracking-wide text-slate-500 uppercase dark:bg-slate-800/70 dark:text-slate-400">
+                                        <tr>
+                                            <th className="px-4 py-3">Sale</th>
+                                            <th className="px-4 py-3">Seller</th>
+                                            <th className="px-4 py-3">Amounts</th>
+                                            <th className="px-4 py-3">Applied cycle</th>
+                                            <th className="px-4 py-3">Settlement time</th>
+                                            <th className="px-4 py-3">Status</th>
+                                            <th className="px-4 py-3 text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                                        {earnings.data.map((earning) => (
+                                            <tr key={earning.id} className="align-top text-slate-700 dark:text-slate-200">
+                                                <td className="px-4 py-4">
+                                                    <p className="font-semibold text-slate-900 dark:text-white">{earning.itemName}</p>
+                                                    <p className="mt-1 text-xs text-slate-500">
+                                                        {earning.itemType} · {formatDateTime(earning.createdAt, marketplaceTimezone)}
+                                                    </p>
+                                                </td>
+                                                <td className="px-4 py-4">
+                                                    <p className="font-medium">{earning.seller.name}</p>
+                                                    <p className="mt-1 text-xs text-slate-500 capitalize">
+                                                        {earning.seller.settlementMode} settlement
+                                                    </p>
+                                                </td>
+                                                <td className="px-4 py-4 text-xs">
+                                                    <p>
+                                                        Buyer: <strong>{formatMoney(earning.buyerPaidPaise)}</strong>
+                                                    </p>
+                                                    <p className="mt-1 text-red-600">
+                                                        Commission ({earning.commissionPercent}%): -{formatMoney(earning.commissionPaise)}
+                                                    </p>
+                                                    <p className="mt-1 font-semibold text-emerald-600">
+                                                        Seller: {formatMoney(earning.sellerNetPaise)}
+                                                    </p>
+                                                </td>
+                                                <td className="px-4 py-4 text-xs">
+                                                    <p className="font-medium">{cycleLabel(earning)}</p>
+                                                    <p className="mt-1 text-slate-500">Snapshot saved at purchase</p>
+                                                </td>
+                                                <td className="px-4 py-4">
+                                                    <p className="font-medium">{formatDateTime(earning.availableAt, marketplaceTimezone)}</p>
+                                                    <p className="mt-1 text-xs text-slate-500">{marketplaceTimezone}</p>
+                                                </td>
+                                                <td className="px-4 py-4">
+                                                    <StatusBadge status={earning.status} />
+                                                    <p className="mt-2 text-xs text-slate-400 uppercase">{earning.paymentEnvironment}</p>
+                                                </td>
+                                                <td className="px-4 py-4 text-right">
+                                                    {canUpdate && earning.canProcessNow ? (
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="rounded-lg"
+                                                            disabled={processingEarning !== null}
+                                                            onClick={() => {
+                                                                if (
+                                                                    !window.confirm(
+                                                                        'Process this test earning now? This bypasses its scheduled date.',
+                                                                    )
+                                                                )
+                                                                    return;
+                                                                setProcessingEarning(earning.id);
+                                                                router.post(
+                                                                    route('admin.settings.seller-payments.earnings.process-now', earning.id),
+                                                                    {},
+                                                                    { preserveScroll: true, onFinish: () => setProcessingEarning(null) },
+                                                                );
+                                                            }}
+                                                        >
+                                                            {processingEarning === earning.id ? (
+                                                                <LoaderCircle className="size-4 animate-spin" />
+                                                            ) : (
+                                                                <PlayCircle className="size-4" />
+                                                            )}
+                                                            Process now
+                                                        </Button>
+                                                    ) : (
+                                                        <span className="text-xs text-slate-400">No action</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <PaginationLinks paginator={earnings} />
+                        </div>
+                    ) : (
+                        <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-700">
+                            No seller earnings have been recorded yet.
+                        </div>
+                    )}
+                    {paymentEnvironment === 'test' ? (
+                        <p className="mt-3 text-xs text-slate-500">
+                            Process now is test-only. It safely moves a waiting earning through the same release and automatic payout services used by
+                            the scheduler.
+                        </p>
+                    ) : null}
+                </AdminFormPanel>
             </div>
         </AppLayout>
     );
+}
+
+function formatMoney(paise: number): string {
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(paise / 100);
+}
+
+function formatDateTime(value: string | Date | null, timeZone: string): string {
+    if (!value) return 'Not scheduled';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Not scheduled';
+
+    return new Intl.DateTimeFormat('en-IN', {
+        dateStyle: 'medium',
+        timeStyle: 'medium',
+        timeZone,
+    }).format(date);
+}
+
+function cycleLabel(earning: SettlementEarning): string {
+    if (earning.cycle.type === 'monthly_cycle' && earning.cycle.startDay && earning.cycle.endDay && earning.cycle.settlementDay) {
+        return `Sale days ${earning.cycle.startDay}–${earning.cycle.endDay} → day ${earning.cycle.settlementDay}`;
+    }
+    if (earning.cycle.holdDays !== null) return `Legacy hold: ${earning.cycle.holdDays} day(s)`;
+    return 'Legacy settlement rule';
+}
+
+function StatusBadge({ status }: { status: string }) {
+    const normalized = status.toLowerCase();
+    const styles =
+        normalized === 'pending'
+            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200'
+            : normalized === 'available'
+              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200'
+              : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200';
+    const label = normalized === 'pending' ? 'Waiting settlement' : normalized === 'available' ? 'Released' : status;
+
+    return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${styles}`}>{label}</span>;
 }
 
 function DaySelect({ label, value, onChange, disabled }: { label: string; value: number; onChange: (value: number) => void; disabled?: boolean }) {
@@ -255,8 +502,16 @@ function DaySelect({ label, value, onChange, disabled }: { label: string; value:
         <div className="grid gap-2">
             <Label>{label}</Label>
             <Select value={String(value)} onValueChange={(next) => onChange(Number(next))} disabled={disabled}>
-                <SelectTrigger className={inputClass}><SelectValue /></SelectTrigger>
-                <SelectContent>{Array.from({ length: 31 }, (_, index) => index + 1).map((day) => <SelectItem key={day} value={String(day)}>{day}</SelectItem>)}</SelectContent>
+                <SelectTrigger className={inputClass}>
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
+                        <SelectItem key={day} value={String(day)}>
+                            {day}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
             </Select>
         </div>
     );

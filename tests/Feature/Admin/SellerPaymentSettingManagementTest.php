@@ -4,6 +4,8 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Permission;
 use App\Models\Role;
+use App\Models\SaleEarning;
+use App\Models\SellerLedgerEntry;
 use App\Models\SiteSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -120,6 +122,119 @@ class SellerPaymentSettingManagementTest extends TestCase
 
         $this->assertDatabaseHas('settlement_cycles', ['start_day' => 1, 'end_day' => 4, 'settlement_day' => 6]);
         $this->assertDatabaseHas('settlement_cycles', ['start_day' => 5, 'end_day' => 31, 'settlement_day' => 3]);
+    }
+
+    public function test_admin_can_review_the_cycle_and_scheduled_time_for_each_earning(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+        $seller = User::factory()->create(['name' => 'Cycle Seller', 'seller_settlement_mode' => 'manual']);
+        $earning = $this->createPendingEarning($seller);
+
+        $this->actingAs($admin)
+            ->get(route('admin.settings.seller-payments.edit'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('marketplaceTimezone', 'Asia/Kolkata')
+                ->where('earnings.data.0.id', $earning->public_id)
+                ->where('earnings.data.0.seller.name', 'Cycle Seller')
+                ->where('earnings.data.0.seller.settlementMode', 'manual')
+                ->where('earnings.data.0.cycle.type', 'monthly_cycle')
+                ->where('earnings.data.0.cycle.startDay', 5)
+                ->where('earnings.data.0.cycle.endDay', 10)
+                ->where('earnings.data.0.cycle.settlementDay', 12)
+                ->where('earnings.data.0.canProcessNow', true));
+    }
+
+    public function test_super_admin_can_process_an_automatic_test_settlement_now(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+        $seller = User::factory()->create(['seller_settlement_mode' => 'automatic']);
+        $earning = $this->createPendingEarning($seller);
+        SiteSetting::current()->update(['seller_payouts_enabled' => true]);
+        SiteSetting::forgetCache();
+
+        $this->actingAs($admin)
+            ->from(route('admin.settings.seller-payments.edit'))
+            ->post(route('admin.settings.seller-payments.earnings.process-now', $earning->public_id))
+            ->assertRedirect(route('admin.settings.seller-payments.edit'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('sale_earnings', ['id' => $earning->id, 'status' => 'available']);
+        $this->assertDatabaseHas('withdrawals', [
+            'seller_id' => $seller->id,
+            'amount_paise' => 7500,
+            'request_source' => 'automatic',
+            'payout_mode' => 'simulated',
+            'status' => 'paid',
+        ]);
+        $this->assertSame(0, (int) SellerLedgerEntry::query()->where('seller_id', $seller->id)->where('balance_bucket', 'available')->sum('amount_paise'));
+        $this->assertSame(7500, (int) SellerLedgerEntry::query()->where('seller_id', $seller->id)->where('balance_bucket', 'paid')->sum('amount_paise'));
+    }
+
+    public function test_process_now_is_never_available_in_live_mode(): void
+    {
+        config()->set('designhub.payment_environment', 'live');
+        $admin = User::factory()->superAdmin()->create();
+        $seller = User::factory()->create(['seller_settlement_mode' => 'automatic']);
+        $earning = $this->createPendingEarning($seller, 'live');
+
+        $this->actingAs($admin)
+            ->post(route('admin.settings.seller-payments.earnings.process-now', $earning->public_id))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('sale_earnings', ['id' => $earning->id, 'status' => 'pending']);
+        $this->assertDatabaseCount('withdrawals', 0);
+    }
+
+    private function createPendingEarning(User $seller, string $environment = 'test'): SaleEarning
+    {
+        $buyer = User::factory()->create();
+        $earning = SaleEarning::query()->create([
+            'seller_id' => $seller->id,
+            'buyer_id' => $buyer->id,
+            'item_type' => 'design',
+            'item_id' => 1001,
+            'item_public_id' => 'design_cycle_admin_test',
+            'item_name' => 'Cycle Admin Test',
+            'currency' => 'INR',
+            'payment_environment' => $environment,
+            'taxable_amount_paise' => 10000,
+            'buyer_gst_paise' => 0,
+            'buyer_paid_paise' => 10000,
+            'commission_basis_points' => 2500,
+            'commission_paise' => 2500,
+            'seller_gross_paise' => 7500,
+            'commission_gst_paise' => 0,
+            'tds_paise' => 0,
+            'gst_tcs_paise' => 0,
+            'provider_fee_paise' => 0,
+            'refund_paise' => 0,
+            'seller_net_paise' => 7500,
+            'status' => 'pending',
+            'available_at' => now()->addWeek(),
+            'calculation_snapshot' => [
+                'settlement' => [
+                    'type' => 'monthly_cycle',
+                    'start_day' => 5,
+                    'end_day' => 10,
+                    'settlement_day' => 12,
+                    'timezone' => 'Asia/Kolkata',
+                ],
+            ],
+        ]);
+
+        SellerLedgerEntry::query()->create([
+            'seller_id' => $seller->id,
+            'sale_earning_id' => $earning->id,
+            'entry_type' => 'sale_earning_pending',
+            'balance_bucket' => 'pending',
+            'amount_paise' => 7500,
+            'currency' => 'INR',
+            'payment_environment' => $environment,
+            'idempotency_key' => 'admin-cycle-test-'.$earning->public_id,
+        ]);
+
+        return $earning;
     }
 
     /** @param array<string, mixed> $overrides */
