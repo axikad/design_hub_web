@@ -275,6 +275,28 @@ These Bearer-authenticated endpoints expose only the authenticated seller's reco
 
 All money values use integer paise. The app must display `paymentEnvironment` and clearly label `isTestMode: true` balances and withdrawals as simulated money. It must not calculate balances, commission or withdrawal eligibility locally. `canWithdraw`, `hasOpenWithdrawal` and `minimumWithdrawalPaise` come from the backend. These endpoints require the applicable own-finance permissions assigned to the marketplace user role.
 
+Each `/seller/earnings` row includes the immutable settlement snapshot captured when the buyer paid. Render `settlement.label` and format `settlement.scheduledAt` in the user's locale. Do not recalculate a date from the current Admin cycles because a later settings change must not alter an old earning.
+
+```json
+{
+  "status": "pending",
+  "sellerNetPaise": 7500,
+  "availableAt": "2026-11-12T00:00:00+05:30",
+  "settlement": {
+    "type": "monthly_cycle",
+    "startDay": 5,
+    "endDay": 10,
+    "settlementDay": 12,
+    "holdDays": null,
+    "timezone": "Asia/Kolkata",
+    "scheduledAt": "2026-11-12T00:00:00+05:30",
+    "label": "Sales from day 5 to 10 settle on day 12"
+  }
+}
+```
+
+For old records, `type` is `legacy_hold`, the three cycle-day fields are `null`, and `label` explains the legacy hold. The mobile UI should present that label without treating it as an error.
+
 Create request body:
 
 ```json

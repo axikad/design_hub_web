@@ -58,6 +58,13 @@ class SellerWalletApiTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $earning->public_id)
             ->assertJsonPath('data.0.sellerNetPaise', 7500)
+            ->assertJsonPath('data.0.settlement.type', 'monthly_cycle')
+            ->assertJsonPath('data.0.settlement.startDay', 5)
+            ->assertJsonPath('data.0.settlement.endDay', 10)
+            ->assertJsonPath('data.0.settlement.settlementDay', 12)
+            ->assertJsonPath('data.0.settlement.timezone', 'Asia/Kolkata')
+            ->assertJsonPath('data.0.settlement.label', 'Sales from day 5 to 10 settle on day 12')
+            ->assertJsonPath('data.0.settlement.scheduledAt', $earning->available_at->toIso8601String())
             ->assertJsonPath('meta.total', 1);
 
         $this->getJson('/api/v1/seller/transactions?per_page=20')
@@ -66,6 +73,29 @@ class SellerWalletApiTest extends TestCase
             ->assertJsonPath('data.0.id', $entry->public_id)
             ->assertJsonPath('data.0.earningId', $earning->public_id)
             ->assertJsonPath('meta.total', 1);
+    }
+
+    public function test_legacy_earning_returns_a_safe_settlement_description(): void
+    {
+        $seller = $this->marketplaceUser();
+        $earning = $this->createEarning($seller);
+        $earning->update([
+            'calculation_snapshot' => [
+                'settlement' => [
+                    'type' => 'legacy_hold',
+                    'earning_hold_days' => 7,
+                    'timezone' => 'Asia/Kolkata',
+                ],
+            ],
+        ]);
+        Sanctum::actingAs($seller);
+
+        $this->getJson('/api/v1/seller/earnings')
+            ->assertOk()
+            ->assertJsonPath('data.0.settlement.type', 'legacy_hold')
+            ->assertJsonPath('data.0.settlement.holdDays', 7)
+            ->assertJsonPath('data.0.settlement.label', '7-day earning hold')
+            ->assertJsonPath('data.0.settlement.startDay', null);
     }
 
     public function test_user_without_own_finance_permissions_is_forbidden(): void
@@ -118,7 +148,15 @@ class SellerWalletApiTest extends TestCase
             'seller_net_paise' => 7500,
             'status' => 'pending',
             'available_at' => now()->addDays(7),
-            'calculation_snapshot' => [],
+            'calculation_snapshot' => [
+                'settlement' => [
+                    'type' => 'monthly_cycle',
+                    'start_day' => 5,
+                    'end_day' => 10,
+                    'settlement_day' => 12,
+                    'timezone' => 'Asia/Kolkata',
+                ],
+            ],
         ]);
     }
 

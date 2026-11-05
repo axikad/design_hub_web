@@ -1003,6 +1003,7 @@ The test-mode marketplace MVP is ready when all of these are true:
 - [x] Each seller can use `manual` wallet withdrawal or `automatic` cycle settlement.
 - [x] Manual-withdrawal API/UI is disabled for automatic sellers.
 - [x] In test mode, an automatic settlement is completed through the internal simulator.
+- [x] Seller earnings API returns the saved cycle, scheduled timestamp, timezone and a display label for mobile.
 - [ ] In live mode, connect the automatic withdrawal request to the chosen payout provider and its webhook.
 - [ ] Add failure/retry/reversal handling after the live payout provider is selected.
 

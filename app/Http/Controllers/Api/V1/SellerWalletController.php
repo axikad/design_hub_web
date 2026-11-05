@@ -64,10 +64,49 @@ class SellerWalletController extends Controller
                 'sellerNetPaise' => $earning->seller_net_paise,
                 'status' => $earning->status,
                 'availableAt' => $earning->available_at?->toIso8601String(),
+                'settlement' => $this->settlementSnapshot($earning),
                 'createdAt' => $earning->created_at->toIso8601String(),
             ])->values(),
             'Seller earnings retrieved successfully.',
         );
+    }
+
+    /** @return array<string, int|string|null> */
+    private function settlementSnapshot(SaleEarning $earning): array
+    {
+        $snapshot = data_get($earning->calculation_snapshot, 'settlement', []);
+        $type = (string) data_get($snapshot, 'type', 'legacy_hold');
+        $timezone = (string) data_get($snapshot, 'timezone', config('designhub.marketplace_timezone', 'Asia/Kolkata'));
+
+        if ($type === 'monthly_cycle') {
+            $startDay = (int) data_get($snapshot, 'start_day');
+            $endDay = (int) data_get($snapshot, 'end_day');
+            $settlementDay = (int) data_get($snapshot, 'settlement_day');
+
+            return [
+                'type' => 'monthly_cycle',
+                'startDay' => $startDay,
+                'endDay' => $endDay,
+                'settlementDay' => $settlementDay,
+                'holdDays' => null,
+                'timezone' => $timezone,
+                'scheduledAt' => $earning->available_at?->toIso8601String(),
+                'label' => "Sales from day {$startDay} to {$endDay} settle on day {$settlementDay}",
+            ];
+        }
+
+        $holdDays = data_get($snapshot, 'earning_hold_days');
+
+        return [
+            'type' => 'legacy_hold',
+            'startDay' => null,
+            'endDay' => null,
+            'settlementDay' => null,
+            'holdDays' => $holdDays === null ? null : (int) $holdDays,
+            'timezone' => $timezone,
+            'scheduledAt' => $earning->available_at?->toIso8601String(),
+            'label' => $holdDays === null ? 'Legacy settlement rule' : "{$holdDays}-day earning hold",
+        ];
     }
 
     public function transactions(Request $request): JsonResponse
