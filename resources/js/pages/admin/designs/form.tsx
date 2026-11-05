@@ -599,7 +599,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                         onChange={(event) => setData('stitchFiles', Array.from(event.target.files ?? []))}
                                         className={inputClass}
                                     />
-                                    <p className="mt-2 text-xs text-slate-500">Maximum 20 files, 5 MB per file.</p>
+                                    <p className="mt-2 text-xs text-slate-500">Maximum 20 files.</p>
                                     <InputError message={errors.stitchFiles} className="mt-2" />
                                 </AdminFormPanel>
                             ) : null}

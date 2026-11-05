@@ -78,7 +78,7 @@ class DesignManagementTest extends TestCase
                 UploadedFile::fake()->image('back.png'),
             ],
             'stitchFiles' => [
-                UploadedFile::fake()->create('original.emb', 100, 'application/octet-stream'),
+                UploadedFile::fake()->create('original.emb', 6000, 'application/octet-stream'),
                 UploadedFile::fake()->create('alternate.dst', 100, 'application/octet-stream'),
             ],
         ])->assertRedirect(route('admin.designs.index'));

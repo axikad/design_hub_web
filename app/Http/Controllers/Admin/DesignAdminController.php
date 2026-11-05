@@ -441,7 +441,7 @@ class DesignAdminController extends Controller
             'previewImages.*' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'previewImage' => [$creating && $config['previewImages'] && $required['previewImages'] ? 'required_without:previewImages' : 'nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'stitchFiles' => [$creating && $config['stitchFiles'] && $required['stitchFiles'] ? 'required' : 'nullable', 'array', 'min:1', 'max:20'],
-            'stitchFiles.*' => ['required', 'file', 'max:5120'],
+            'stitchFiles.*' => ['required', 'file'],
         ];
 
         $validated = $request->validate($rules);
