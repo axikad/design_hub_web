@@ -54,7 +54,8 @@ class SellerWalletController extends Controller
                 'netTransferPaise' => $withdrawal->net_transfer_paise,
                 'status' => $withdrawal->status,
                 'payoutMode' => $withdrawal->payout_mode,
-                'canCancel' => $withdrawal->status === 'requested',
+                'requestSource' => $withdrawal->request_source ?? 'seller',
+                'canCancel' => $withdrawal->status === 'requested' && $withdrawal->request_source !== 'automatic',
                 'requestedAt' => $withdrawal->requested_at?->toIso8601String(),
             ]);
 

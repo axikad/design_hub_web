@@ -16,6 +16,7 @@ class SaleEarningService
     public function __construct(
         private readonly CommissionCalculator $calculator,
         private readonly MarketplacePaymentSettings $settings,
+        private readonly SettlementScheduleService $settlements,
     ) {}
 
     public function createForDesignPurchase(Purchase $purchase, Design $design): SaleEarning
@@ -84,6 +85,7 @@ class SaleEarningService
             $folderPurchaseId,
             $commissionBasisPoints,
         ): SaleEarning {
+            $settlement = $this->settlements->scheduleFor(now());
             $breakdown = $this->calculator->calculate(
                 taxableAmountPaise: (int) $purchase->amount_paise,
                 buyerPaidPaise: (int) $purchase->amount_paise,
@@ -110,11 +112,11 @@ class SaleEarningService
                     ...$breakdown,
                     'refund_paise' => 0,
                     'status' => 'pending',
-                    'available_at' => now()->addDays($this->settings->earningHoldDays()),
+                    'available_at' => $settlement['availableAt'],
                     'calculation_snapshot' => [
                         ...$breakdown,
                         'payment_environment' => $purchase->payment_environment,
-                        'earning_hold_days' => $this->settings->earningHoldDays(),
+                        'settlement' => $settlement['snapshot'],
                     ],
                 ],
             );

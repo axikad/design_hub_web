@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\SettlementCycle;
 use App\Models\SiteSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -29,6 +32,15 @@ class SellerPaymentSettingController extends Controller
                 'tdsPercent' => $this->basisPointsToPercent((int) ($settings->tds_basis_points ?? 0)),
                 'gstTcsEnabled' => (bool) ($settings->gst_tcs_enabled ?? false),
                 'gstTcsPercent' => $this->basisPointsToPercent((int) ($settings->gst_tcs_basis_points ?? 0)),
+                'settlementCycles' => SettlementCycle::query()
+                    ->orderBy('sort_order')
+                    ->orderBy('start_day')
+                    ->get()
+                    ->map(fn (SettlementCycle $cycle) => [
+                        'startDay' => $cycle->start_day,
+                        'endDay' => $cycle->end_day,
+                        'settlementDay' => $cycle->settlement_day,
+                    ])->values()->all(),
             ],
             'paymentEnvironment' => config('designhub.payment_environment', 'test'),
         ]);
@@ -49,22 +61,62 @@ class SellerPaymentSettingController extends Controller
             'tdsPercent' => ['required', 'numeric', 'between:0,100', 'decimal:0,2'],
             'gstTcsEnabled' => ['required', 'boolean'],
             'gstTcsPercent' => ['required', 'numeric', 'between:0,100', 'decimal:0,2'],
+            'settlementCycles' => ['sometimes', 'array', 'max:31'],
+            'settlementCycles.*.startDay' => ['required', 'integer', 'between:1,31'],
+            'settlementCycles.*.endDay' => ['required', 'integer', 'between:1,31'],
+            'settlementCycles.*.settlementDay' => ['required', 'integer', 'between:1,31'],
         ]);
 
-        SiteSetting::current()->update([
-            'seller_payouts_enabled' => $validated['sellerPayoutsEnabled'],
-            'platform_commission_basis_points' => $this->percentToBasisPoints($validated['platformCommissionPercent']),
-            'earning_hold_days' => $validated['earningHoldDays'],
-            'minimum_withdrawal_paise' => $this->rupeesToPaise($validated['minimumWithdrawalRupees']),
-            'buyer_gst_enabled' => $validated['buyerGstEnabled'],
-            'buyer_gst_basis_points' => $this->percentToBasisPoints($validated['buyerGstPercent']),
-            'commission_gst_enabled' => $validated['commissionGstEnabled'],
-            'commission_gst_basis_points' => $this->percentToBasisPoints($validated['commissionGstPercent']),
-            'tds_enabled' => $validated['tdsEnabled'],
-            'tds_basis_points' => $this->percentToBasisPoints($validated['tdsPercent']),
-            'gst_tcs_enabled' => $validated['gstTcsEnabled'],
-            'gst_tcs_basis_points' => $this->percentToBasisPoints($validated['gstTcsPercent']),
-        ]);
+        $submittedCycles = $validated['settlementCycles'] ?? SettlementCycle::query()
+            ->orderBy('sort_order')->get()->map(fn (SettlementCycle $cycle) => [
+                'startDay' => $cycle->start_day,
+                'endDay' => $cycle->end_day,
+                'settlementDay' => $cycle->settlement_day,
+            ])->all();
+        $cycles = collect($submittedCycles)->sortBy('startDay')->values();
+        if ($cycles->isNotEmpty()) {
+            $expectedStart = 1;
+            foreach ($cycles as $index => $cycle) {
+                if ($cycle['startDay'] !== $expectedStart || $cycle['endDay'] < $cycle['startDay']) {
+                    throw ValidationException::withMessages([
+                        "settlementCycles.{$index}.startDay" => 'Settlement cycles must cover days 1 through 31 continuously without gaps or overlaps.',
+                    ]);
+                }
+                $expectedStart = $cycle['endDay'] + 1;
+            }
+            if ($expectedStart !== 32) {
+                throw ValidationException::withMessages([
+                    'settlementCycles' => 'Settlement cycles must cover every day from 1 through 31.',
+                ]);
+            }
+        }
+
+        DB::transaction(function () use ($validated, $cycles): void {
+            SiteSetting::current()->update([
+                'seller_payouts_enabled' => $validated['sellerPayoutsEnabled'],
+                'platform_commission_basis_points' => $this->percentToBasisPoints($validated['platformCommissionPercent']),
+                'earning_hold_days' => $validated['earningHoldDays'],
+                'minimum_withdrawal_paise' => $this->rupeesToPaise($validated['minimumWithdrawalRupees']),
+                'buyer_gst_enabled' => $validated['buyerGstEnabled'],
+                'buyer_gst_basis_points' => $this->percentToBasisPoints($validated['buyerGstPercent']),
+                'commission_gst_enabled' => $validated['commissionGstEnabled'],
+                'commission_gst_basis_points' => $this->percentToBasisPoints($validated['commissionGstPercent']),
+                'tds_enabled' => $validated['tdsEnabled'],
+                'tds_basis_points' => $this->percentToBasisPoints($validated['tdsPercent']),
+                'gst_tcs_enabled' => $validated['gstTcsEnabled'],
+                'gst_tcs_basis_points' => $this->percentToBasisPoints($validated['gstTcsPercent']),
+            ]);
+
+            SettlementCycle::query()->delete();
+            foreach ($cycles as $index => $cycle) {
+                SettlementCycle::query()->create([
+                    'start_day' => $cycle['startDay'],
+                    'end_day' => $cycle['endDay'],
+                    'settlement_day' => $cycle['settlementDay'],
+                    'sort_order' => $index + 1,
+                ]);
+            }
+        });
         SiteSetting::forgetCache();
 
         return redirect()

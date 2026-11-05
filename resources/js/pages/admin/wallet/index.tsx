@@ -16,8 +16,11 @@ type Wallet = {
     paymentEnvironment: 'test' | 'live';
     isTestMode: boolean;
     payoutsEnabled: boolean;
+    settlementMode: 'manual' | 'automatic';
+    manualWithdrawalsEnabled: boolean;
     balances: {
         pendingPaise: number;
+        waitingSettlementPaise: number;
         availablePaise: number;
         reservedPaise: number;
         paidPaise: number;
@@ -26,6 +29,7 @@ type Wallet = {
     hasOpenWithdrawal: boolean;
     canWithdraw: boolean;
     nextReleaseAt: string | null;
+    nextSettlementAt: string | null;
 };
 type Earning = {
     id: string;
@@ -44,6 +48,7 @@ type Withdrawal = {
     netTransferPaise: number;
     status: string;
     payoutMode: string;
+    requestSource: string;
     canCancel: boolean;
     requestedAt: string | null;
 };
@@ -129,10 +134,10 @@ export default function SellerWalletIndex({ wallet, earnings, withdrawals, trans
                     </p>
                     <div className="mt-7 grid gap-3 border-t border-slate-500/20 pt-5 sm:grid-cols-4">
                         {[
-                            ['Pending', wallet.balances.pendingPaise],
+                            ['Waiting settlement', wallet.balances.waitingSettlementPaise],
                             ['Reserved', wallet.balances.reservedPaise],
                             ['Paid', wallet.balances.paidPaise],
-                            ['Next release', wallet.nextReleaseAt ? formatDate(wallet.nextReleaseAt) : 'None'],
+                            ['Next settlement', wallet.nextSettlementAt ? formatDate(wallet.nextSettlementAt) : 'None'],
                         ].map(([label, value]) => (
                             <div key={label as string}>
                                 <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">{label}</p>
@@ -153,7 +158,11 @@ export default function SellerWalletIndex({ wallet, earnings, withdrawals, trans
                         </div>
                     </div>
 
-                    {!wallet.payoutsEnabled ? (
+                    {!wallet.manualWithdrawalsEnabled ? (
+                        <p className="mt-5 rounded-xl bg-indigo-50 px-4 py-3 text-sm font-medium text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+                            Automatic settlement is enabled. Eligible earnings are paid on their configured settlement date; no manual request is needed.
+                        </p>
+                    ) : !wallet.payoutsEnabled ? (
                         <p className="mt-5 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500 dark:bg-slate-950">
                             Withdrawals are currently unavailable.
                         </p>
@@ -217,7 +226,9 @@ export default function SellerWalletIndex({ wallet, earnings, withdrawals, trans
                                     {withdrawals.data.map((withdrawal) => (
                                         <div key={withdrawal.id} className="flex flex-wrap items-center justify-between gap-4 p-4">
                                             <div>
-                                                <p className="font-semibold text-slate-900 dark:text-white">Withdrawal request</p>
+                                                <p className="font-semibold text-slate-900 dark:text-white">
+                                                    {withdrawal.requestSource === 'automatic' ? 'Automatic settlement' : 'Withdrawal request'}
+                                                </p>
                                                 <p className="mt-1 text-xs text-slate-500">
                                                     {formatDate(withdrawal.requestedAt)} · {withdrawal.payoutMode}
                                                 </p>

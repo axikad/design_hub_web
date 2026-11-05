@@ -100,6 +100,28 @@ class SellerPaymentSettingManagementTest extends TestCase
             ]);
     }
 
+    public function test_settlement_cycles_must_cover_the_month_without_gaps(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $this->actingAs($admin)->put(route('admin.settings.seller-payments.update'), $this->validPayload([
+            'settlementCycles' => [
+                ['startDay' => 1, 'endDay' => 4, 'settlementDay' => 6],
+                ['startDay' => 6, 'endDay' => 31, 'settlementDay' => 3],
+            ],
+        ]))->assertSessionHasErrors('settlementCycles.1.startDay');
+
+        $this->actingAs($admin)->put(route('admin.settings.seller-payments.update'), $this->validPayload([
+            'settlementCycles' => [
+                ['startDay' => 1, 'endDay' => 4, 'settlementDay' => 6],
+                ['startDay' => 5, 'endDay' => 31, 'settlementDay' => 3],
+            ],
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('settlement_cycles', ['start_day' => 1, 'end_day' => 4, 'settlement_day' => 6]);
+        $this->assertDatabaseHas('settlement_cycles', ['start_day' => 5, 'end_day' => 31, 'settlement_day' => 3]);
+    }
+
     /** @param array<string, mixed> $overrides */
     private function validPayload(array $overrides = []): array
     {

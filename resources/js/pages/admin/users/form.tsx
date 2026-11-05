@@ -29,6 +29,7 @@ type UserForm = {
     allowOtpLogin: boolean;
     allowPasswordLogin: boolean;
     hasPassword: boolean;
+    sellerSettlementMode: 'manual' | 'automatic';
 };
 
 type Props = {
@@ -59,6 +60,7 @@ export default function AdminUserForm({ user, roles, machines }: Props) {
         machineIds: user?.machineIds ?? [],
         allowOtpLogin: user?.allowOtpLogin ?? roles[0]?.slug === 'marketplace_user',
         allowPasswordLogin: user?.allowPasswordLogin ?? roles[0]?.slug !== 'marketplace_user',
+        sellerSettlementMode: user?.sellerSettlementMode ?? 'manual',
     });
 
     const { data, setData, post, put, processing, errors } = form;
@@ -167,6 +169,25 @@ export default function AdminUserForm({ user, roles, machines }: Props) {
                                         ? 'Marketplace users sign in to the mobile app using their phone number.'
                                         : 'Panel users sign in to the admin workspace using email and password.'}
                                 </div>
+                                {isMarketplace ? (
+                                    <div className="grid gap-2">
+                                        <Label>Seller payout method</Label>
+                                        <Select
+                                            value={data.sellerSettlementMode}
+                                            onValueChange={(value: 'manual' | 'automatic') => setData('sellerSettlementMode', value)}
+                                        >
+                                            <SelectTrigger className={fieldClass}><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="manual">Wallet + manual withdrawal</SelectItem>
+                                                <SelectItem value="automatic">Automatic cycle settlement</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-xs text-slate-500">
+                                            Automatic sellers cannot submit withdrawal requests; eligible earnings are settled on the configured date.
+                                        </p>
+                                        <InputError message={errors.sellerSettlementMode} />
+                                    </div>
+                                ) : null}
                             </div>
                         </AdminFormPanel>
                     </div>

@@ -76,6 +76,28 @@ class SellerWithdrawalApiTest extends TestCase
         $this->assertSame(50000, $this->balance($seller, 'reserved'));
     }
 
+    public function test_automatic_settlement_seller_cannot_create_manual_withdrawal(): void
+    {
+        $seller = $this->seller();
+        $seller->update(['seller_settlement_mode' => 'automatic']);
+        $this->enableWithdrawals();
+        $this->creditAvailable($seller, 75000);
+        Sanctum::actingAs($seller);
+
+        $this->getJson('/api/v1/seller/wallet')
+            ->assertOk()
+            ->assertJsonPath('data.settlementMode', 'automatic')
+            ->assertJsonPath('data.manualWithdrawalsEnabled', false)
+            ->assertJsonPath('data.canWithdraw', false);
+
+        $this->postJson('/api/v1/seller/withdrawals', [
+            'amountPaise' => 50000,
+            'idempotencyKey' => 'automatic-seller-manual-request',
+        ])->assertUnprocessable();
+
+        $this->assertDatabaseCount('withdrawals', 0);
+    }
+
     public function test_second_open_request_and_insufficient_or_below_minimum_amount_are_rejected(): void
     {
         $seller = $this->seller();

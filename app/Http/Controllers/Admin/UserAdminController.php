@@ -81,6 +81,7 @@ class UserAdminController extends Controller
             'mobile_number' => $validated['mobileNumber'],
             'phone_key' => $validated['phoneKey'],
             'status' => $validated['status'],
+            'seller_settlement_mode' => $validated['sellerSettlementMode'],
         ]);
         $user->machines()->sync($this->machineDatabaseIds($validated['machineIds']));
 
@@ -117,6 +118,7 @@ class UserAdminController extends Controller
             'allow_otp_login' => $validated['allowOtpLogin'],
             'allow_password_login' => $validated['allowPasswordLogin'],
             'status' => $validated['status'],
+            'seller_settlement_mode' => $validated['sellerSettlementMode'],
         ];
 
         if ($model->role?->isSuperAdmin() && ($role->id !== $model->role_id || $validated['status'] !== 'active')) {
@@ -227,6 +229,7 @@ class UserAdminController extends Controller
                 'distinct',
                 Rule::exists('machines', 'public_id')->where('is_active', true),
             ],
+            'sellerSettlementMode' => ['sometimes', Rule::in(['manual', 'automatic'])],
         ]);
 
         $role = Role::query()->findOrFail($validated['roleId']);
@@ -310,6 +313,7 @@ class UserAdminController extends Controller
             'phoneKey' => $phoneKey,
             'status' => $validated['status'],
             'machineIds' => array_values($validated['machineIds'] ?? []),
+            'sellerSettlementMode' => $validated['sellerSettlementMode'] ?? 'manual',
         ];
     }
 }

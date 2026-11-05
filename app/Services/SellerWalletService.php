@@ -29,6 +29,7 @@ class SellerWalletService
         $paid = (int) ($balances['paid'] ?? 0);
         $minimumWithdrawal = (int) ($this->settings->minimumWithdrawalPaise());
         $payoutsEnabled = $this->settings->sellerPayoutsEnabled();
+        $settlementMode = $seller->seller_settlement_mode ?? 'manual';
         $hasOpenWithdrawal = Withdrawal::query()
             ->where('seller_id', $seller->id)
             ->where('payment_environment', $environment)
@@ -46,8 +47,11 @@ class SellerWalletService
             'paymentEnvironment' => $environment,
             'isTestMode' => $environment === 'test',
             'payoutsEnabled' => $payoutsEnabled,
+            'settlementMode' => $settlementMode,
+            'manualWithdrawalsEnabled' => $settlementMode === 'manual',
             'balances' => [
                 'pendingPaise' => $pending,
+                'waitingSettlementPaise' => $pending,
                 'availablePaise' => $available,
                 'reservedPaise' => $reserved,
                 'paidPaise' => $paid,
@@ -55,9 +59,11 @@ class SellerWalletService
             'minimumWithdrawalPaise' => $minimumWithdrawal,
             'hasOpenWithdrawal' => $hasOpenWithdrawal,
             'canWithdraw' => $payoutsEnabled
+                && $settlementMode === 'manual'
                 && ! $hasOpenWithdrawal
                 && $available >= $minimumWithdrawal,
             'nextReleaseAt' => $nextReleaseAt === null ? null : Carbon::parse($nextReleaseAt)->toIso8601String(),
+            'nextSettlementAt' => $nextReleaseAt === null ? null : Carbon::parse($nextReleaseAt)->toIso8601String(),
         ];
     }
 }

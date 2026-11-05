@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, useForm, usePage } from '@inertiajs/react';
-import { FlaskConical, LoaderCircle, Percent, ReceiptText, Save, ShieldCheck, WalletCards } from 'lucide-react';
+import { CalendarClock, FlaskConical, LoaderCircle, Percent, Plus, ReceiptText, Save, ShieldCheck, Trash2, WalletCards } from 'lucide-react';
 import { type FormEventHandler, type ReactNode } from 'react';
 
 type SellerPaymentSettings = {
@@ -24,6 +25,7 @@ type SellerPaymentSettings = {
     tdsPercent: string;
     gstTcsEnabled: boolean;
     gstTcsPercent: string;
+    settlementCycles: { startDay: number; endDay: number; settlementDay: number }[];
 };
 
 type Props = {
@@ -105,6 +107,49 @@ export default function SellerPaymentSettingsPage({ settings, paymentEnvironment
                                 disabled={!canUpdate}
                                 hint="Pending earnings become eligible after this period."
                             />
+                        </div>
+                    </AdminFormPanel>
+
+                    <AdminFormPanel
+                        title="Wallet settlement cycles"
+                        description="Map each sale day to the day its seller earning becomes eligible. Cycles must cover days 1 through 31 without gaps."
+                        icon={CalendarClock}
+                    >
+                        <div className="space-y-4">
+                            {data.settlementCycles.length === 0 ? (
+                                <div className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700">
+                                    No cycles configured. New earnings currently use the legacy hold period above.
+                                </div>
+                            ) : null}
+                            {data.settlementCycles.map((cycle, index) => (
+                                <div key={index} className="grid items-end gap-3 rounded-xl border border-slate-200 p-4 sm:grid-cols-[1fr_1fr_1fr_auto] dark:border-slate-700">
+                                    <DaySelect label="From day" value={cycle.startDay} disabled={!canUpdate} onChange={(value) => {
+                                        const next = [...data.settlementCycles]; next[index] = { ...cycle, startDay: value }; setData('settlementCycles', next);
+                                    }} />
+                                    <DaySelect label="To day" value={cycle.endDay} disabled={!canUpdate} onChange={(value) => {
+                                        const next = [...data.settlementCycles]; next[index] = { ...cycle, endDay: value }; setData('settlementCycles', next);
+                                    }} />
+                                    <DaySelect label="Settlement day" value={cycle.settlementDay} disabled={!canUpdate} onChange={(value) => {
+                                        const next = [...data.settlementCycles]; next[index] = { ...cycle, settlementDay: value }; setData('settlementCycles', next);
+                                    }} />
+                                    {canUpdate ? (
+                                        <Button type="button" variant="outline" size="icon" className="h-11 rounded-xl text-red-600" onClick={() => setData('settlementCycles', data.settlementCycles.filter((_, row) => row !== index))}>
+                                            <Trash2 className="size-4" /><span className="sr-only">Remove cycle</span>
+                                        </Button>
+                                    ) : null}
+                                </div>
+                            ))}
+                            <InputError message={(errors as Record<string, string>).settlementCycles} />
+                            {canUpdate ? (
+                                <Button type="button" variant="outline" className="rounded-xl" onClick={() => {
+                                    const previousEnd = data.settlementCycles.at(-1)?.endDay ?? 0;
+                                    const startDay = Math.min(previousEnd + 1, 31);
+                                    setData('settlementCycles', [...data.settlementCycles, { startDay, endDay: 31, settlementDay: 1 }]);
+                                }}>
+                                    <Plus className="size-4" /> Add cycle
+                                </Button>
+                            ) : null}
+                            <p className="text-xs text-slate-500">If the settlement day is inside or before the cycle, payout is scheduled in the following month. Day 31 is automatically clamped for shorter months.</p>
                         </div>
                     </AdminFormPanel>
 
@@ -202,6 +247,18 @@ export default function SellerPaymentSettingsPage({ settings, paymentEnvironment
                 </form>
             </div>
         </AppLayout>
+    );
+}
+
+function DaySelect({ label, value, onChange, disabled }: { label: string; value: number; onChange: (value: number) => void; disabled?: boolean }) {
+    return (
+        <div className="grid gap-2">
+            <Label>{label}</Label>
+            <Select value={String(value)} onValueChange={(next) => onChange(Number(next))} disabled={disabled}>
+                <SelectTrigger className={inputClass}><SelectValue /></SelectTrigger>
+                <SelectContent>{Array.from({ length: 31 }, (_, index) => index + 1).map((day) => <SelectItem key={day} value={String(day)}>{day}</SelectItem>)}</SelectContent>
+            </Select>
+        </div>
     );
 }
 

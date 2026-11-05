@@ -35,6 +35,7 @@ class User extends Authenticatable
         'password',
         'allow_otp_login',
         'allow_password_login',
+        'seller_settlement_mode',
         'status',
         'last_login_at',
     ];
@@ -207,6 +208,7 @@ class User extends Authenticatable
                 'otp' => (bool) $this->allow_otp_login,
                 'password' => (bool) $this->allow_password_login,
             ],
+            'sellerSettlementMode' => $this->seller_settlement_mode ?? 'manual',
         ];
     }
 
@@ -230,6 +232,12 @@ class User extends Authenticatable
             'allowOtpLogin' => (bool) $this->allow_otp_login,
             'allowPasswordLogin' => (bool) $this->allow_password_login,
             'hasPassword' => $this->password !== null,
+            'sellerSettlementMode' => $this->seller_settlement_mode ?? 'manual',
         ];
+    }
+
+    public function usesAutomaticSettlement(): bool
+    {
+        return $this->seller_settlement_mode === 'automatic';
     }
 }

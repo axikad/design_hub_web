@@ -36,6 +36,12 @@ class SellerWithdrawalService
                 return ['withdrawal' => $existing, 'created' => false];
             }
 
+            if ($seller->usesAutomaticSettlement()) {
+                throw ValidationException::withMessages([
+                    'withdrawal' => ['This account uses automatic settlement; manual withdrawal requests are unavailable.'],
+                ]);
+            }
+
             if (! $this->settings->sellerPayoutsEnabled()) {
                 throw ValidationException::withMessages([
                     'withdrawal' => ['Seller withdrawal requests are currently disabled.'],
@@ -84,6 +90,7 @@ class SellerWithdrawalService
                 'currency' => 'INR',
                 'payment_environment' => $environment,
                 'payout_mode' => $environment === 'test' ? 'simulated' : 'manual',
+                'request_source' => 'seller',
                 'status' => 'requested',
                 'idempotency_key' => $idempotencyKey,
                 'requested_at' => now(),
@@ -97,6 +104,78 @@ class SellerWithdrawalService
         }, 3);
     }
 
+    public function createAutomatic(User $seller, string $settlementKey): ?Withdrawal
+    {
+        return DB::transaction(function () use ($seller, $settlementKey): ?Withdrawal {
+            $seller = User::query()->whereKey($seller->id)->lockForUpdate()->firstOrFail();
+            if (! $seller->usesAutomaticSettlement() || ! $this->settings->sellerPayoutsEnabled()) {
+                return null;
+            }
+
+            $environment = $this->settings->environment();
+            $idempotencyKey = 'auto-'.$settlementKey;
+            $existing = Withdrawal::query()
+                ->where('seller_id', $seller->id)
+                ->where('payment_environment', $environment)
+                ->where('idempotency_key', $idempotencyKey)
+                ->first();
+            if ($existing !== null) {
+                return $existing;
+            }
+
+            if (Withdrawal::query()->where('seller_id', $seller->id)
+                ->where('payment_environment', $environment)
+                ->whereIn('status', Withdrawal::OPEN_STATUSES)->exists()) {
+                return null;
+            }
+
+            $entries = SellerLedgerEntry::query()
+                ->where('seller_id', $seller->id)
+                ->where('payment_environment', $environment)
+                ->lockForUpdate()
+                ->get(['balance_bucket', 'amount_paise']);
+            $amountPaise = (int) $entries->where('balance_bucket', 'available')->sum('amount_paise');
+            if ($amountPaise <= 0) {
+                return null;
+            }
+
+            $isTest = $environment === 'test';
+            $now = now();
+            $withdrawal = Withdrawal::query()->create([
+                'seller_id' => $seller->id,
+                'amount_paise' => $amountPaise,
+                'fee_paise' => 0,
+                'net_transfer_paise' => $amountPaise,
+                'currency' => 'INR',
+                'payment_environment' => $environment,
+                'payout_mode' => $isTest ? 'simulated' : 'automatic',
+                'request_source' => 'automatic',
+                'status' => $isTest ? 'paid' : 'requested',
+                'idempotency_key' => $idempotencyKey,
+                'requested_at' => $now,
+                'approved_at' => $isTest ? $now : null,
+                'processed_at' => $isTest ? $now : null,
+                'provider' => $isTest ? 'internal_simulator' : null,
+                'provider_status' => $isTest ? 'simulated_paid' : null,
+                'payout_snapshot' => ['automatic' => true, 'settlementKey' => $settlementKey],
+            ]);
+
+            $this->ledger($withdrawal, 'withdrawal_reserve_available_debit', 'available', -$amountPaise);
+            $this->ledger($withdrawal, 'withdrawal_reserve_reserved_credit', 'reserved', $amountPaise);
+            $this->history($withdrawal, null, 'requested', null, 'Automatic settlement created by the scheduler.');
+
+            if ($isTest) {
+                $this->ledger($withdrawal, 'withdrawal_paid_reserved_debit', 'reserved', -$amountPaise);
+                $this->ledger($withdrawal, 'withdrawal_paid_credit', 'paid', $amountPaise);
+                $this->history($withdrawal, 'requested', 'approved', null, 'Automatic test settlement approved.');
+                $this->history($withdrawal, 'approved', 'paid', null, 'Automatic test settlement paid by the simulator.');
+                $withdrawal->update(['provider_transfer_id' => "simulated_{$withdrawal->public_id}"]);
+            }
+
+            return $withdrawal->fresh();
+        }, 3);
+    }
+
     public function cancel(Withdrawal $withdrawal, User $seller): Withdrawal
     {
         return DB::transaction(function () use ($withdrawal, $seller) {
@@ -106,6 +185,12 @@ class SellerWithdrawalService
             if ($locked->seller_id !== $seller->id
                 || $locked->payment_environment !== $this->settings->environment()) {
                 abort(404);
+            }
+
+            if ($locked->request_source === 'automatic') {
+                throw ValidationException::withMessages([
+                    'withdrawal' => ['Automatic settlements cannot be cancelled by the seller.'],
+                ]);
             }
 
             if ($locked->status === 'cancelled') {
@@ -257,14 +342,14 @@ class SellerWithdrawalService
         Withdrawal $withdrawal,
         ?string $fromStatus,
         string $toStatus,
-        User $actor,
+        ?User $actor,
         string $note,
     ): void {
         WithdrawalStatusHistory::query()->create([
             'withdrawal_id' => $withdrawal->id,
             'from_status' => $fromStatus,
             'to_status' => $toStatus,
-            'actor_id' => $actor->id,
+            'actor_id' => $actor?->id,
             'note' => $note,
         ]);
     }

@@ -4,10 +4,13 @@ namespace App\Services;
 
 use App\Models\SaleEarning;
 use App\Models\SellerLedgerEntry;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class SellerEarningReleaseService
 {
+    public function __construct(private readonly SellerWithdrawalService $withdrawals) {}
+
     public function releaseEligible(string $environment, int $limit = 500): int
     {
         $earningIds = SaleEarning::query()
@@ -24,7 +27,31 @@ class SellerEarningReleaseService
         foreach ($earningIds as $earningId) {
             if ($this->release((int) $earningId, $environment)) {
                 $released++;
+                $earning = SaleEarning::query()->find($earningId);
+                $seller = $earning === null ? null : User::query()->find($earning->seller_id);
+                if ($seller?->usesAutomaticSettlement()) {
+                    $this->withdrawals->createAutomatic(
+                        $seller,
+                        $earning->public_id,
+                    );
+                }
             }
+        }
+
+        if ($environment === app(MarketplacePaymentSettings::class)->environment()) {
+            User::query()
+                ->where('seller_settlement_mode', 'automatic')
+                ->whereHas('sellerLedgerEntries', fn ($query) => $query->where('payment_environment', $environment))
+                ->orderBy('id')
+                ->limit($limit)
+                ->get()
+                ->each(function (User $seller) use ($environment): void {
+                    $lastLedgerId = SellerLedgerEntry::query()
+                        ->where('seller_id', $seller->id)
+                        ->where('payment_environment', $environment)
+                        ->max('id');
+                    $this->withdrawals->createAutomatic($seller, 'ledger-'.$lastLedgerId);
+                });
         }
 
         return $released;

@@ -994,3 +994,15 @@ The test-mode marketplace MVP is ready when all of these are true:
 - [ ] Razorpay credentials are encrypted, masked, access-controlled and excluded from logs.
 - [ ] Future tax-setting changes and gateway-account changes do not modify old transaction snapshots.
 
+## Monthly wallet settlement cycles
+
+- [x] Super Admin can configure multiple day ranges using From day, To day, and Settlement day (1-31).
+- [x] The backend validates that configured cycles cover days 1-31 without gaps or overlaps.
+- [x] New earnings snapshot their calculated settlement date; old earnings keep their existing `available_at` date.
+- [x] Dates use `DESIGNHUB_MARKETPLACE_TIMEZONE` and day 31 is clamped for shorter months.
+- [x] Each seller can use `manual` wallet withdrawal or `automatic` cycle settlement.
+- [x] Manual-withdrawal API/UI is disabled for automatic sellers.
+- [x] In test mode, an automatic settlement is completed through the internal simulator.
+- [ ] In live mode, connect the automatic withdrawal request to the chosen payout provider and its webhook.
+- [ ] Add failure/retry/reversal handling after the live payout provider is selected.
+

@@ -20,6 +20,7 @@ class Withdrawal extends Model
         'currency',
         'payment_environment',
         'payout_mode',
+        'request_source',
         'status',
         'idempotency_key',
         'requested_at',
