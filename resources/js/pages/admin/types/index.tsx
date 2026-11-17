@@ -21,6 +21,7 @@ type Row = {
     description: string | null;
     categoryNames: string[];
     designsCount: number;
+    variantUsageCount: number;
     isActive: boolean;
     sortOrder: number;
 };
@@ -186,7 +187,12 @@ export default function AdminTypesIndex({ types, categories, filters }: Props) {
                                             {designType.description || 'No description'}
                                         </td>
                                         <td className="px-5 py-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                                            {designType.designsCount}
+                                            <div>{Math.max(designType.designsCount, designType.variantUsageCount)}</div>
+                                            {designType.variantUsageCount > 0 ? (
+                                                <div className="mt-0.5 text-xs font-normal text-slate-400">
+                                                    {designType.variantUsageCount} type {designType.variantUsageCount === 1 ? 'connection' : 'connections'}
+                                                </div>
+                                            ) : null}
                                         </td>
                                         <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">{designType.sortOrder}</td>
                                         <td className="px-5 py-4">
@@ -205,9 +211,15 @@ export default function AdminTypesIndex({ types, categories, filters }: Props) {
                                                 ) : null}
                                                 {canDelete ? (
                                                     <ConfirmDelete
-                                                        title="Delete design type?"
-                                                        description="Reassign designs using this type first."
-                                                        onConfirm={() => router.delete(route('admin.types.destroy', designType.id))}
+                                                        title={`Delete ${designType.name}?`}
+                                                        description={
+                                                            designType.designsCount + designType.variantUsageCount > 0
+                                                                ? `This type has ${designType.designsCount} direct design connection(s) and ${designType.variantUsageCount} variant connection(s). The designs will be kept, these connections will be removed, and “${designType.name}” will be preserved as their display label.`
+                                                                : 'This type is not connected to any design records and can be safely deleted.'
+                                                        }
+                                                        onConfirm={() =>
+                                                            router.delete(route('admin.types.destroy', designType.id), { preserveScroll: true })
+                                                        }
                                                     />
                                                 ) : null}
                                             </div>

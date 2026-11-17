@@ -9,6 +9,7 @@ use App\Services\SortOrderService;
 use App\Support\MachineDesignFormConfig;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -28,7 +29,7 @@ class MachineAdminController extends Controller
         ]);
 
         $machines = Machine::query()
-            ->withCount('machineTypes')
+            ->withCount(['machineTypes', 'designs', 'users'])
             ->when($filters['search'] ?? null, fn ($query, string $search) => $query->where('name', 'like', "%{$search}%"))
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('is_active', $status === 'active'))
             ->orderBy('sort_order')
@@ -42,6 +43,8 @@ class MachineAdminController extends Controller
                 'isActive' => $machine->is_active,
                 'sortOrder' => $machine->sort_order,
                 'machineTypesCount' => $machine->machine_types_count,
+                'designsCount' => $machine->designs_count,
+                'usersCount' => $machine->users_count,
             ]);
 
         return Inertia::render('admin/machines/index', [
@@ -118,19 +121,28 @@ class MachineAdminController extends Controller
     {
         $model = Machine::query()->where('public_id', $machine)->firstOrFail();
 
-        if ($model->machineTypes()->exists()) {
-            return back()->withErrors(['machine' => 'Delete or reassign this machine\'s types first.']);
-        }
-
         $imagePath = $model->image_path;
-        $model->delete();
-        $this->sortOrder->remove(Machine::class);
+        $machineTypesCount = $model->machineTypes()->count();
+        $designsCount = $model->designs()->count();
+        $usersCount = $model->users()->count();
+
+        DB::transaction(function () use ($model): void {
+            $model->machineTypes()->update(['machine_id' => null]);
+            $model->designs()->update(['machine_id' => null]);
+            $model->users()->detach();
+            $model->designFileTypes()->detach();
+            $model->delete();
+            $this->sortOrder->remove(Machine::class);
+        });
 
         if ($imagePath !== null) {
             Storage::disk('public')->delete($imagePath);
         }
 
-        return redirect()->route('admin.machines.index')->with('success', 'Machine deleted.');
+        return redirect()->route('admin.machines.index')->with(
+            'success',
+            "Machine deleted. {$machineTypesCount} machine type(s), {$designsCount} design(s), and {$usersCount} user assignment(s) were safely disconnected.",
+        );
     }
 
     public function reorder(Request $request): RedirectResponse

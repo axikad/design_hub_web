@@ -10,6 +10,7 @@ use App\Models\MachineType;
 use App\Services\SortOrderService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -30,6 +31,7 @@ class MachineTypeAdminController extends Controller
                 'categories' => fn ($query) => $query
                     ->where('design_categories.is_active', true),
             ])
+            ->withCount('categories')
             ->when($search !== '', fn ($query) => $query->where('name', 'like', "%{$search}%"))
             ->when(in_array($status, ['active', 'inactive'], true), fn ($query) => $query->where('is_active', $status === 'active'))
             ->when($machineId !== '', fn ($query) => $query->whereHas(
@@ -47,6 +49,8 @@ class MachineTypeAdminController extends Controller
                 'categoryNames' => $machineType->categories->pluck('name')->values(),
                 'isActive' => $machineType->is_active,
                 'sortOrder' => $machineType->sort_order,
+                'categoryConnectionsCount' => $machineType->categories_count,
+                'designsCount' => Design::query()->where('machine_type_id', $machineType->public_id)->count(),
             ]);
 
         return Inertia::render('admin/machine-types/index', [
@@ -126,15 +130,21 @@ class MachineTypeAdminController extends Controller
     {
         $model = MachineType::query()->where('public_id', $machineType)->firstOrFail();
 
-        if (Design::query()->where('machine_type_id', $model->public_id)->exists()) {
-            return back()->withErrors(['machineType' => 'Reassign designs before deleting this machine type.']);
-        }
-
         $scope = ['machine_id' => $model->machine_id];
-        $model->delete();
-        $this->sortOrder->remove(MachineType::class, $scope);
+        $designsCount = Design::query()->where('machine_type_id', $model->public_id)->count();
+        $categoriesCount = $model->categories()->count();
 
-        return redirect()->route('admin.machine-types.index')->with('success', 'Machine type deleted.');
+        DB::transaction(function () use ($model, $scope): void {
+            Design::query()->where('machine_type_id', $model->public_id)->update(['machine_type_id' => null]);
+            $model->categories()->detach();
+            $model->delete();
+            $this->sortOrder->remove(MachineType::class, $scope);
+        });
+
+        return redirect()->route('admin.machine-types.index')->with(
+            'success',
+            "Machine type deleted. {$designsCount} design(s) and {$categoriesCount} category connection(s) were safely disconnected.",
+        );
     }
 
     public function reorder(Request $request): RedirectResponse

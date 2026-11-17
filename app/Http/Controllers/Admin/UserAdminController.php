@@ -28,7 +28,14 @@ class UserAdminController extends Controller
 
         $users = User::query()
             ->with('role')
-            ->withCount(['designs as listed_designs_count' => fn ($query) => $query->listed()])
+            ->withCount([
+                'designs as listed_designs_count' => fn ($query) => $query->listed(),
+                'folders',
+                'purchases',
+                'folderPurchases',
+                'saleEarnings',
+                'withdrawals',
+            ])
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('name', 'like', "%{$search}%")
@@ -43,6 +50,9 @@ class UserAdminController extends Controller
             ->withQueryString()
             ->through(fn (User $user) => array_merge($user->toAdminArray(), [
                 'designsCount' => $user->listed_designs_count,
+                'foldersCount' => $user->folders_count,
+                'purchasesCount' => $user->purchases_count + $user->folder_purchases_count,
+                'financialRecordsCount' => $user->sale_earnings_count + $user->withdrawals_count,
             ]));
 
         return Inertia::render('admin/users/index', [
@@ -151,7 +161,7 @@ class UserAdminController extends Controller
 
         $model->delete();
 
-        return redirect()->route('admin.users.index')->with('success', 'User deleted.');
+        return redirect()->route('admin.users.index')->with('success', 'User archived. Their designs, folders, purchases, and financial history were retained.');
     }
 
     /** @return list<array{id: int, name: string, slug: string}> */

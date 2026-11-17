@@ -114,16 +114,20 @@ class DesignFileTypeAdminController extends Controller
     {
         $fileType = $this->find($designFileType);
 
-        if ($fileType->designs()->exists()) {
-            return back()->withErrors([
-                'designFileType' => 'Reassign designs before deleting this file type.',
-            ]);
-        }
+        $designsCount = $fileType->designs()->count();
+        $machinesCount = $fileType->machines()->count();
 
-        $fileType->delete();
-        $this->sortOrder->remove(DesignFileType::class);
+        DB::transaction(function () use ($fileType): void {
+            $fileType->designs()->update(['design_file_type_id' => null]);
+            $fileType->machines()->detach();
+            $fileType->delete();
+            $this->sortOrder->remove(DesignFileType::class);
+        });
 
-        return redirect()->route('admin.design-file-types.index')->with('success', 'Design file type deleted.');
+        return redirect()->route('admin.design-file-types.index')->with(
+            'success',
+            "Design file type deleted. {$designsCount} design(s) and {$machinesCount} machine connection(s) were safely disconnected.",
+        );
     }
 
     public function reorder(Request $request): RedirectResponse

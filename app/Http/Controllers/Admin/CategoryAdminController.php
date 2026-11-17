@@ -25,7 +25,7 @@ class CategoryAdminController extends Controller
         $status = (string) $request->string('status');
 
         $categories = DesignCategory::query()
-            ->withCount(['types', 'machineTypes'])
+            ->withCount(['types', 'machineTypes', 'designs'])
             ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search) {
                 $searchQuery
                     ->where('name', 'like', "%{$search}%")
@@ -44,6 +44,7 @@ class CategoryAdminController extends Controller
                 'sortOrder' => $category->sort_order,
                 'typesCount' => $category->types_count,
                 'machineTypesCount' => $category->machine_types_count,
+                'designsCount' => $category->designs_count,
             ]);
 
         return Inertia::render('admin/categories/index', [
@@ -126,17 +127,23 @@ class CategoryAdminController extends Controller
     {
         $model = DesignCategory::query()->where('public_id', $category)->firstOrFail();
 
-        if ($model->types()->exists() || Design::query()->where('category_id', $model->public_id)->exists()) {
-            return back()->withErrors(['category' => 'Remove or reassign related design types and designs before deleting this category.']);
-        }
+        $typesCount = $model->types()->count();
+        $machineTypesCount = $model->machineTypes()->count();
+        $designsCount = Design::query()->where('category_id', $model->public_id)->count();
 
         DB::transaction(function () use ($model): void {
+            Design::query()->where('category_id', $model->public_id)->update(['category_id' => null]);
+            DesignType::query()->where('design_category_id', $model->id)->update(['design_category_id' => null]);
+            $model->types()->detach();
             $model->machineTypes()->detach();
             $model->delete();
             $this->sortOrder->remove(DesignCategory::class);
         });
 
-        return redirect()->route('admin.categories.index')->with('success', 'Category deleted.');
+        return redirect()->route('admin.categories.index')->with(
+            'success',
+            "Category deleted. {$typesCount} design type(s), {$machineTypesCount} machine type(s), and {$designsCount} design(s) were safely disconnected.",
+        );
     }
 
     public function reorder(Request $request): RedirectResponse

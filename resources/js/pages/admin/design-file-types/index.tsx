@@ -185,9 +185,11 @@ export default function AdminDesignFileTypesIndex({ fileTypes, filters }: Props)
                                                 ) : null}
                                                 {canDelete ? (
                                                     <ConfirmDelete
-                                                        title="Delete design file type?"
-                                                        description="Reassign designs using this file type first."
-                                                        onConfirm={() => router.delete(route('admin.design-file-types.destroy', fileType.id))}
+                                                        title={`Delete ${fileType.name}?`}
+                                                        description={`This will keep ${fileType.designsCount} connected design(s) and disconnect their file-type classification. Machine connections will also be removed.`}
+                                                        onConfirm={() =>
+                                                            router.delete(route('admin.design-file-types.destroy', fileType.id), { preserveScroll: true })
+                                                        }
                                                     />
                                                 ) : null}
                                             </div>

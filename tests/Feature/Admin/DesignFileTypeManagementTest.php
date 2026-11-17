@@ -49,7 +49,7 @@ class DesignFileTypeManagementTest extends TestCase
         ]);
     }
 
-    public function test_file_type_used_by_a_design_cannot_be_deleted(): void
+    public function test_deleting_a_used_file_type_preserves_and_disconnects_the_design(): void
     {
         $admin = User::factory()->superAdmin()->create();
         $owner = User::factory()->create();
@@ -57,7 +57,7 @@ class DesignFileTypeManagementTest extends TestCase
             'name' => 'DST',
             'extension' => 'dst',
         ]);
-        Design::query()->create([
+        $design = Design::query()->create([
             'user_id' => $owner->id,
             'design_file_type_id' => $fileType->id,
             'title' => 'Protected design',
@@ -68,8 +68,10 @@ class DesignFileTypeManagementTest extends TestCase
 
         $this->actingAs($admin)
             ->delete('/admin/design-file-types/'.$fileType->public_id)
-            ->assertSessionHasErrors('designFileType');
+            ->assertRedirect(route('admin.design-file-types.index'))
+            ->assertSessionHas('success');
 
-        $this->assertDatabaseHas('design_file_types', ['id' => $fileType->id]);
+        $this->assertDatabaseMissing('design_file_types', ['id' => $fileType->id]);
+        $this->assertNull($design->fresh()->design_file_type_id);
     }
 }

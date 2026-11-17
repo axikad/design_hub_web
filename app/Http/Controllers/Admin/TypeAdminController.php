@@ -28,7 +28,7 @@ class TypeAdminController extends Controller
                 ->where('design_categories.is_active', true)
                 ->orderBy('design_categories.sort_order')
                 ->orderBy('design_categories.name')])
-            ->withCount('designs')
+            ->withCount(['designs', 'variants'])
             ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search) {
                 $searchQuery
                     ->where('name', 'like', "%{$search}%")
@@ -51,6 +51,7 @@ class TypeAdminController extends Controller
                 'sortOrder' => $type->sort_order,
                 'categoryNames' => $type->categories->pluck('name')->values(),
                 'designsCount' => $type->designs_count,
+                'variantUsageCount' => $type->variants_count,
             ]);
 
         return Inertia::render('admin/types/index', [
@@ -137,14 +138,29 @@ class TypeAdminController extends Controller
     {
         $model = DesignType::query()->where('public_id', $type)->firstOrFail();
 
-        if ($model->designs()->exists()) {
-            return back()->withErrors(['type' => 'Reassign designs before deleting this type.']);
-        }
+        $directDesignCount = $model->designs()->count();
+        $variantCount = $model->variants()->count();
 
-        $model->delete();
+        DB::transaction(function () use ($model): void {
+            // Preserve the visible type label before removing the catalog connection.
+            $model->variants()
+                ->where(function ($query) {
+                    $query->whereNull('custom_type_name')->orWhere('custom_type_name', '');
+                })
+                ->update(['custom_type_name' => $model->name]);
+
+            $model->variants()->update(['design_type_id' => null]);
+            $model->designs()->update(['design_type_id' => null]);
+            $model->delete();
+        });
+
         $this->sortOrder->remove(DesignType::class);
 
-        return redirect()->route('admin.types.index')->with('success', 'Type deleted.');
+        $message = $directDesignCount + $variantCount > 0
+            ? "Design type deleted. {$directDesignCount} direct design connection(s) and {$variantCount} variant connection(s) were safely disconnected."
+            : 'Design type deleted.';
+
+        return redirect()->route('admin.types.index')->with('success', $message);
     }
 
     public function reorder(Request $request): RedirectResponse

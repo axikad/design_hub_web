@@ -26,6 +26,9 @@ type UserRow = {
     countryCode: string;
     mobileNumber: string;
     designsCount?: number;
+    foldersCount?: number;
+    purchasesCount?: number;
+    financialRecordsCount?: number;
 };
 
 type RoleOption = {
@@ -231,9 +234,11 @@ export default function AdminUsersIndex({ users, roles, filters }: Props) {
                                                 ) : null}
                                                 {canDelete && user.roleSlug !== 'super_admin' ? (
                                                     <ConfirmDelete
-                                                        title="Delete user?"
-                                                        description="This permanently removes the user and cannot be undone."
-                                                        onConfirm={() => router.delete(route('admin.users.destroy', user.id))}
+                                                        title={`Archive ${user.name || 'this user'}?`}
+                                                        description={`The account will lose access, but its ${user.designsCount ?? 0} design(s), ${user.foldersCount ?? 0} folder(s), ${user.purchasesCount ?? 0} purchase(s), and ${user.financialRecordsCount ?? 0} financial record(s) will be retained.`}
+                                                        triggerLabel="Archive"
+                                                        confirmLabel="Archive account"
+                                                        onConfirm={() => router.delete(route('admin.users.destroy', user.id), { preserveScroll: true })}
                                                     />
                                                 ) : null}
                                                 {!canUpdate && !canDelete ? <span className="text-xs text-slate-400">View only</span> : null}

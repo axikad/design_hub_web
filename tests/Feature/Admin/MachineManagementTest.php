@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Design;
 use App\Models\DesignCategory;
 use App\Models\Machine;
 use App\Models\MachineType;
@@ -181,17 +182,58 @@ class MachineManagementTest extends TestCase
             ->assertJsonPath('data.1.id', $saree->public_id);
     }
 
-    public function test_machine_with_types_cannot_be_deleted(): void
+    public function test_deleting_a_machine_preserves_and_disconnects_related_records(): void
     {
         $admin = User::factory()->superAdmin()->create();
+        $seller = User::factory()->create();
         $machine = Machine::query()->create(['name' => 'Embroidery']);
-        MachineType::query()->create(['machine_id' => $machine->id, 'name' => 'Multi-head']);
+        $machineType = MachineType::query()->create(['machine_id' => $machine->id, 'name' => 'Multi-head']);
+        $design = Design::query()->create([
+            'user_id' => $seller->id,
+            'machine_id' => $machine->id,
+            'title' => 'Machine design',
+            'price_paise' => 1000,
+            'size' => '',
+            'color' => '',
+        ]);
+        $machine->users()->attach($seller);
 
         $this->actingAs($admin)
             ->delete('/admin/machines/'.$machine->public_id)
-            ->assertSessionHasErrors('machine');
+            ->assertRedirect(route('admin.machines.index'))
+            ->assertSessionHas('success');
 
-        $this->assertDatabaseHas('machines', ['id' => $machine->id]);
+        $this->assertDatabaseMissing('machines', ['id' => $machine->id]);
+        $this->assertNull($machineType->fresh()->machine_id);
+        $this->assertNull($design->fresh()->machine_id);
+        $this->assertDatabaseMissing('machine_user', ['machine_id' => $machine->id]);
+    }
+
+    public function test_deleting_a_machine_type_preserves_designs_and_disconnects_categories(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+        $seller = User::factory()->create();
+        $machine = Machine::query()->create(['name' => 'Embroidery']);
+        $machineType = MachineType::query()->create(['machine_id' => $machine->id, 'name' => 'Multi-head']);
+        $category = DesignCategory::query()->create(['name' => 'Saree']);
+        $machineType->categories()->attach($category);
+        $design = Design::query()->create([
+            'user_id' => $seller->id,
+            'machine_type_id' => $machineType->public_id,
+            'title' => 'Machine type design',
+            'price_paise' => 1000,
+            'size' => '',
+            'color' => '',
+        ]);
+
+        $this->actingAs($admin)
+            ->delete('/admin/machine-types/'.$machineType->public_id)
+            ->assertRedirect(route('admin.machine-types.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('machine_types', ['id' => $machineType->id]);
+        $this->assertNull($design->fresh()->machine_type_id);
+        $this->assertDatabaseMissing('category_machine_type', ['machine_type_id' => $machineType->id]);
     }
 
     public function test_inactive_categories_are_hidden_from_machine_type_screens(): void

@@ -15,7 +15,16 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Cog, GripVertical, Pencil, RotateCcw, Search } from 'lucide-react';
 import { type FormEventHandler, useState } from 'react';
 
-type Row = { id: string; name: string; machineName: string | null; categoryNames: string[]; isActive: boolean; sortOrder: number };
+type Row = {
+    id: string;
+    name: string;
+    machineName: string | null;
+    categoryNames: string[];
+    designsCount: number;
+    categoryConnectionsCount: number;
+    isActive: boolean;
+    sortOrder: number;
+};
 type Option = { id: string; name: string };
 type Props = {
     machineTypes: { data: Row[]; from: number | null; links: { url: string | null; label: string; active: boolean }[] };
@@ -202,9 +211,11 @@ export default function AdminMachineTypesIndex({ machineTypes, machines, filters
                                                 ) : null}
                                                 {canDelete ? (
                                                     <ConfirmDelete
-                                                        title="Delete machine type?"
-                                                        description="Reassign designs using this machine type first."
-                                                        onConfirm={() => router.delete(route('admin.machine-types.destroy', machineType.id))}
+                                                        title={`Delete ${machineType.name}?`}
+                                                        description={`This will keep all records but disconnect ${machineType.designsCount} design(s) and ${machineType.categoryConnectionsCount} category connection(s).`}
+                                                        onConfirm={() =>
+                                                            router.delete(route('admin.machine-types.destroy', machineType.id), { preserveScroll: true })
+                                                        }
                                                     />
                                                 ) : null}
                                             </div>

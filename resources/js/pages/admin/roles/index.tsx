@@ -15,7 +15,7 @@ import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { KeyRound, LoaderCircle, Plus, Save, SearchX, ShieldCheck, UsersRound } from 'lucide-react';
 import { type FormEventHandler, useMemo, useState } from 'react';
 
-type RoleRow = { id: number; slug: string; name: string };
+type RoleRow = { id: number; slug: string; name: string; users_count: number };
 type PermissionRow = { id: number; slug: string; name: string; action: string; module: string | null };
 
 type Props = {
@@ -183,9 +183,9 @@ export default function AdminRolesIndex({ roles, permissions, assignedPermission
                                 </div>
                                 {canDelete && !locked ? (
                                     <ConfirmDelete
-                                        title="Delete role?"
-                                        description="Users must be reassigned before this role can be removed."
-                                        onConfirm={() => router.delete(route('admin.roles.destroy', activeRole.id))}
+                                        title={`Delete ${activeRole.name}?`}
+                                        description={`This role is assigned to ${activeRole.users_count} user account(s). The accounts will be kept, but they will have no role until an administrator assigns a new one.`}
+                                        onConfirm={() => router.delete(route('admin.roles.destroy', activeRole.id), { preserveScroll: true })}
                                     />
                                 ) : null}
                             </div>

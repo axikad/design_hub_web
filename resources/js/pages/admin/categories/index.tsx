@@ -23,6 +23,7 @@ type Row = {
     sortOrder: number;
     typesCount: number;
     machineTypesCount: number;
+    designsCount: number;
 };
 type Props = {
     categories: { data: Row[]; from: number | null; links: { url: string | null; label: string; active: boolean }[] };
@@ -175,8 +176,10 @@ export default function AdminCategoriesIndex({ categories, filters }: Props) {
                                                 {canDelete ? (
                                                     <ConfirmDelete
                                                         title={`Delete ${category.name}?`}
-                                                        description={`This category is connected to ${category.machineTypesCount} machine ${category.machineTypesCount === 1 ? 'type' : 'types'}. Deleting it will also remove ${category.machineTypesCount === 1 ? 'this connection' : 'these connections'}. Related design types and designs must be reassigned first.`}
-                                                        onConfirm={() => router.delete(route('admin.categories.destroy', category.id))}
+                                                        description={`This will keep all records but disconnect ${category.typesCount} design type(s), ${category.machineTypesCount} machine type(s), and ${category.designsCount} design(s).`}
+                                                        onConfirm={() =>
+                                                            router.delete(route('admin.categories.destroy', category.id), { preserveScroll: true })
+                                                        }
                                                     />
                                                 ) : null}
                                             </div>

@@ -8,9 +8,10 @@ type Props = {
     description: string;
     onConfirm: () => void;
     triggerLabel?: string;
+    confirmLabel?: string;
 };
 
-export function ConfirmDelete({ title, description, onConfirm, triggerLabel = 'Delete' }: Props) {
+export function ConfirmDelete({ title, description, onConfirm, triggerLabel = 'Delete', confirmLabel = 'Delete' }: Props) {
     const [open, setOpen] = useState(false);
 
     return (
@@ -41,7 +42,7 @@ export function ConfirmDelete({ title, description, onConfirm, triggerLabel = 'D
                                 setOpen(false);
                             }}
                         >
-                            Delete
+                            {confirmLabel}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

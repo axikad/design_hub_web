@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Design;
 use App\Models\DesignCategory;
 use App\Models\DesignType;
 use App\Models\Machine;
@@ -54,6 +55,19 @@ class CategoryManagementTest extends TestCase
         $secondType = MachineType::query()->create(['machine_id' => $machine->id, 'name' => 'Sequin']);
         $category = DesignCategory::query()->create(['name' => 'Temporary category']);
         $category->machineTypes()->attach([$firstType->id, $secondType->id]);
+        $designType = DesignType::query()->create([
+            'design_category_id' => $category->id,
+            'name' => 'Pallu',
+        ]);
+        $seller = User::factory()->create();
+        $design = Design::query()->create([
+            'user_id' => $seller->id,
+            'category_id' => $category->public_id,
+            'title' => 'Category design',
+            'price_paise' => 1000,
+            'size' => '',
+            'color' => '',
+        ]);
 
         $this->actingAs($admin)
             ->delete('/admin/categories/'.$category->public_id)
@@ -61,6 +75,8 @@ class CategoryManagementTest extends TestCase
 
         $this->assertDatabaseMissing('design_categories', ['id' => $category->id]);
         $this->assertDatabaseMissing('category_machine_type', ['design_category_id' => $category->id]);
+        $this->assertNull($designType->fresh()->design_category_id);
+        $this->assertNull($design->fresh()->category_id);
     }
 
     public function test_category_positions_shift_and_can_be_reordered(): void

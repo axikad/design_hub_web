@@ -44,4 +44,19 @@ class PermissionAuthorizationTest extends TestCase
         ]);
         $this->assertSame(1, $adminRole->permissions()->count());
     }
+
+    public function test_deleting_a_role_preserves_and_disconnects_assigned_users(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+        $role = Role::query()->create(['name' => 'Temporary Staff', 'slug' => 'temporary_staff']);
+        $user = User::factory()->create(['role_id' => $role->id]);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.roles.destroy', $role))
+            ->assertRedirect(route('admin.roles.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('roles', ['id' => $role->id]);
+        $this->assertNull($user->fresh()->role_id);
+    }
 }

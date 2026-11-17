@@ -65,11 +65,35 @@ export function FlashToast() {
     }, [flash?.error, flash?.info, flash?.success, flash?.warning, validationSignature]);
 
     useEffect(() => {
+        const removeSuccessListener = router.on('success', (event) => {
+            const props = event.detail.page.props as SharedData;
+            const pageErrors = [...new Set(Object.values(props.errors ?? {}).filter(Boolean))];
+            let nextToast: ToastState | null = null;
+
+            if (pageErrors.length) {
+                nextToast = {
+                    kind: 'error',
+                    title: pageErrors.length === 1 ? 'Please fix this error' : `Please fix ${pageErrors.length} errors`,
+                    messages: pageErrors.slice(0, 5),
+                };
+            } else if (props.flash?.error) {
+                nextToast = { kind: 'error', title: 'Action failed', messages: [props.flash.error] };
+            } else if (props.flash?.warning) {
+                nextToast = { kind: 'warning', title: 'Attention required', messages: [props.flash.warning] };
+            } else if (props.flash?.success) {
+                nextToast = { kind: 'success', title: 'Success', messages: [props.flash.success] };
+            } else if (props.flash?.info) {
+                nextToast = { kind: 'info', title: 'Information', messages: [props.flash.info] };
+            }
+
+            if (nextToast) setToast(nextToast);
+        });
         const removeInvalidListener = router.on('invalid', (event) => {
             const status = event.detail.response.status;
             const messages: Record<number, string> = {
                 401: 'Your login has expired. Refresh the page and sign in again.',
                 403: 'You do not have permission to perform this action.',
+                409: 'This record conflicts with connected data. Review its connections and try again.',
                 413: 'The selected files are too large for the server. Upload fewer or smaller files.',
                 419: 'Your session has expired. Refresh the page and try again.',
                 422: 'The submitted information could not be processed. Check the highlighted fields.',
@@ -96,6 +120,7 @@ export function FlashToast() {
         });
 
         return () => {
+            removeSuccessListener();
             removeInvalidListener();
             removeExceptionListener();
         };

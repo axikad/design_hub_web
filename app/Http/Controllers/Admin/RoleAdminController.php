@@ -8,6 +8,7 @@ use App\Models\Role;
 use App\Models\SiteSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -17,9 +18,11 @@ class RoleAdminController extends Controller
     public function index(): Response
     {
         $roles = Role::query()
+            ->select(['id', 'slug', 'name'])
             ->with(['permissions' => fn ($query) => $query->where('is_active', true)->where('action', '!=', 'legacy')])
+            ->withCount('users')
             ->orderBy('name')
-            ->get(['id', 'slug', 'name']);
+            ->get();
         $permissions = Permission::query()
             ->with('module')
             ->where('is_active', true)
@@ -113,12 +116,16 @@ class RoleAdminController extends Controller
             return back()->withErrors(['role' => 'Super Admin role cannot be deleted.']);
         }
 
-        if ($role->users()->exists()) {
-            return back()->withErrors(['role' => 'Remove users from this role before deleting it.']);
-        }
+        $usersCount = $role->users()->count();
 
-        $role->delete();
+        DB::transaction(function () use ($role): void {
+            $role->users()->update(['role_id' => null]);
+            $role->delete();
+        });
 
-        return redirect()->route('admin.roles.index')->with('success', 'Role deleted.');
+        return redirect()->route('admin.roles.index')->with(
+            'success',
+            "Role deleted. {$usersCount} user account(s) were preserved and disconnected from the role.",
+        );
     }
 }

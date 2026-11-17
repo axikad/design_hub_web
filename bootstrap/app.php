@@ -7,6 +7,7 @@ use App\Support\ApiResponse;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -75,6 +76,42 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->is('api/*')) {
                 return ApiResponse::error('Too many requests. Please try again later.', 'rate_limited', 429);
             }
+        });
+
+        $exceptions->render(function (QueryException $exception, Request $request) {
+            $driverError = $exception->errorInfo[1] ?? null;
+
+            if ($driverError === 2002) {
+                $message = 'The database is temporarily unavailable. Please try again shortly.';
+
+                if ($request->is('api/*')) {
+                    return ApiResponse::error($message, 'database_unavailable', 503);
+                }
+
+                return response($message, 503);
+            }
+
+            if ($driverError === 1062) {
+                $message = 'The same value is already used by another record. Review the unique fields and try again.';
+
+                if ($request->is('api/*')) {
+                    return ApiResponse::error($message, 'duplicate_record', 409);
+                }
+
+                return back()->with('error', $message);
+            }
+
+            if ($driverError !== 1451) {
+                return null;
+            }
+
+            $message = 'This record is connected to other records. Disconnect them before deleting, or use the provided delete confirmation flow.';
+
+            if ($request->is('api/*')) {
+                return ApiResponse::error($message, 'record_in_use', 409);
+            }
+
+            return back()->with('error', $message);
         });
 
         $exceptions->render(function (HttpExceptionInterface $exception, Request $request) {

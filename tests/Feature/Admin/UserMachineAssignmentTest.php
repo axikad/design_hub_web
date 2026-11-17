@@ -90,4 +90,29 @@ class UserMachineAssignmentTest extends TestCase
             'machineIds' => [$machine->public_id],
         ])->assertSessionHasErrors('allowOtpLogin');
     }
+
+    public function test_admin_receives_validation_error_for_a_duplicate_mobile_number(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+        $role = Role::query()->where('slug', 'marketplace_user')->firstOrFail();
+        $machine = Machine::query()->create(['name' => 'Embroidery', 'is_active' => true]);
+        User::factory()->create([
+            'country_code' => '+91',
+            'mobile_number' => '9876543210',
+            'phone_key' => '+919876543210',
+        ]);
+
+        $this->actingAs($admin)->post(route('admin.users.store'), [
+            'name' => 'Duplicate Mobile Seller',
+            'roleId' => $role->id,
+            'countryCode' => '+91',
+            'mobileNumber' => '98765 43210',
+            'status' => 'active',
+            'machineIds' => [$machine->public_id],
+        ])->assertSessionHasErrors([
+            'mobileNumber' => 'This mobile number is already registered.',
+        ]);
+
+        $this->assertDatabaseMissing('users', ['name' => 'Duplicate Mobile Seller']);
+    }
 }
