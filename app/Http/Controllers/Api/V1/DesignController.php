@@ -75,7 +75,12 @@ class DesignController extends Controller
 
     public function show(Request $request, string $designId)
     {
-        $design = Design::query()->listed()->with('owner')->where('public_id', $designId)->first();
+        $design = Design::query()
+            ->listed()
+            ->when($request->user() === null, fn ($query) => $query->published())
+            ->with('owner')
+            ->where('public_id', $designId)
+            ->first();
 
         if ($design === null) {
             return ApiResponse::error('Design not found.', 'design_not_found', 404);

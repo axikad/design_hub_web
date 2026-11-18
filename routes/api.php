@@ -35,8 +35,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         ->name('files.folders.download')
         ->middleware('signed');
 
-    Route::middleware('auth:sanctum')->group(function () {
-        Route::post('auth/logout', [AuthController::class, 'logout']);
+    Route::middleware('optional.sanctum')->group(function () {
         Route::get('home', [HomeController::class, 'index'])->name('home');
         Route::get('catalog/categories', [CatalogController::class, 'categories']);
         Route::get('catalog/design-options', [CatalogController::class, 'designOptions']);
@@ -47,6 +46,15 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('catalog/machines/{machineId}/design-file-types', [CatalogController::class, 'machineDesignFileTypes']);
         Route::get('catalog/machine-types/{machineTypeId}/categories', [CatalogController::class, 'machineTypeCategories']);
         Route::get('catalog/categories/{categoryId}/types', [CatalogController::class, 'categoryTypes']);
+
+        Route::get('designs', [DesignController::class, 'index'])->name('designs.index');
+        Route::get('designs/{designId}', [DesignController::class, 'show']);
+        Route::get('folders', [FolderController::class, 'index'])->name('folders.index');
+        Route::get('folders/{folderId}', [FolderController::class, 'show'])->name('folders.show');
+    });
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('auth/logout', [AuthController::class, 'logout']);
 
         Route::get('users/me', [UserController::class, 'me']);
         Route::get('users/me/machines', [UserController::class, 'machinePreferences']);
@@ -62,19 +70,15 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::put('users/me/saved-designs/{designId}', [UserController::class, 'saveDesign']);
         Route::delete('users/me/saved-designs/{designId}', [UserController::class, 'unsaveDesign']);
 
-        Route::get('designs', [DesignController::class, 'index'])->name('designs.index');
         Route::post('designs/search-by-image', DesignImageSearchController::class)
             ->name('designs.search-by-image');
         Route::post('designs', [DesignController::class, 'store']);
-        Route::get('designs/{designId}', [DesignController::class, 'show']);
         Route::patch('designs/{designId}', [DesignController::class, 'update']);
         Route::delete('designs/{designId}', [DesignController::class, 'destroy']);
         Route::post('designs/{designId}/download', [DesignController::class, 'download']);
         Route::post('designs/{designId}/images/{imageIndex}/download', [DesignController::class, 'downloadImage']);
 
-        Route::get('folders', [FolderController::class, 'index'])->name('folders.index');
         Route::post('folders', [FolderController::class, 'store'])->name('folders.store');
-        Route::get('folders/{folderId}', [FolderController::class, 'show'])->name('folders.show');
         Route::post('folders/{folderId}/download', [FolderController::class, 'download']);
 
         Route::post('uploads', [UploadController::class, 'store']);

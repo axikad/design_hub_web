@@ -52,8 +52,8 @@ class ApiResponseContractTest extends TestCase
             ->assertUnauthorized()
             ->assertJson([
                 'success' => false,
-                'message' => 'Unauthenticated.',
-                'code' => 'unauthenticated',
+                'message' => 'Please sign in to continue.',
+                'code' => 'AUTH_REQUIRED',
             ])
             ->assertJsonStructure(['success', 'message', 'code'])
             ->assertJsonMissingPath('errors')

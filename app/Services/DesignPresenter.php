@@ -53,7 +53,7 @@ class DesignPresenter
             'fileUri' => $files[0]['uri'] ?? null,
             'hasFile' => $design->stitch_path !== null,
             'createdAt' => $design->created_at?->utc()->toIso8601String(),
-            'ownerKey' => $design->owner?->ownerKey(),
+            'ownerKey' => $viewer === null ? null : $design->owner?->ownerKey(),
         ];
 
         return $payload;

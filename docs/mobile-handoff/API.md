@@ -4,6 +4,22 @@ Copy `.env.example` to `.env.local`, set `EXPO_PUBLIC_API_URL=https://your-serve
 
 Only the URL needs changing **if your backend implements this contract**. Otherwise update `src/api/endpoints.ts` and the request/response mappings in `src/api/services.ts`. No backend has been supplied or tested against yet.
 
+## Guest browse
+
+The app may browse without creating a guest token. Send no `Authorization` header for guest requests.
+
+These `GET` endpoints are public: `/home`, `/designs`, `/designs/{id}`, `/folders`, `/folders/{id}`, and all browse catalog endpoints under `/catalog`. When a valid Bearer token is included, the same endpoints continue to apply the user's saved machine preferences.
+
+Account actions, purchases, saves, uploads, mutations, downloads, image search, and all seller endpoints remain protected. A guest request to a protected endpoint returns HTTP `401`:
+
+```json
+{
+  "success": false,
+  "message": "Please sign in to continue.",
+  "code": "AUTH_REQUIRED"
+}
+```
+
 ## Transport
 
 JSON requests use a compact response envelope. Successful responses always contain `{ "success": true, "message": "...", "data": ... }`. Paginated responses additionally contain `meta` and `links`. Errors contain `{ "success": false, "message": "...", "code": "machine_readable_code" }`; validation errors additionally contain `errors` by field. Optional fields are omitted rather than returned as `null`. Axios uses a 20-second timeout and sends `Authorization: Bearer <accessToken>` after verification. An authenticated 401 signs the user out and clears remote data. Local development uses OTP `1234` when configured in `.env`.
@@ -26,27 +42,27 @@ Design and user collection endpoints accept `page` and `per_page` (default 20, m
 | POST   | `/users/me/contact/request-otp`                    | `{ type: "mobile", countryCode, mobileNumber }` or `{ type: "email", email }`                         | Masked destination and OTP expiry                                                  |
 | POST   | `/users/me/contact/verify-otp`                     | Same contact fields plus `{ code: "1234" }`                                                            | Updated `User`                                                                    |
 | DELETE | `/users/me`                                        | JSON `{ confirmation: "DELETE" }`                                                                      | Account deleted and current tokens revoked                                         |
-| GET    | `/catalog/design-options`                          | Bearer token                                                                                            | Combined machines, machine types, and compatible categories (backward-compatible) |
-| GET    | `/catalog/design-file-types`                       | Bearer token; optional `machineId`                                                                      | Active compatible design file types ordered by `sort_order`                       |
-| GET    | `/catalog/machines`                                | Bearer token                                                                                            | Active machines                                                                   |
-| GET    | `/catalog/machines/:machineId/machine-types`       | Bearer token                                                                                            | Active machine types for the selected machine                                     |
-| GET    | `/catalog/machines/:machineId/categories`          | Bearer token                                                                                            | Active categories available anywhere under the selected machine                   |
-| GET    | `/catalog/machines/:machineId/design-file-types`   | Bearer token                                                                                            | Active file types compatible with the selected machine                            |
-| GET    | `/catalog/machine-types/:machineTypeId/categories` | Bearer token                                                                                            | Compatible categories for the selected machine type                               |
-| GET    | `/catalog/categories/:categoryId/types`            | Bearer token                                                                                            | Active design types for the selected category                                     |
-| GET    | `/home`                                            | Bearer token                                                                                            | Latest, today, tomorrow and category home sections                                |
-| GET    | `/designs`                                         | Bearer token                                                                                            | `Design[]`, all community designs, newest first                                   |
+| GET    | `/catalog/design-options`                          | Public; optional Bearer token applies saved machine preferences                                         | Combined machines, machine types, and compatible categories (backward-compatible) |
+| GET    | `/catalog/design-file-types`                       | Public; optional Bearer token and optional `machineId`                                                   | Active compatible design file types ordered by `sort_order`                       |
+| GET    | `/catalog/machines`                                | Public; optional Bearer token applies saved machine preferences                                         | Active machines                                                                   |
+| GET    | `/catalog/machines/:machineId/machine-types`       | Public                                                                                                  | Active machine types for the selected machine                                     |
+| GET    | `/catalog/machines/:machineId/categories`          | Public                                                                                                  | Active categories available anywhere under the selected machine                   |
+| GET    | `/catalog/machines/:machineId/design-file-types`   | Public                                                                                                  | Active file types compatible with the selected machine                            |
+| GET    | `/catalog/machine-types/:machineTypeId/categories` | Public                                                                                                  | Compatible categories for the selected machine type                               |
+| GET    | `/catalog/categories/:categoryId/types`            | Public                                                                                                  | Active design types for the selected category                                     |
+| GET    | `/home`                                            | Public; optional Bearer token applies saved machine preferences                                         | Latest, today, tomorrow and category home sections                                |
+| GET    | `/designs`                                         | Public; optional Bearer token applies saved machine preferences                                         | `Design[]`, all community designs, newest first                                   |
 | POST   | `/designs/search-by-image`                         | Bearer token; multipart `image` plus optional catalog filters                                           | Search engine, threshold, and matching designs                                    |
 | GET    | `/users/me/designs`                                | Bearer token                                                                                            | `Design[]`, only authenticated user's designs                                     |
-| GET    | `/designs/:id`                                     | Bearer token                                                                                            | `Design` (404 if missing)                                                         |
-| POST   | `/uploads`                                         | Multipart form with one `file` field                                                                    | `{ url: "https://..." }`                                                          |
+| GET    | `/designs/:id`                                     | Public                                                                                                  | `Design` (404 if missing)                                                         |
+| POST   | `/uploads`                                         | Bearer token; multipart form with one `file` field                                                      | `{ url: "https://..." }`                                                          |
 | POST   | `/designs`                                         | `DesignRequest` below                                                                                   | Created `Design`                                                                  |
 | POST   | `/designs/:id/images/:index/download`              | Bearer token; owner or paid buyer only                                                                  | Temporary signed clean-image download URL                                         |
 | PATCH  | `/designs/:id`                                     | `DesignRequest` below                                                                                   | Updated `Design`                                                                  |
 | DELETE | `/designs/:id`                                     | Bearer token                                                                                            | `{ message: "Design deleted successfully." }`                                     |
-| GET    | `/folders`                                         | Bearer token; optional `search`, `page`, `per_page`                                                     | Paginated `Folder[]`                                                              |
+| GET    | `/folders`                                         | Public; optional `search`, `page`, `per_page`                                                           | Paginated `Folder[]`                                                              |
 | POST   | `/folders`                                         | Bearer token; multipart `name`, `pricePaise`, `file` (ZIP or RAR)                                      | Created folder with extracted file metadata                                       |
-| GET    | `/folders/:id`                                     | Bearer token                                                                                            | Folder metadata and ordered extracted files                                       |
+| GET    | `/folders/:id`                                     | Public                                                                                                  | Folder metadata and ordered extracted files                                       |
 | POST   | `/payments/orders`                                 | `{ folderId: string }`                                                                                  | Razorpay order using the server-side folder price                                 |
 | POST   | `/payments/verify`                                 | `{ folderId, razorpay_order_id, razorpay_payment_id, razorpay_signature }`                              | Folder payment status and purchase ID                                             |
 | GET    | `/purchases/folders/:id`                           | Bearer token                                                                                            | `{ folderId, status: "unpaid" or "pending" or "paid" }`                           |

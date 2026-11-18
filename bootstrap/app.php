@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\ResolveOptionalSanctumUser;
 use App\Support\ApiResponse;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -28,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => EnsureAdmin::class,
             'permission' => EnsurePermission::class,
+            'optional.sanctum' => ResolveOptionalSanctumUser::class,
         ]);
         $middleware->statefulApi();
         $middleware->web(append: [
@@ -56,7 +58,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (AuthenticationException $exception, Request $request) {
             if ($request->is('api/*')) {
-                return ApiResponse::error('Unauthenticated.', 'unauthenticated', 401);
+                return ApiResponse::error('Please sign in to continue.', 'AUTH_REQUIRED', 401);
             }
         });
 
@@ -121,7 +123,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
             $status = $exception->getStatusCode();
             $responses = [
-                401 => ['Unauthenticated.', 'unauthenticated'],
+                401 => ['Please sign in to continue.', 'AUTH_REQUIRED'],
                 403 => ['This action is forbidden.', 'forbidden'],
                 404 => ['Resource not found.', 'resource_not_found'],
                 409 => ['The request conflicts with the current resource state.', 'conflict'],

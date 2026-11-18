@@ -120,8 +120,12 @@ class Design extends Model
         return $query->whereDate('publish_date', $date);
     }
 
-    public function scopeForUserMachines($query, User $user)
+    public function scopeForUserMachines($query, ?User $user)
     {
+        if ($user === null) {
+            return $query;
+        }
+
         $user->loadMissing('machines:id,public_id');
         $machineIds = $user->machines->pluck('public_id');
 

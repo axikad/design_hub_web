@@ -85,7 +85,7 @@ class HomeController extends Controller
         ], message: 'Home designs retrieved successfully.');
     }
 
-    private function designQuery(User $user): Builder
+    private function designQuery(?User $user): Builder
     {
         return Design::query()
             ->listed()

@@ -133,14 +133,8 @@ class FolderApiTest extends TestCase
             ->assertHeader('content-type', 'image/svg+xml');
     }
 
-    public function test_folder_api_returns_standard_authentication_and_not_found_errors(): void
+    public function test_folder_api_returns_standard_not_found_errors(): void
     {
-        $this->getJson('/api/v1/folders')
-            ->assertUnauthorized()
-            ->assertJsonPath('code', 'unauthenticated');
-
-        Sanctum::actingAs(User::factory()->create());
-
         $this->getJson('/api/v1/folders/folder_missing')
             ->assertNotFound()
             ->assertJson([

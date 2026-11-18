@@ -867,7 +867,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         }
                     ]
                 },
@@ -1207,7 +1207,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         }
                     ]
                 },
@@ -1272,7 +1272,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         }
                     ]
                 },
@@ -1337,7 +1337,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         }
                     ]
                 },
@@ -1415,7 +1415,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         }
                     ]
                 },
@@ -1493,7 +1493,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         }
                     ]
                 }
@@ -1723,7 +1723,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         }
                     ]
                 },
@@ -1811,7 +1811,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         }
                     ]
                 },
@@ -1890,7 +1890,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         }
                     ]
                 },
@@ -1971,7 +1971,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         }
                     ]
                 },
@@ -2052,7 +2052,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         }
                     ]
                 },
@@ -2214,7 +2214,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         }
                     ]
                 },
@@ -2295,7 +2295,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         }
                     ]
                 }
@@ -2412,7 +2412,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         },
                         {
                             "name": "422 - Validation Error",
@@ -2560,7 +2560,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         },
                         {
                             "name": "422 - Validation Error",
@@ -2680,7 +2680,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         }
                     ]
                 },
@@ -2859,7 +2859,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         },
                         {
                             "name": "404 - Resource Not Found",
@@ -2990,7 +2990,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         },
                         {
                             "name": "422 - Validation Error",
@@ -3113,7 +3113,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         },
                         {
                             "name": "422 - Validation Error",
@@ -3257,7 +3257,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         },
                         {
                             "name": "404 - Resource Not Found",
@@ -3364,7 +3364,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         },
                         {
                             "name": "404 - Resource Not Found",
@@ -3467,7 +3467,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         }
                     ]
                 }
@@ -3552,7 +3552,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         }
                     ]
                 },
@@ -3819,7 +3819,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         },
                         {
                             "name": "404 - Resource Not Found",
@@ -3985,7 +3985,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         },
                         {
                             "name": "422 - Validation Error",
@@ -4142,7 +4142,7 @@
                                 }
                             ],
                             "cookie": [],
-                            "body": "{\n    \"success\": false,\n    \"message\": \"Unauthenticated.\",\n    \"code\": \"unauthenticated\"\n}"
+                            "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         },
                         {
                             "name": "422 - Validation Error",

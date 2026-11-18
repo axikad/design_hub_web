@@ -271,6 +271,11 @@ class CatalogController extends Controller
     private function selectedMachineIds(Request $request)
     {
         $user = $request->user();
+
+        if ($user === null) {
+            return collect();
+        }
+
         $user->loadMissing('machines:id,public_id');
 
         return $user->machines->pluck('public_id');
