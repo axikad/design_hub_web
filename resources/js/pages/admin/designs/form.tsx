@@ -9,8 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, FileArchive, ImageIcon, Layers3, LoaderCircle, Plus, Save, Tag, Trash2, UserRound } from 'lucide-react';
-import { type FormEventHandler } from 'react';
+import { ArrowLeft, FileArchive, ImageIcon, Layers3, LoaderCircle, Plus, Save, Tag, Trash2, UserRound, X } from 'lucide-react';
+import { type FormEventHandler, useEffect, useRef, useState } from 'react';
 
 type OwnerOption = { id: string; label: string };
 type TypeOption = { id: string; name: string };
@@ -397,49 +397,23 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                                     />
                                                 ) : null}
                                                 {config.specificationFields.image ? (
-                                                    <div className="grid gap-2 sm:col-span-2 lg:col-span-3">
-                                                        <Label htmlFor={`variant-image-${index}`}>
-                                                            Image {config.specificationFields.required.image ? <span className="text-red-500">*</span> : null}
-                                                        </Label>
-                                                        {variant.imageUri && !variant.removeImage ? (
-                                                            <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
-                                                                <img
-                                                                    src={variant.imageUri}
-                                                                    alt={variant.imageName ?? 'Design type image'}
-                                                                    className="h-20 w-20 rounded-lg object-cover"
-                                                                />
-                                                                <div className="min-w-0 flex-1">
-                                                                    <p className="truncate text-sm font-medium">{variant.imageName ?? 'Current image'}</p>
-                                                                    <p className="text-xs text-slate-500">Select a new image to replace it.</p>
-                                                                </div>
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    onClick={() => {
-                                                                        updateVariant(index, 'image', null);
-                                                                        updateVariant(index, 'removeImage', true);
-                                                                    }}
-                                                                >
-                                                                    <Trash2 className="size-4" /> Remove
-                                                                </Button>
-                                                            </div>
-                                                        ) : null}
-                                                        <Input
-                                                            id={`variant-image-${index}`}
-                                                            type="file"
-                                                            accept="image/jpeg,image/png,image/webp"
-                                                            required={config.specificationFields.required.image && !variant.image && (!variant.imageUri || variant.removeImage)}
-                                                            onChange={(event) => {
-                                                                updateVariant(index, 'image', event.target.files?.[0] ?? null);
-                                                                updateVariant(index, 'removeImage', false);
-                                                            }}
-                                                            className={inputClass}
-                                                        />
-                                                        {variant.image ? <p className="text-xs text-slate-500">Selected: {variant.image.name}</p> : null}
-                                                        <p className="text-xs text-slate-500">One JPG, PNG or WebP image, maximum 5 MB.</p>
-                                                        <InputError message={fieldError('image')} />
-                                                    </div>
+                                                    <VariantImageField
+                                                        id={`variant-image-${index}`}
+                                                        image={variant.image}
+                                                        imageUri={variant.imageUri}
+                                                        imageName={variant.imageName}
+                                                        removed={variant.removeImage}
+                                                        required={config.specificationFields.required.image}
+                                                        error={fieldError('image')}
+                                                        onChange={(image) => {
+                                                            updateVariant(index, 'image', image);
+                                                            updateVariant(index, 'removeImage', false);
+                                                        }}
+                                                        onRemove={() => {
+                                                            updateVariant(index, 'image', null);
+                                                            updateVariant(index, 'removeImage', Boolean(variant.imageUri));
+                                                        }}
+                                                    />
                                                 ) : null}
                                                 {config.specificationFields.nameOrNumber ? (
                                                     <VariantField
@@ -675,6 +649,82 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                 </form>
             </div>
         </AppLayout>
+    );
+}
+
+type VariantImageFieldProps = {
+    id: string;
+    image: File | null;
+    imageUri: string | null;
+    imageName: string | null;
+    removed: boolean;
+    required: boolean;
+    error?: string;
+    onChange: (image: File | null) => void;
+    onRemove: () => void;
+};
+
+function VariantImageField({ id, image, imageUri, imageName, removed, required, error, onChange, onRemove }: VariantImageFieldProps) {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [selectedPreview, setSelectedPreview] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!image) {
+            setSelectedPreview(null);
+
+            return;
+        }
+
+        const objectUrl = URL.createObjectURL(image);
+        setSelectedPreview(objectUrl);
+
+        return () => URL.revokeObjectURL(objectUrl);
+    }, [image]);
+
+    const previewUri = selectedPreview ?? (!removed ? imageUri : null);
+    const displayName = image?.name ?? imageName ?? 'Design type image';
+
+    const remove = () => {
+        if (inputRef.current) inputRef.current.value = '';
+        onRemove();
+    };
+
+    return (
+        <div className="grid gap-2 sm:col-span-2 lg:col-span-3">
+            <Label htmlFor={id}>Image {required ? <span className="text-red-500">*</span> : null}</Label>
+            {previewUri ? (
+                <div className="relative w-fit rounded-2xl border border-slate-200 bg-slate-50 p-2 dark:border-slate-700 dark:bg-slate-800/70">
+                    <img src={previewUri} alt={displayName} className="h-32 w-32 rounded-xl object-cover" />
+                    <button
+                        type="button"
+                        aria-label="Remove design type image"
+                        title="Remove image"
+                        onClick={remove}
+                        className="absolute -top-2 -right-2 grid size-7 place-items-center rounded-full bg-red-600 text-white shadow-md transition hover:bg-red-700 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:outline-none"
+                    >
+                        <X className="size-4" />
+                    </button>
+                    <p className="mt-2 max-w-32 truncate px-1 text-xs text-slate-600 dark:text-slate-300" title={displayName}>
+                        {displayName}
+                    </p>
+                </div>
+            ) : removed ? (
+                <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                    Image marked for removal. Select another image to replace it.
+                </p>
+            ) : null}
+            <Input
+                ref={inputRef}
+                id={id}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                required={required && !image && (!imageUri || removed)}
+                onChange={(event) => onChange(event.target.files?.[0] ?? null)}
+                className={inputClass}
+            />
+            <p className="text-xs text-slate-500">One JPG, PNG or WebP image, maximum 5 MB.</p>
+            <InputError message={error} />
+        </div>
     );
 }
 
