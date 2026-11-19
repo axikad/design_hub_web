@@ -39,6 +39,17 @@ class DesignController extends Controller
             'section' => ['sometimes', 'string', Rule::in(['latest', 'today', 'tomorrow'])],
             'categoryId' => ['sometimes', 'string', 'max:120'],
             'machineTypeId' => ['sometimes', 'string', 'max:120'],
+            'machine_type_id' => ['sometimes', 'nullable', 'string', Rule::exists('machine_types', 'public_id')->where('is_active', true)],
+            'category_ids' => ['sometimes', 'array'],
+            'category_ids.*' => ['string', 'distinct', Rule::exists('design_categories', 'public_id')->where('is_active', true)],
+            'design_type_ids' => ['sometimes', 'array'],
+            'design_type_ids.*' => ['string', 'distinct', Rule::exists('design_types', 'public_id')->where('is_active', true)],
+            'stitch_ranges' => ['sometimes', 'array'],
+            'stitch_ranges.*' => ['string', 'distinct', Rule::in($this->stitchRanges())],
+            'needle_values' => ['sometimes', 'array'],
+            'needle_values.*' => ['integer', 'distinct', 'between:0,12'],
+            'area_ranges' => ['sometimes', 'array'],
+            'area_ranges.*' => ['string', 'distinct', Rule::in($this->areaRanges())],
             'search' => ['sometimes', 'string', 'max:120'],
         ]);
         $today = now(config('designhub.marketplace_timezone'))->toDateString();
@@ -52,6 +63,12 @@ class DesignController extends Controller
             ->when(! in_array(($filters['section'] ?? null), ['today', 'tomorrow'], true), fn ($query) => $query->published($today))
             ->when($filters['categoryId'] ?? null, fn ($query, $categoryId) => $query->where('category_id', $categoryId))
             ->when($filters['machineTypeId'] ?? null, fn ($query, $machineTypeId) => $query->where('machine_type_id', $machineTypeId))
+            ->when($filters['machine_type_id'] ?? null, fn ($query, $machineTypeId) => $query->where('machine_type_id', $machineTypeId))
+            ->when($filters['category_ids'] ?? [], fn ($query, $categoryIds) => $query->whereIn('category_id', $categoryIds))
+            ->when($this->hasVariantFilters($filters), fn ($query) => $query->whereHas(
+                'variants',
+                fn ($variantQuery) => $this->applyVariantFilters($variantQuery, $filters),
+            ))
             ->when($filters['search'] ?? null, function ($query, $search) {
                 $query->where(function ($searchQuery) use ($search) {
                     $searchQuery->where('title', 'like', '%'.$search.'%')
@@ -71,6 +88,62 @@ class DesignController extends Controller
             )->values(),
             'Designs retrieved successfully.',
         );
+    }
+
+    private function hasVariantFilters(array $filters): bool
+    {
+        return collect(['design_type_ids', 'stitch_ranges', 'needle_values', 'area_ranges'])
+            ->contains(fn (string $key) => ($filters[$key] ?? []) !== []);
+    }
+
+    private function applyVariantFilters($query, array $filters): void
+    {
+        $query
+            ->when($filters['design_type_ids'] ?? [], fn ($variantQuery, $ids) => $variantQuery
+                ->whereHas('type', fn ($typeQuery) => $typeQuery->whereIn('public_id', $ids)))
+            ->when($filters['stitch_ranges'] ?? [], fn ($variantQuery, $ranges) => $this->applyRanges(
+                $variantQuery,
+                'stitch_count',
+                $ranges,
+                inclusiveFinalUpper: 250000,
+            ))
+            ->when($filters['needle_values'] ?? [], fn ($variantQuery, $values) => $variantQuery->whereIn('needle', $values))
+            ->when($filters['area_ranges'] ?? [], fn ($variantQuery, $ranges) => $this->applyRanges(
+                $variantQuery,
+                'area',
+                $ranges,
+            ));
+    }
+
+    private function applyRanges($query, string $column, array $ranges, ?int $inclusiveFinalUpper = null): void
+    {
+        $query->where(function ($rangeQuery) use ($column, $ranges, $inclusiveFinalUpper) {
+            foreach ($ranges as $range) {
+                [$minimum, $maximum] = explode(':', $range, 2);
+                $rangeQuery->orWhere(function ($singleRange) use ($column, $minimum, $maximum, $inclusiveFinalUpper) {
+                    $singleRange->where($column, '>=', (int) $minimum);
+
+                    if ($maximum !== '*') {
+                        $operator = $inclusiveFinalUpper !== null && (int) $maximum === $inclusiveFinalUpper ? '<=' : '<';
+                        $singleRange->where($column, $operator, (int) $maximum);
+                    }
+                });
+            }
+        });
+    }
+
+    /** @return list<string> */
+    private function stitchRanges(): array
+    {
+        return collect(range(0, 225000, 25000))
+            ->map(fn (int $minimum) => $minimum.':'.($minimum + 25000))
+            ->all();
+    }
+
+    /** @return list<string> */
+    private function areaRanges(): array
+    {
+        return ['0:100', '100:200', '200:300', '300:400', '400:500', '500:*'];
     }
 
     public function show(Request $request, string $designId)

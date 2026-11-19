@@ -1649,6 +1649,35 @@
             "name": "Catalog",
             "item": [
                 {
+                    "name": "Get Browse Filters",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const json = pm.response.json();",
+                                    "if (json.data?.machineTypes?.length) pm.collectionVariables.set('machine_type_id', json.data.machineTypes[0].id);",
+                                    "if (json.data?.categories?.length) pm.collectionVariables.set('category_id', json.data.categories[0].id);",
+                                    "if (json.data?.designTypes?.length) pm.collectionVariables.set('type_id', json.data.designTypes[0].id);"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/catalog/browse-filters",
+                        "description": "Complete active machine-type, category, and design-type relationships for the mobile browse filter sheet. Independent of current design results."
+                    },
+                    "response": []
+                },
+                {
                     "name": "List Categories and Types",
                     "event": [
                         {
@@ -2683,6 +2712,21 @@
                             "body": "{\n    \"success\": false,\n    \"message\": \"Please sign in to continue.\",\n    \"code\": \"AUTH_REQUIRED\"\n}"
                         }
                     ]
+                },
+                {
+                    "name": "List Designs with Browse Filters",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/designs?page={{page}}&per_page={{per_page}}&machine_type_id={{machine_type_id}}&category_ids[]={{category_id}}&design_type_ids[]={{type_id}}&stitch_ranges[]=0:25000&needle_values[]=8&area_ranges[]=0:100",
+                        "description": "Mobile browse filters. Multi-select values use OR within a group and AND across groups. Specification filters are matched on the same design-type assignment."
+                    },
+                    "response": []
                 },
                 {
                     "name": "Search Designs by Image",

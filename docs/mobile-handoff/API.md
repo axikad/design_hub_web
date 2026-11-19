@@ -42,6 +42,7 @@ Design and user collection endpoints accept `page` and `per_page` (default 20, m
 | POST   | `/users/me/contact/request-otp`                    | `{ type: "mobile", countryCode, mobileNumber }` or `{ type: "email", email }`                         | Masked destination and OTP expiry                                                  |
 | POST   | `/users/me/contact/verify-otp`                     | Same contact fields plus `{ code: "1234" }`                                                            | Updated `User`                                                                    |
 | DELETE | `/users/me`                                        | JSON `{ confirmation: "DELETE" }`                                                                      | Account deleted and current tokens revoked                                         |
+| GET    | `/catalog/browse-filters`                         | Public                                                                                                  | Complete machine-type, category, and design-type relationships for browse filters |
 | GET    | `/catalog/design-options`                          | Public; optional Bearer token applies saved machine preferences                                         | Combined machines, machine types, and compatible categories (backward-compatible) |
 | GET    | `/catalog/design-file-types`                       | Public; optional Bearer token and optional `machineId`                                                   | Active compatible design file types ordered by `sort_order`                       |
 | GET    | `/catalog/machines`                                | Public; optional Bearer token applies saved machine preferences                                         | Active machines                                                                   |
@@ -209,6 +210,19 @@ Optional home parameters are `sliderLimit` (maximum 10), `sectionLimit` (maximum
 - `/designs?machineTypeId=machine-embroidery`
 
 Tomorrow designs use `publishDate` and are excluded from latest and category listings until their publish date.
+
+The mobile browse filter sheet should load `GET /catalog/browse-filters`. Its `machineTypes`, `categories`, and `designTypes` arrays use stable public IDs and include relationship ID arrays for cascading dropdowns. This endpoint is independent of the current design result page, so an active catalog option remains available even when no matching design is currently listed.
+
+`GET /designs` also accepts these optional filter-sheet parameters while preserving `page` and `per_page` pagination:
+
+- `machine_type_id`: one machine-type public ID.
+- `category_ids[]`: one or more category public IDs.
+- `design_type_ids[]`: one or more design-type public IDs.
+- `stitch_ranges[]`: `0:25000` through `225000:250000` in 25,000 steps. Lower bounds are inclusive, upper bounds are exclusive, except that the final range includes exactly 250,000.
+- `needle_values[]`: exact integer values from 0 through 12.
+- `area_ranges[]`: `0:100`, `100:200`, `200:300`, `300:400`, `400:500`, or `500:*`. Lower bounds are inclusive and finite upper bounds are exclusive.
+
+Values within one multi-select group use OR; different groups use AND. Design type and specification filters are evaluated against the same `designTypes[]` assignment. Filtering occurs before pagination, so `meta.total` and page links describe the filtered result set. Existing `categoryId`, `machineTypeId`, `section`, and `search` parameters remain supported.
 
 Clients should send `machineId` when creating or updating a design. Older requests can still be resolved from `machineTypeId` when that field is enabled. After selecting a machine, load its compatible formats from `/catalog/machines/:machineId/design-file-types` (or `/catalog/design-file-types?machineId=...`). The backend rejects a `designFileTypeId` that is not connected to the selected machine.
 

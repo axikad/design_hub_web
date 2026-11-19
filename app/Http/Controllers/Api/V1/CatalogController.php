@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\DesignCategory;
 use App\Models\DesignFileType;
+use App\Models\DesignType;
 use App\Models\Machine;
 use App\Models\MachineType;
 use App\Support\ApiResponse;
@@ -12,6 +13,71 @@ use Illuminate\Http\Request;
 
 class CatalogController extends Controller
 {
+    public function browseFilters()
+    {
+        $machineTypes = MachineType::query()
+            ->where('is_active', true)
+            ->whereHas('machine', fn ($query) => $query->where('is_active', true))
+            ->with([
+                'machine:id,public_id',
+                'categories' => fn ($query) => $query->where('design_categories.is_active', true),
+            ])
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        $categories = DesignCategory::query()
+            ->where('is_active', true)
+            ->whereHas('machineTypes', fn ($query) => $query
+                ->where('machine_types.is_active', true)
+                ->whereHas('machine', fn ($machineQuery) => $machineQuery->where('is_active', true)))
+            ->with([
+                'machineTypes' => fn ($query) => $query
+                    ->where('machine_types.is_active', true)
+                    ->whereHas('machine', fn ($machineQuery) => $machineQuery->where('is_active', true)),
+                'activeTypes',
+            ])
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        $designTypes = DesignType::query()
+            ->where('is_active', true)
+            ->whereHas('categories', fn ($query) => $query
+                ->where('design_categories.is_active', true)
+                ->whereHas('machineTypes', fn ($machineTypeQuery) => $machineTypeQuery
+                    ->where('machine_types.is_active', true)
+                    ->whereHas('machine', fn ($machineQuery) => $machineQuery->where('is_active', true))))
+            ->with(['categories' => fn ($query) => $query
+                ->where('design_categories.is_active', true)
+                ->whereHas('machineTypes', fn ($machineTypeQuery) => $machineTypeQuery
+                    ->where('machine_types.is_active', true)
+                    ->whereHas('machine', fn ($machineQuery) => $machineQuery->where('is_active', true)))])
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        return ApiResponse::data([
+            'machineTypes' => $machineTypes->map(fn (MachineType $machineType) => [
+                'id' => $machineType->public_id,
+                'name' => $machineType->name,
+                'machineId' => $machineType->machine?->public_id,
+                'categoryIds' => $machineType->categories->pluck('public_id')->values(),
+            ])->values(),
+            'categories' => $categories->map(fn (DesignCategory $category) => [
+                'id' => $category->public_id,
+                'name' => $category->name,
+                'machineTypeIds' => $category->machineTypes->pluck('public_id')->values(),
+                'designTypeIds' => $category->activeTypes->pluck('public_id')->values(),
+            ])->values(),
+            'designTypes' => $designTypes->map(fn (DesignType $designType) => [
+                'id' => $designType->public_id,
+                'name' => $designType->name,
+                'categoryIds' => $designType->categories->pluck('public_id')->values(),
+            ])->values(),
+        ], message: 'Browse filters retrieved successfully.');
+    }
+
     public function designFileTypes(Request $request)
     {
         $machineId = trim((string) $request->string('machineId'));
