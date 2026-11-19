@@ -3581,8 +3581,8 @@
                                 "value": "application/json"
                             }
                         ],
-                        "url": "{{base_url}}/folders/{{folder_id}}",
-                        "description": "Returns folder metadata and ordered extracted files. Image files include temporary signed previewUri values; other files return previewUri as null."
+                        "url": "{{base_url}}/folders/{{folder_id}}?page=1&per_page=20",
+                        "description": "Returns folder metadata and one ordered page of extracted files. Top-level meta and links describe file pagination; follow links.next for the next page. Image files include temporary signed previewUri values; other files return previewUri as null."
                     },
                     "response": [
                         {
@@ -3595,7 +3595,7 @@
                                         "value": "application/json"
                                     }
                                 ],
-                                "url": "{{base_url}}/folders/{{folder_id}}"
+                                "url": "{{base_url}}/folders/{{folder_id}}?page=1&per_page=20"
                             },
                             "status": "OK",
                             "code": 200,

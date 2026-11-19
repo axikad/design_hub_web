@@ -53,7 +53,6 @@ class FolderController extends Controller
     public function show(Request $request, string $folderId)
     {
         $folder = Folder::query()
-            ->with(['files.folder', 'previewFiles'])
             ->where('public_id', $folderId)
             ->first();
 
@@ -61,9 +60,19 @@ class FolderController extends Controller
             return ApiResponse::error('Folder not found.', 'folder_not_found', 404);
         }
 
-        return ApiResponse::data(
+        $cover = $folder->previewFiles()->first();
+        $folder->setRelation('previewFiles', collect([$cover])->filter()->values());
+
+        $files = $folder->files()
+            ->with('folder')
+            ->paginate(Pagination::perPage($request))
+            ->withQueryString();
+        $folder->setRelation('files', $files->getCollection());
+
+        return ApiResponse::paginated(
+            $files,
             (new FolderResource($folder))->resolve($request),
-            message: 'Folder retrieved successfully.',
+            'Folder retrieved successfully.',
         );
     }
 

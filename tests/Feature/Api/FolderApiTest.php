@@ -116,17 +116,30 @@ class FolderApiTest extends TestCase
             ->assertJsonPath('meta.per_page', 1)
             ->assertJsonStructure(['data' => [['coverImageUri']], 'meta', 'links']);
 
-        $response = $this->getJson('/api/v1/folders/'.$folder->public_id)
+        $this->getJson('/api/v1/folders/'.$folder->public_id.'?per_page=1&page=1')
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('message', 'Folder retrieved successfully.')
             ->assertJsonPath('data.zipName', 'bridal.zip')
             ->assertJsonPath('data.files.0.relativePath', 'design.emb')
             ->assertJsonPath('data.files.0.previewUri', null)
-            ->assertJsonPath('data.files.1.id', $image->public_id)
-            ->assertJsonPath('data.files.1.relativePath', 'images/preview.svg');
+            ->assertJsonCount(1, 'data.files')
+            ->assertJsonPath('meta.current_page', 1)
+            ->assertJsonPath('meta.per_page', 1)
+            ->assertJsonPath('meta.total', 2)
+            ->assertJsonPath('meta.last_page', 2)
+            ->assertJsonPath('links.prev', null)
+            ->assertJsonPath('links.next', fn ($url) => is_string($url) && str_contains($url, 'page=2'));
 
-        $previewUrl = $response->json('data.files.1.previewUri');
+        $response = $this->getJson('/api/v1/folders/'.$folder->public_id.'?per_page=1&page=2')
+            ->assertOk()
+            ->assertJsonPath('data.files.0.id', $image->public_id)
+            ->assertJsonPath('data.files.0.relativePath', 'images/preview.svg')
+            ->assertJsonCount(1, 'data.files')
+            ->assertJsonPath('meta.current_page', 2)
+            ->assertJsonPath('links.next', null);
+
+        $previewUrl = $response->json('data.files.0.previewUri');
         $this->assertNotNull($previewUrl);
         $this->get($previewUrl)
             ->assertOk()
