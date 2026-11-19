@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Design;
 use App\Models\DesignCategory;
+use App\Models\DesignVariant;
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
 
@@ -153,6 +154,7 @@ class DesignPresenter
                     'customTypeName' => $variant->custom_type_name,
                     'isCustom' => $variant->design_type_id === null,
                     'details' => [
+                        'image' => $this->variantImage($variant),
                         'nameOrNumber' => $variant->name_or_number,
                         'stitchCount' => $variant->stitch_count,
                         'needle' => $variant->needle,
@@ -173,6 +175,7 @@ class DesignPresenter
             'typeId' => $design->type->public_id,
             'typeName' => $design->type->name,
             'details' => [
+                'image' => null,
                 'nameOrNumber' => $details['names'][0] ?? $design->title,
                 'stitchCount' => is_numeric($details['stitch'] ?? null) ? (int) $details['stitch'] : 0,
                 'needle' => (int) ($details['needle'] ?? 0),
@@ -181,6 +184,19 @@ class DesignPresenter
                 'width' => $details['width'] ?? 0,
             ],
         ]];
+    }
+
+    private function variantImage(DesignVariant $variant): ?array
+    {
+        if (blank($variant->image_path)) {
+            return null;
+        }
+
+        return [
+            'name' => $variant->image_name ?? basename($variant->image_path),
+            'uri' => Storage::disk('public')->url($variant->image_path),
+            'thumbnailUri' => $this->thumbnails->url($variant->image_path),
+        ];
     }
 
     private function detailsWithoutSequenceType(array $details): array

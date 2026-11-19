@@ -295,6 +295,8 @@ class DesignManagementTest extends TestCase
         ]);
         $design->variants()->create([
             'design_type_id' => $type->id,
+            'image_path' => 'variant-images/'.$owner->public_id.'/old-pallu.jpg',
+            'image_name' => 'old-pallu.jpg',
             'name_or_number' => 'Old pallu',
             'stitch_count' => 10000,
             'needle' => 10,
@@ -302,10 +304,14 @@ class DesignManagementTest extends TestCase
             'height' => 6,
             'width' => 6,
         ]);
+        Storage::disk('public')->put('variant-images/'.$owner->public_id.'/old-pallu.jpg', 'old image');
 
         $this->actingAs($admin)
             ->get('/admin/designs/'.$design->public_id.'/edit')
-            ->assertOk();
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('design.variants.0.imageName', 'old-pallu.jpg')
+                ->where('design.variants.0.imageUri', Storage::disk('public')->url('variant-images/'.$owner->public_id.'/old-pallu.jpg')));
 
         $this->actingAs($admin)->put('/admin/designs/'.$design->public_id, [
             'ownerId' => $owner->public_id,
@@ -317,6 +323,7 @@ class DesignManagementTest extends TestCase
             'sequenceType' => 7.25,
             'variants' => [[
                 'typeId' => $secondType->public_id,
+                'image' => UploadedFile::fake()->image('new-border.jpg'),
                 'nameOrNumber' => 'New border',
                 'stitchCount' => 8000,
                 'needle' => 8,
@@ -341,8 +348,11 @@ class DesignManagementTest extends TestCase
         $this->assertDatabaseHas('design_variants', [
             'design_id' => $design->id,
             'design_type_id' => $secondType->id,
+            'image_name' => 'new-border.jpg',
             'name_or_number' => 'New border',
         ]);
+        Storage::disk('public')->assertMissing('variant-images/'.$owner->public_id.'/old-pallu.jpg');
+        Storage::disk('public')->assertExists($design->fresh()->variants->first()->image_path);
         $design->refresh();
         $this->assertSame(['new-front.jpg', 'new-back.webp'], collect($design->images)->pluck('name')->all());
         $this->assertSame($design->images[0]['path'], $design->preview_path);

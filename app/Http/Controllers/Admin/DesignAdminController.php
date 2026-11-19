@@ -217,6 +217,7 @@ class DesignAdminController extends Controller
         $validated = $this->validateDesign($request, true);
 
         $owner = User::query()->where('public_id', $validated['ownerId'])->firstOrFail();
+        $validated['variants'] = $this->storeVariantImages($request, $owner, $validated['variants']);
 
         $previewImages = $validated['previewImagesEnabled'] ? $this->storePreviewImages($request, $owner) : [];
         $previewPath = $previewImages[0]['path'] ?? null;
@@ -301,6 +302,8 @@ class DesignAdminController extends Controller
         $validated = $this->validateDesign($request, false, $model);
 
         $owner = User::query()->where('public_id', $validated['ownerId'])->firstOrFail();
+        $oldVariantImagePaths = $model->variants()->pluck('image_path')->filter()->all();
+        $validated['variants'] = $this->storeVariantImages($request, $owner, $validated['variants']);
 
         $previewImages = $this->existingPreviewImages($model);
         if ($validated['previewImagesEnabled'] && ($request->hasFile('previewImages') || $request->hasFile('previewImage'))) {
@@ -355,6 +358,9 @@ class DesignAdminController extends Controller
             $model->variants()->delete();
             $model->variants()->createMany($validated['variants']);
         });
+
+        $currentVariantImagePaths = collect($validated['variants'])->pluck('image_path')->filter()->all();
+        Storage::disk('public')->delete(array_values(array_diff($oldVariantImagePaths, $currentVariantImagePaths)));
 
         $this->watermarks->syncDesign($model->fresh());
         $this->imageMatching->syncDesign($model->fresh());
@@ -431,6 +437,8 @@ class DesignAdminController extends Controller
             'variants' => [$config['designTypes'] && $required['designTypes'] ? 'required' : 'nullable', 'array', 'min:1'],
             'variants.*.typeId' => ['nullable', 'string', 'max:120'],
             'variants.*.customTypeName' => ['nullable', 'string', 'min:1', 'max:120'],
+            'variants.*.image' => [$this->adminSpecificationRule($config, $specificationFields, [], 'image', false), 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'variants.*.removeImage' => ['sometimes', 'boolean'],
             'variants.*.nameOrNumber' => [$this->adminSpecificationRule($config, $specificationFields, $specificationRequired, 'nameOrNumber'), 'string', 'min:1', 'max:120'],
             'variants.*.stitchCount' => [$this->adminSpecificationRule($config, $specificationFields, $specificationRequired, 'stitchCount'), 'integer', 'min:0'],
             'variants.*.needle' => [$this->adminSpecificationRule($config, $specificationFields, $specificationRequired, 'needle'), 'integer', 'min:0'],
@@ -540,13 +548,32 @@ class DesignAdminController extends Controller
             ]);
         }
 
-        $variants = collect($variantsInput)->map(function (array $variant, int $index) use ($types, $config, $specificationFields) {
+        $existingVariants = $existingDesign?->loadMissing('variants.type')->variants
+            ->keyBy(fn ($variant) => $this->variantIdentity($variant->type?->public_id, $variant->custom_type_name))
+            ?? collect();
+
+        $variants = collect($variantsInput)->map(function (array $variant, int $index) use ($request, $types, $config, $specificationFields, $specificationRequired, $existingVariants) {
             $typeId = $variant['typeId'] ?? null;
             $fallbackName = trim((string) ($types->get($typeId)?->name ?? $variant['customTypeName'] ?? 'Design'));
+            $existingVariant = $existingVariants->get($this->variantIdentity($typeId, $variant['customTypeName'] ?? null));
+            $imageEnabled = $config['designSpecifications'] && $specificationFields['image'];
+            $hasNewImage = $imageEnabled && $request->hasFile("variants.{$index}.image");
+            $removeImage = $imageEnabled && $request->boolean("variants.{$index}.removeImage");
+            $imagePath = $imageEnabled && ! $removeImage ? $existingVariant?->image_path : null;
+            $imageName = $imageEnabled && ! $removeImage ? $existingVariant?->image_name : null;
+
+            if ($imageEnabled && $specificationRequired['image'] && ! $hasNewImage && blank($imagePath)) {
+                throw ValidationException::withMessages([
+                    "variants.{$index}.image" => 'Upload one image for this design type.',
+                ]);
+            }
 
             return [
                 'design_type_id' => $typeId ? $types->get($typeId)?->id : null,
                 'custom_type_name' => $typeId ? null : trim($variant['customTypeName']),
+                'image_path' => $imagePath,
+                'image_name' => $imageName,
+                '_store_image' => $hasNewImage,
                 'name_or_number' => $config['designSpecifications'] && $specificationFields['nameOrNumber']
                     ? trim((string) ($variant['nameOrNumber'] ?? $fallbackName)) : $fallbackName,
                 'stitch_count' => $config['designSpecifications'] && $specificationFields['stitchCount'] ? (int) ($variant['stitchCount'] ?? 0) : 0,
@@ -601,13 +628,13 @@ class DesignAdminController extends Controller
         ];
     }
 
-    private function adminSpecificationRule(array $config, array $fields, array $required, string $key): string
+    private function adminSpecificationRule(array $config, array $fields, array $required, string $key, bool $honourRequired = true): string
     {
         if (! $config['designSpecifications'] || ! $fields[$key]) {
             return 'exclude';
         }
 
-        return $required[$key] ? 'required' : 'nullable';
+        return $honourRequired && ($required[$key] ?? false) ? 'required' : 'nullable';
     }
 
     /** @return list<array<string, string|int>> */
@@ -617,6 +644,8 @@ class DesignAdminController extends Controller
             return $design->variants->map(fn ($variant) => [
                 'typeId' => $variant->type?->public_id ?? '',
                 'customTypeName' => $variant->custom_type_name ?? '',
+                'imageUri' => $variant->image_path ? Storage::disk('public')->url($variant->image_path) : null,
+                'imageName' => $variant->image_name,
                 'nameOrNumber' => $variant->name_or_number,
                 'stitchCount' => $variant->stitch_count,
                 'needle' => $variant->needle,
@@ -629,6 +658,8 @@ class DesignAdminController extends Controller
         return [[
             'typeId' => $design->type?->public_id ?? '',
             'customTypeName' => '',
+            'imageUri' => null,
+            'imageName' => null,
             'nameOrNumber' => $design->title,
             'stitchCount' => 0,
             'needle' => 0,
@@ -636,6 +667,29 @@ class DesignAdminController extends Controller
             'height' => 0,
             'width' => 0,
         ]];
+    }
+
+    private function variantIdentity(?string $typeId, ?string $customTypeName): string
+    {
+        return filled($typeId)
+            ? 'type:'.$typeId
+            : 'custom:'.mb_strtolower(trim((string) $customTypeName));
+    }
+
+    /** @param list<array<string, mixed>> $variants */
+    private function storeVariantImages(Request $request, User $owner, array $variants): array
+    {
+        return collect($variants)->map(function (array $variant, int $index) use ($request, $owner) {
+            if ($variant['_store_image'] ?? false) {
+                $image = $request->file("variants.{$index}.image");
+                $variant['image_path'] = $image->store('variant-images/'.$owner->public_id, 'public');
+                $variant['image_name'] = $image->getClientOriginalName();
+            }
+
+            unset($variant['_store_image']);
+
+            return $variant;
+        })->values()->all();
     }
 
     /** @return list<array{name: string, path: string}> */

@@ -90,6 +90,8 @@ type DesignRequest = {
         typeId?: string; // Catalog type. Send either this or customTypeName.
         customTypeName?: string; // Saved only for this design; not added to the catalog.
         details: {
+            image?: { name: string; uri: string }; // One uploaded image for this design type.
+            removeImage?: boolean; // Update only: true removes the existing image when image is optional.
             nameOrNumber: string;
             stitchCount: number;
             needle: number;
@@ -210,7 +212,7 @@ Tomorrow designs use `publishDate` and are excluded from latest and category lis
 
 Clients should send `machineId` when creating or updating a design. Older requests can still be resolved from `machineTypeId` when that field is enabled. After selecting a machine, load its compatible formats from `/catalog/machines/:machineId/design-file-types` (or `/catalog/design-file-types?machineId=...`). The backend rejects a `designFileTypeId` that is not connected to the selected machine.
 
-Every machine returned by `/auth/register/machines`, `/users/me/machines`, `/catalog/machines`, and `/catalog/design-options` includes `imageUri` and `designFormConfig`. Build the create/edit form from its top-level visibility booleans. The nested `designFormConfig.required` object contains matching booleans that decide whether each visible field is mandatory. `designFormConfig.specificationFields` separately controls visibility for `nameOrNumber`, `stitchCount`, `needle`, `area`, `height`, and `width`; its nested `required` object controls which of those visible specification fields are mandatory. Hidden fields must be omitted from the request; backend validation follows the same configuration. Existing machines keep their previous behaviour until an admin changes it. `imageUri` is an absolute public image URL when an admin uploaded a machine image, otherwise `null`.
+Every machine returned by `/auth/register/machines`, `/users/me/machines`, `/catalog/machines`, and `/catalog/design-options` includes `imageUri` and `designFormConfig`. Build the create/edit form from its top-level visibility booleans. The nested `designFormConfig.required` object contains matching booleans that decide whether each visible field is mandatory. `designFormConfig.specificationFields` separately controls visibility for `image`, `nameOrNumber`, `stitchCount`, `needle`, `area`, `height`, and `width`; its nested `required` object controls which of those visible specification fields are mandatory. Hidden fields must be omitted from the request; backend validation follows the same configuration. Existing machines keep their previous behaviour until an admin changes it. `imageUri` is an absolute public image URL when an admin uploaded a machine image, otherwise `null`.
 
 `machineType`, `designFileType`, and `stitchFiles` are independent switches. When `machineType` is disabled but `category` is enabled, load the combined category list from `/catalog/machines/:machineId/categories` and omit `machineTypeId`. `designTypes` depends on `category`, while `designSpecifications` depends on `designTypes`. A design file type is filtered by `machineId` and can remain enabled even when stitch-file upload is disabled.
 
@@ -221,6 +223,8 @@ Catalog selection uses two levels. `categoryId` is the main product group and ev
 - `general`: `motif`, `logo`, `patch`
 
 Load compatible categories after selecting a machine type, then load types for the selected category. All selected types must belong to that category. The first selected type supplies the legacy `typeId`, `title`, and `size` response fields. Old single-type requests using `typeId`, `details`, and flat summary/upload fields remain temporarily supported.
+
+When `designFormConfig.specificationFields.image` is true, show one image picker inside every selected design-type card. Upload the selected image through `POST /uploads`, then send the returned URL as `designTypes[index].details.image.uri` with its original name. On edit, an omitted `image` keeps the existing image, a new `image` replaces it, and `removeImage: true` removes it when the field is not required. The design response returns `details.image` as `{ name, uri, thumbnailUri }` or `null`.
 
 A design type may be shared by multiple categories. Mobile clients do not need a contract change: continue loading `/catalog/categories/:categoryId/types` after category selection and submit the same `categoryId` plus selected `typeId` values.
 

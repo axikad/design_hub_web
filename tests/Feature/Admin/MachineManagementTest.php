@@ -55,6 +55,7 @@ class MachineManagementTest extends TestCase
                     'pricing' => true,
                 ],
                 'specificationFields' => [
+                    'image' => true,
                     'nameOrNumber' => true,
                     'stitchCount' => true,
                     'needle' => false,
@@ -62,6 +63,7 @@ class MachineManagementTest extends TestCase
                     'height' => true,
                     'width' => true,
                     'required' => [
+                        'image' => false,
                         'nameOrNumber' => true,
                         'stitchCount' => false,
                         'needle' => false,
@@ -92,6 +94,8 @@ class MachineManagementTest extends TestCase
         $this->assertFalse($config['required']['previewImages']);
         $this->assertTrue($config['required']['designFileType']);
         $this->assertFalse($config['specificationFields']['needle']);
+        $this->assertTrue($config['specificationFields']['image']);
+        $this->assertFalse($config['specificationFields']['required']['image']);
         $this->assertFalse($config['specificationFields']['required']['stitchCount']);
         $this->assertTrue($config['specificationFields']['required']['height']);
         $this->assertTrue($watermark['enabled']);

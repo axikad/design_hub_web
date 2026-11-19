@@ -334,6 +334,10 @@ class DesignController extends Controller
             'designTypes.*.typeId' => ['nullable', 'string', 'max:120'],
             'designTypes.*.customTypeName' => ['nullable', 'string', 'min:1', 'max:120'],
             'designTypes.*.details' => [$config['designSpecifications'] && $required['designSpecifications'] ? 'required' : 'sometimes', 'array'],
+            'designTypes.*.details.image' => [$this->specificationRule($config, $specificationFields, [], 'image', false), 'nullable', 'array'],
+            'designTypes.*.details.image.name' => ['required_with:designTypes.*.details.image', 'string', 'max:255'],
+            'designTypes.*.details.image.uri' => ['required_with:designTypes.*.details.image', 'string', 'max:2048'],
+            'designTypes.*.details.removeImage' => ['sometimes', 'boolean'],
             'designTypes.*.details.nameOrNumber' => [$this->specificationRule($config, $specificationFields, $specificationRequired, 'nameOrNumber'), 'string', 'max:120'],
             'designTypes.*.details.stitchCount' => [$this->specificationRule($config, $specificationFields, $specificationRequired, 'stitchCount'), 'integer', 'min:0'],
             'designTypes.*.details.needle' => [$this->specificationRule($config, $specificationFields, $specificationRequired, 'needle'), 'integer', 'min:0'],
@@ -462,10 +466,13 @@ class DesignController extends Controller
 
         if ($config['designTypes'] && isset($validated['designTypes'])) {
             [$variants, $details] = $this->resolveDesignTypeVariants(
+                $request,
                 $validated['designTypes'],
                 $selection['category_id'],
                 $config['designSpecifications'] ? $specificationFields : null,
+                $specificationRequired,
                 $validated['title'] ?? null,
+                $existingDesign,
             );
         } elseif ($config['designTypes'] && filled($validated['typeId'] ?? null)) {
             [$variants, $details] = $this->resolveLegacyVariant(
@@ -680,20 +687,23 @@ class DesignController extends Controller
         ];
     }
 
-    private function specificationRule(array $config, array $fields, array $required, string $key): string
+    private function specificationRule(array $config, array $fields, array $required, string $key, bool $honourRequired = true): string
     {
         if (! $config['designSpecifications'] || ! $fields[$key]) {
             return 'exclude';
         }
 
-        return $required[$key] ? 'required' : 'sometimes';
+        return $honourRequired && ($required[$key] ?? false) ? 'required' : 'sometimes';
     }
 
     private function resolveDesignTypeVariants(
+        Request $request,
         array $designTypes,
         string $categoryId,
         ?array $specificationFields = null,
+        array $specificationRequired = [],
         ?string $fallbackTitle = null,
+        ?Design $existingDesign = null,
     ): array {
         $types = DesignType::query()
             ->with('categories')
@@ -702,7 +712,11 @@ class DesignController extends Controller
             ->get()
             ->keyBy('public_id');
 
-        $variants = collect($designTypes)->map(function (array $item, int $index) use ($types, $categoryId, $specificationFields, $fallbackTitle) {
+        $existingVariants = $existingDesign?->loadMissing('variants.type')->variants
+            ->keyBy(fn ($variant) => $this->variantIdentity($variant->type?->public_id, $variant->custom_type_name))
+            ?? collect();
+
+        $variants = collect($designTypes)->map(function (array $item, int $index) use ($request, $types, $categoryId, $specificationFields, $specificationRequired, $fallbackTitle, $existingVariants) {
             $typeId = $item['typeId'] ?? null;
             $type = $typeId ? $types->get($typeId) : null;
 
@@ -725,10 +739,34 @@ class DesignController extends Controller
             $details = $item['details'] ?? [];
             $hasSpecifications = $specificationFields !== null && $details !== [];
             $fallbackName = trim((string) ($fallbackTitle ?: ($type?->name ?? $item['customTypeName'] ?? 'Design')));
+            $existingVariant = $existingVariants->get($this->variantIdentity($typeId, $item['customTypeName'] ?? null));
+            $imageEnabled = $specificationFields !== null && $specificationFields['image'];
+            $removeImage = $imageEnabled && (bool) ($details['removeImage'] ?? false);
+            $imagePath = $imageEnabled && ! $removeImage ? $existingVariant?->image_path : null;
+            $imageName = $imageEnabled && ! $removeImage ? $existingVariant?->image_name : null;
+
+            if ($imageEnabled && isset($details['image'])) {
+                try {
+                    $imagePath = $this->uploads->resolveStoragePath($request->user(), $details['image']['uri'], 'photo');
+                    $imageName = trim($details['image']['name']);
+                } catch (\InvalidArgumentException $exception) {
+                    throw ValidationException::withMessages([
+                        'designTypes.'.$index.'.details.image.uri' => $exception->getMessage(),
+                    ]);
+                }
+            }
+
+            if ($imageEnabled && ($specificationRequired['image'] ?? false) && blank($imagePath)) {
+                throw ValidationException::withMessages([
+                    'designTypes.'.$index.'.details.image' => 'Upload one image for this design type.',
+                ]);
+            }
 
             return [
                 'design_type_id' => $type?->id,
                 'custom_type_name' => $typeId ? null : trim($item['customTypeName']),
+                'image_path' => $imagePath,
+                'image_name' => $imageName,
                 'name_or_number' => $hasSpecifications && $specificationFields['nameOrNumber']
                     ? trim((string) ($details['nameOrNumber'] ?? $fallbackName))
                     : $fallbackName,
@@ -742,6 +780,13 @@ class DesignController extends Controller
         })->values()->all();
 
         return [$variants, $this->legacyDetailsFromVariants($variants)];
+    }
+
+    private function variantIdentity(?string $typeId, ?string $customTypeName): string
+    {
+        return filled($typeId)
+            ? 'type:'.$typeId
+            : 'custom:'.mb_strtolower(trim((string) $customTypeName));
     }
 
     private function resolveLegacyVariant(array $validated, ?int $designTypeId): array

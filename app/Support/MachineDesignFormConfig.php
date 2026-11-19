@@ -21,6 +21,7 @@ final class MachineDesignFormConfig
         ];
 
         $specificationFields = [
+            'image' => true,
             'nameOrNumber' => true,
             'stitchCount' => true,
             'needle' => true,
@@ -37,7 +38,10 @@ final class MachineDesignFormConfig
             ],
             'specificationFields' => [
                 ...$specificationFields,
-                'required' => $specificationFields,
+                'required' => [
+                    ...$specificationFields,
+                    'image' => false,
+                ],
             ],
         ];
     }
@@ -73,6 +77,7 @@ final class MachineDesignFormConfig
             ? $savedSpecificationFields['required']
             : [];
         $legacySpecificationsRequired = $normalized['required']['designSpecifications'];
+        $defaultSpecificationRequired = $normalized['specificationFields']['required'];
 
         foreach (array_keys(array_filter($normalized['specificationFields'], fn ($value) => is_bool($value))) as $key) {
             if (array_key_exists($key, $savedSpecificationFields)) {
@@ -81,7 +86,9 @@ final class MachineDesignFormConfig
 
             $normalized['specificationFields']['required'][$key] = array_key_exists($key, $savedSpecificationRequired)
                 ? (bool) $savedSpecificationRequired[$key]
-                : ($legacySpecificationsRequired && $normalized['specificationFields'][$key]);
+                : ($key === 'image'
+                    ? (bool) $defaultSpecificationRequired[$key]
+                    : ($legacySpecificationsRequired && $normalized['specificationFields'][$key]));
 
             if (! $normalized['specificationFields'][$key]) {
                 $normalized['specificationFields']['required'][$key] = false;

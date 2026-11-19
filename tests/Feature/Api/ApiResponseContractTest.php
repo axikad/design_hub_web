@@ -369,6 +369,7 @@ class ApiResponseContractTest extends TestCase
         $this->seed(DesignFormOptionSeeder::class);
         $this->seed(DesignFileTypeSeeder::class);
         $preview = $this->upload($user, 'public', 'previews/'.$user->public_id.'/multi.jpg', 'photo', 'multi.jpg');
+        $sleeveImage = $this->upload($user, 'public', 'previews/'.$user->public_id.'/sleeve.jpg', 'photo', 'sleeve.jpg');
         $stitch = $this->upload($user, 'local', 'stitch/'.$user->public_id.'/multi.emb', 'stitch', 'multi.emb');
         $uploads = app(UploadService::class);
         Sanctum::actingAs($user);
@@ -395,6 +396,10 @@ class ApiResponseContractTest extends TestCase
                 [
                     'typeId' => 'sleeve',
                     'details' => [
+                        'image' => [
+                            'name' => 'sleeve.jpg',
+                            'uri' => $uploads->publicUrl($sleeveImage),
+                        ],
                         'nameOrNumber' => 'Sleeve 202',
                         'stitchCount' => 9000,
                         'needle' => 6,
@@ -432,6 +437,8 @@ class ApiResponseContractTest extends TestCase
             ->assertJsonPath('data.designTypes.0.typeId', 'neckline')
             ->assertJsonPath('data.designTypes.0.details.needle', 8)
             ->assertJsonPath('data.designTypes.1.typeId', 'sleeve')
+            ->assertJsonPath('data.designTypes.1.details.image.name', 'sleeve.jpg')
+            ->assertJsonPath('data.designTypes.1.details.image.uri', $uploads->publicUrl($sleeveImage))
             ->assertJsonPath('data.designTypes.1.details.nameOrNumber', 'Sleeve 202')
             ->assertJsonPath('data.designTypes.2.typeId', null)
             ->assertJsonPath('data.designTypes.2.customTypeName', 'Custom Panel')
@@ -450,9 +457,17 @@ class ApiResponseContractTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1, 'data.designTypes')
             ->assertJsonPath('data.designTypes.0.typeId', 'sleeve')
+            ->assertJsonPath('data.designTypes.0.details.image.name', 'sleeve.jpg')
             ->assertJsonPath('data.title', 'Sleeve updated');
 
         $this->assertDatabaseCount('design_variants', 1);
+
+        $payload['designTypes'][0]['details']['removeImage'] = true;
+        unset($payload['designTypes'][0]['details']['image']);
+
+        $this->patchJson('/api/v1/designs/'.$designId, $payload)
+            ->assertOk()
+            ->assertJsonPath('data.designTypes.0.details.image', null);
     }
 
     public function test_design_options_can_be_loaded_from_separate_catalog_endpoints(): void

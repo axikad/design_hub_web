@@ -22,7 +22,7 @@ type DesignFieldKey =
     | 'previewImages'
     | 'stitchFiles'
     | 'pricing';
-type SpecificationFieldKey = 'nameOrNumber' | 'stitchCount' | 'needle' | 'area' | 'height' | 'width';
+type SpecificationFieldKey = 'image' | 'nameOrNumber' | 'stitchCount' | 'needle' | 'area' | 'height' | 'width';
 type DesignFormConfig = Record<DesignFieldKey, boolean> & {
     required: Record<DesignFieldKey, boolean>;
     specificationFields: Record<SpecificationFieldKey, boolean> & {
@@ -61,7 +61,7 @@ const designFieldOptions: { key: DesignFieldKey; label: string; description: str
     { key: 'machineType', label: 'Machine type', description: 'Select a machine type for the design.' },
     { key: 'category', label: 'Category', description: 'Select a compatible category.' },
     { key: 'designTypes', label: 'Design types', description: 'Allow catalog and custom design types.' },
-    { key: 'designSpecifications', label: 'Design type specifications', description: 'Collect stitch count, needle, area, height and width.' },
+    { key: 'designSpecifications', label: 'Design type specifications', description: 'Collect one image, stitch count, needle, area, height and width.' },
     { key: 'sequenceType', label: 'Sequence type', description: 'Collect the common sequence measurement in mm.' },
     { key: 'designFileType', label: 'Design file type', description: 'Select EMB, DST, DHB or another configured format.' },
     { key: 'previewImages', label: 'Preview images', description: 'Upload preview images for the design.' },
@@ -69,6 +69,7 @@ const designFieldOptions: { key: DesignFieldKey; label: string; description: str
     { key: 'pricing', label: 'Pricing', description: 'Set a selling price for the design.' },
 ];
 const specificationFieldOptions: { key: SpecificationFieldKey; label: string }[] = [
+    { key: 'image', label: 'Image (one per design type)' },
     { key: 'nameOrNumber', label: 'Name or number' },
     { key: 'stitchCount', label: 'Stitch count' },
     { key: 'needle', label: 'Needle' },

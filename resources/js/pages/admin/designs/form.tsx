@@ -27,7 +27,7 @@ type DesignFieldKey =
     | 'previewImages'
     | 'stitchFiles'
     | 'pricing';
-type SpecificationFieldKey = 'nameOrNumber' | 'stitchCount' | 'needle' | 'area' | 'height' | 'width';
+type SpecificationFieldKey = 'image' | 'nameOrNumber' | 'stitchCount' | 'needle' | 'area' | 'height' | 'width';
 type DesignFormConfig = Record<DesignFieldKey, boolean> & {
     required: Record<DesignFieldKey, boolean>;
     specificationFields: Record<SpecificationFieldKey, boolean> & { required: Record<SpecificationFieldKey, boolean> };
@@ -37,6 +37,10 @@ type FileTypeOption = { id: string; name: string; extension: string; machineIds:
 type VariantInput = {
     typeId: string;
     customTypeName: string;
+    image: File | null;
+    imageUri: string | null;
+    imageName: string | null;
+    removeImage: boolean;
     nameOrNumber: string;
     stitchCount: string;
     needle: string;
@@ -54,7 +58,7 @@ type DesignForm = {
     designFileTypeId?: string | null;
     sequenceType?: string;
     priceRupees: string;
-    variants?: VariantInput[];
+    variants?: Array<Omit<VariantInput, 'image' | 'removeImage'>>;
     images?: { name: string; uri: string; thumbnailUri?: string | null }[];
     files?: { name: string }[];
 };
@@ -74,6 +78,10 @@ const inputClass = 'h-11 rounded-xl border-slate-200 focus-visible:border-indigo
 const emptyVariant = (typeId: string): VariantInput => ({
     typeId,
     customTypeName: '',
+    image: null,
+    imageUri: null,
+    imageName: null,
+    removeImage: false,
     nameOrNumber: '',
     stitchCount: '0',
     needle: '0',
@@ -122,6 +130,10 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
             ? design.variants.map((variant) => ({
                   ...variant,
                   customTypeName: variant.customTypeName ?? '',
+                  image: null,
+                  imageUri: variant.imageUri ?? null,
+                  imageName: variant.imageName ?? null,
+                  removeImage: false,
                   stitchCount: variant.stitchCount.toString(),
                   needle: variant.needle.toString(),
                   area: variant.area.toString(),
@@ -189,7 +201,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
             'variants',
             data.variants.filter((_, variantIndex) => variantIndex !== index),
         );
-    const updateVariant = (index: number, field: keyof VariantInput, value: string) => {
+    const updateVariant = <K extends keyof VariantInput,>(index: number, field: K, value: VariantInput[K]) => {
         setData(
             'variants',
             data.variants.map((variant, variantIndex) => (variantIndex === index ? { ...variant, [field]: value } : variant)),
@@ -344,7 +356,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                     {config?.designSpecifications && data.variants.length ? (
                         <AdminFormPanel
                             title="Design type specifications"
-                            description="Enter separate specifications for every catalog or custom design type."
+                            description="Enter specifications and one image for every catalog or custom design type."
                             icon={Layers3}
                         >
                             <div className="space-y-4">
@@ -383,6 +395,51 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                                         onChange={(value) => updateVariant(index, 'customTypeName', value)}
                                                         error={fieldError('customTypeName')}
                                                     />
+                                                ) : null}
+                                                {config.specificationFields.image ? (
+                                                    <div className="grid gap-2 sm:col-span-2 lg:col-span-3">
+                                                        <Label htmlFor={`variant-image-${index}`}>
+                                                            Image {config.specificationFields.required.image ? <span className="text-red-500">*</span> : null}
+                                                        </Label>
+                                                        {variant.imageUri && !variant.removeImage ? (
+                                                            <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                                                                <img
+                                                                    src={variant.imageUri}
+                                                                    alt={variant.imageName ?? 'Design type image'}
+                                                                    className="h-20 w-20 rounded-lg object-cover"
+                                                                />
+                                                                <div className="min-w-0 flex-1">
+                                                                    <p className="truncate text-sm font-medium">{variant.imageName ?? 'Current image'}</p>
+                                                                    <p className="text-xs text-slate-500">Select a new image to replace it.</p>
+                                                                </div>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        updateVariant(index, 'image', null);
+                                                                        updateVariant(index, 'removeImage', true);
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="size-4" /> Remove
+                                                                </Button>
+                                                            </div>
+                                                        ) : null}
+                                                        <Input
+                                                            id={`variant-image-${index}`}
+                                                            type="file"
+                                                            accept="image/jpeg,image/png,image/webp"
+                                                            required={config.specificationFields.required.image && !variant.image && (!variant.imageUri || variant.removeImage)}
+                                                            onChange={(event) => {
+                                                                updateVariant(index, 'image', event.target.files?.[0] ?? null);
+                                                                updateVariant(index, 'removeImage', false);
+                                                            }}
+                                                            className={inputClass}
+                                                        />
+                                                        {variant.image ? <p className="text-xs text-slate-500">Selected: {variant.image.name}</p> : null}
+                                                        <p className="text-xs text-slate-500">One JPG, PNG or WebP image, maximum 5 MB.</p>
+                                                        <InputError message={fieldError('image')} />
+                                                    </div>
                                                 ) : null}
                                                 {config.specificationFields.nameOrNumber ? (
                                                     <VariantField

@@ -11,6 +11,8 @@ class DesignVariant extends Model
         'design_id',
         'design_type_id',
         'custom_type_name',
+        'image_path',
+        'image_name',
         'name_or_number',
         'stitch_count',
         'needle',

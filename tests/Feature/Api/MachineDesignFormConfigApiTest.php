@@ -52,6 +52,8 @@ class MachineDesignFormConfigApiTest extends TestCase
             ->assertJsonPath('data.0.designFormConfig.required.stitchFiles', false)
             ->assertJsonPath('data.0.designFormConfig.required.previewImages', true)
             ->assertJsonPath('data.0.designFormConfig.specificationFields.height', true)
+            ->assertJsonPath('data.0.designFormConfig.specificationFields.image', true)
+            ->assertJsonPath('data.0.designFormConfig.specificationFields.required.image', false)
             ->assertJsonPath('data.0.designFormConfig.specificationFields.required.height', true);
     }
 
@@ -342,5 +344,70 @@ class MachineDesignFormConfigApiTest extends TestCase
         $this->assertEquals(0, $variant->area);
         $this->assertEquals(0, $variant->height);
         $this->assertEquals(0, $variant->width);
+    }
+
+    public function test_machine_can_require_one_image_for_each_design_type(): void
+    {
+        $machine = Machine::query()->create([
+            'name' => 'Variant image machine',
+            'design_form_config' => [
+                'machineType' => false,
+                'category' => true,
+                'designTypes' => true,
+                'designSpecifications' => true,
+                'sequenceType' => false,
+                'designFileType' => false,
+                'previewImages' => false,
+                'stitchFiles' => false,
+                'pricing' => false,
+                'specificationFields' => [
+                    'image' => true,
+                    'nameOrNumber' => false,
+                    'stitchCount' => false,
+                    'needle' => false,
+                    'area' => false,
+                    'height' => false,
+                    'width' => false,
+                    'required' => ['image' => true],
+                ],
+            ],
+        ]);
+        $machineType = MachineType::query()->create(['machine_id' => $machine->id, 'name' => 'Internal']);
+        $category = DesignCategory::query()->create(['name' => 'Saree']);
+        $category->machineTypes()->attach($machineType);
+        $type = DesignType::query()->create(['design_category_id' => $category->id, 'name' => 'Pallu']);
+        $user = User::factory()->create();
+        $image = Upload::query()->create([
+            'user_id' => $user->id,
+            'disk' => 'public',
+            'path' => 'previews/'.$user->public_id.'/pallu.jpg',
+            'kind' => 'photo',
+            'original_name' => 'pallu.jpg',
+            'mime' => 'image/jpeg',
+            'size_bytes' => 100,
+        ]);
+        Sanctum::actingAs($user);
+
+        $payload = [
+            'machineId' => $machine->public_id,
+            'categoryId' => $category->public_id,
+            'designTypes' => [[
+                'typeId' => $type->public_id,
+                'details' => ['removeImage' => false],
+            ]],
+        ];
+
+        $this->postJson('/api/v1/designs', $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('designTypes.0.details.image');
+
+        $payload['designTypes'][0]['details']['image'] = [
+            'name' => 'pallu.jpg',
+            'uri' => app(UploadService::class)->publicUrl($image),
+        ];
+
+        $this->postJson('/api/v1/designs', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.designTypes.0.details.image.name', 'pallu.jpg');
     }
 }
