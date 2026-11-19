@@ -722,12 +722,12 @@ function VariantImageField({ id, image, imageUri, imageName, removed, required, 
                 ref={inputRef}
                 id={id}
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
+                accept="image/*"
                 required={required && !image && (!imageUri || removed)}
                 onChange={(event) => onChange(event.target.files?.[0] ?? null)}
                 className={inputClass}
             />
-            <p className="text-xs text-slate-500">One JPG, PNG or WebP image, maximum 5 MB.</p>
+            <p className="text-xs text-slate-500">Select one image file. No file-size limit is applied.</p>
             <InputError message={error} />
         </div>
     );

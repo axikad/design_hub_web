@@ -1,0 +1,6 @@
+import{c as o}from"./app-logo-icon-BXS5jNCP.js";import{j as a}from"./app-qUCraM6q.js";import{S as s,a as l,b as c,c as d,d as h}from"./select-ftsk1Abu.js";/**
+ * @license lucide-react v0.475.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const S=[["rect",{width:"14",height:"20",x:"5",y:"2",rx:"2",ry:"2",key:"1yt0o3"}],["path",{d:"M12 18h.01",key:"mhygvu"}]],x=o("Smartphone",S),m=[["India","+91"],["United States / Canada","+1"],["United Kingdom","+44"],["United Arab Emirates","+971"],["Australia","+61"],["Bangladesh","+880"],["Brazil","+55"],["China","+86"],["France","+33"],["Germany","+49"],["Hong Kong","+852"],["Indonesia","+62"],["Italy","+39"],["Japan","+81"],["Malaysia","+60"],["Nepal","+977"],["New Zealand","+64"],["Pakistan","+92"],["Qatar","+974"],["Saudi Arabia","+966"],["Singapore","+65"],["South Africa","+27"],["South Korea","+82"],["Sri Lanka","+94"],["Thailand","+66"]];function g({value:n,onValueChange:r,className:i}){return a.jsxs(s,{value:n,onValueChange:r,children:[a.jsx(l,{className:i,"aria-label":"Country code",children:a.jsx(c,{placeholder:"Code"})}),a.jsx(d,{children:m.map(([t,e])=>a.jsxs(h,{value:e,children:[t," (",e,")"]},`${t}-${e}`))})]})}export{g as C,x as S};

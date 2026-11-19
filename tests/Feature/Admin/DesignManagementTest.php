@@ -323,7 +323,10 @@ class DesignManagementTest extends TestCase
             'sequenceType' => 7.25,
             'variants' => [[
                 'typeId' => $secondType->public_id,
-                'image' => UploadedFile::fake()->image('new-border.jpg'),
+                'image' => UploadedFile::fake()->createWithContent(
+                    'new-border.gif',
+                    base64_decode('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==').str_repeat("\0", 6 * 1024 * 1024),
+                ),
                 'nameOrNumber' => 'New border',
                 'stitchCount' => 8000,
                 'needle' => 8,
@@ -348,7 +351,7 @@ class DesignManagementTest extends TestCase
         $this->assertDatabaseHas('design_variants', [
             'design_id' => $design->id,
             'design_type_id' => $secondType->id,
-            'image_name' => 'new-border.jpg',
+            'image_name' => 'new-border.gif',
             'name_or_number' => 'New border',
         ]);
         Storage::disk('public')->assertMissing('variant-images/'.$owner->public_id.'/old-pallu.jpg');

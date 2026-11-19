@@ -437,7 +437,7 @@ class DesignAdminController extends Controller
             'variants' => [$config['designTypes'] && $required['designTypes'] ? 'required' : 'nullable', 'array', 'min:1'],
             'variants.*.typeId' => ['nullable', 'string', 'max:120'],
             'variants.*.customTypeName' => ['nullable', 'string', 'min:1', 'max:120'],
-            'variants.*.image' => [$this->adminSpecificationRule($config, $specificationFields, [], 'image', false), 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'variants.*.image' => [$this->adminSpecificationRule($config, $specificationFields, [], 'image', false), 'file', 'mimetypes:image/*'],
             'variants.*.removeImage' => ['sometimes', 'boolean'],
             'variants.*.nameOrNumber' => [$this->adminSpecificationRule($config, $specificationFields, $specificationRequired, 'nameOrNumber'), 'string', 'min:1', 'max:120'],
             'variants.*.stitchCount' => [$this->adminSpecificationRule($config, $specificationFields, $specificationRequired, 'stitchCount'), 'integer', 'min:0'],
