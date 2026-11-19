@@ -24,6 +24,7 @@ class DesignPresenter
         $formCategory = $design->category_id === null
             ? null
             : DesignCategory::query()->where('public_id', $design->category_id)->first();
+        $machine = $design->machine ?? $design->machineType?->machine;
 
         $payload = [
             'id' => $design->public_id,
@@ -42,6 +43,7 @@ class DesignPresenter
             'pricePaise' => $design->price_paise,
             'sequenceType' => $design->sequence_type,
             'measurementUnit' => 'mm',
+            'designTypeImageCards' => $machine?->normalizedDesignFormConfig()['designTypeImageCards'] ?? false,
             'designTypes' => $this->designTypes($design),
             'details' => $this->detailsWithoutSequenceType($design->details ?? $this->legacyDetails($design)),
             'images' => $images,

@@ -172,6 +172,7 @@ class MachineAdminController extends Controller
             'designFormConfig.category' => ['required_with:designFormConfig', 'boolean'],
             'designFormConfig.designTypes' => ['required_with:designFormConfig', 'boolean'],
             'designFormConfig.designSpecifications' => ['required_with:designFormConfig', 'boolean'],
+            'designFormConfig.designTypeImageCards' => ['sometimes', 'boolean'],
             'designFormConfig.sequenceType' => ['required_with:designFormConfig', 'boolean'],
             'designFormConfig.designFileType' => ['required_with:designFormConfig', 'boolean'],
             'designFormConfig.previewImages' => ['required_with:designFormConfig', 'boolean'],

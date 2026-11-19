@@ -32,6 +32,7 @@ final class MachineDesignFormConfig
 
         return [
             ...$fields,
+            'designTypeImageCards' => false,
             'required' => [
                 ...$fields,
                 'sequenceType' => false,
@@ -50,7 +51,9 @@ final class MachineDesignFormConfig
     public static function normalize(?array $config): array
     {
         $normalized = self::defaults();
-        $fieldKeys = array_keys(array_filter($normalized, fn ($value) => is_bool($value)));
+        $fieldKeys = array_keys($normalized['required']);
+
+        $normalized['designTypeImageCards'] = (bool) ($config['designTypeImageCards'] ?? false);
 
         foreach ($fieldKeys as $key) {
             $defaultRequired = $normalized['required'][$key];
@@ -105,6 +108,10 @@ final class MachineDesignFormConfig
         if (! $normalized['designTypes']) {
             $normalized['designSpecifications'] = false;
             $normalized['required']['designSpecifications'] = false;
+        }
+
+        if (! $normalized['designSpecifications'] || ! $normalized['specificationFields']['image']) {
+            $normalized['designTypeImageCards'] = false;
         }
 
         $normalized['required']['designSpecifications'] = $normalized['designSpecifications']

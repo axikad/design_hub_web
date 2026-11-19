@@ -368,6 +368,10 @@ class ApiResponseContractTest extends TestCase
         $this->seed(DesignCatalogSeeder::class);
         $this->seed(DesignFormOptionSeeder::class);
         $this->seed(DesignFileTypeSeeder::class);
+        $machine = Machine::query()->where('public_id', 'embroidery')->firstOrFail();
+        $machineConfig = $machine->normalizedDesignFormConfig();
+        $machineConfig['designTypeImageCards'] = true;
+        $machine->update(['design_form_config' => $machineConfig]);
         $preview = $this->upload($user, 'public', 'previews/'.$user->public_id.'/multi.jpg', 'photo', 'multi.jpg');
         $sleeveImage = $this->upload($user, 'public', 'previews/'.$user->public_id.'/sleeve.jpg', 'photo', 'sleeve.jpg');
         $stitch = $this->upload($user, 'local', 'stitch/'.$user->public_id.'/multi.emb', 'stitch', 'multi.emb');
@@ -434,6 +438,7 @@ class ApiResponseContractTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.title', 'Neck 101')
             ->assertJsonPath('data.typeId', 'neckline')
+            ->assertJsonPath('data.designTypeImageCards', true)
             ->assertJsonPath('data.designTypes.0.typeId', 'neckline')
             ->assertJsonPath('data.designTypes.0.details.needle', 8)
             ->assertJsonPath('data.designTypes.1.typeId', 'sleeve')

@@ -226,6 +226,8 @@ Load compatible categories after selecting a machine type, then load types for t
 
 When `designFormConfig.specificationFields.image` is true, show one image picker inside every selected design-type card. Upload the selected image through `POST /uploads`, then send the returned URL as `designTypes[index].details.image.uri` with its original name. On edit, an omitted `image` keeps the existing image, a new `image` replaces it, and `removeImage: true` removes it when the field is not required. The design response returns `details.image` as `{ name, uri, thumbnailUri }` or `null`.
 
+Machine admins can enable `designFormConfig.designTypeImageCards`. Design detail responses expose the resolved value as top-level `designTypeImageCards`. When it is `true`, render every `designTypes[]` entry as an image card using `typeName` (or `customTypeName`) and `details.image.thumbnailUri`/`uri`; use a placeholder when the image is null. Do not show the specification table in this mode. When it is `false`, keep the existing specification table view. Existing machines default to `false`.
+
 A design type may be shared by multiple categories. Mobile clients do not need a contract change: continue loading `/catalog/categories/:categoryId/types` after category selection and submit the same `categoryId` plus selected `typeId` values.
 
 Seeded compatibility examples:
