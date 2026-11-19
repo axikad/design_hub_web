@@ -207,6 +207,12 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
             data.variants.map((variant, variantIndex) => (variantIndex === index ? { ...variant, [field]: value } : variant)),
         );
     };
+    const updateVariantFields = (index: number, fields: Partial<VariantInput>) => {
+        setData(
+            'variants',
+            data.variants.map((variant, variantIndex) => (variantIndex === index ? { ...variant, ...fields } : variant)),
+        );
+    };
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
         if (editing && design?.id) {
@@ -405,14 +411,13 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                                         removed={variant.removeImage}
                                                         required={config.specificationFields.required.image}
                                                         error={fieldError('image')}
-                                                        onChange={(image) => {
-                                                            updateVariant(index, 'image', image);
-                                                            updateVariant(index, 'removeImage', false);
-                                                        }}
-                                                        onRemove={() => {
-                                                            updateVariant(index, 'image', null);
-                                                            updateVariant(index, 'removeImage', Boolean(variant.imageUri));
-                                                        }}
+                                                        onChange={(image) => updateVariantFields(index, { image, removeImage: false })}
+                                                        onRemove={() =>
+                                                            updateVariantFields(index, {
+                                                                image: null,
+                                                                removeImage: Boolean(variant.imageUri),
+                                                            })
+                                                        }
                                                     />
                                                 ) : null}
                                                 {config.specificationFields.nameOrNumber ? (
