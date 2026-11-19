@@ -69,13 +69,13 @@ const designFieldOptions: { key: DesignFieldKey; label: string; description: str
     { key: 'pricing', label: 'Pricing', description: 'Set a selling price for the design.' },
 ];
 const specificationFieldOptions: { key: SpecificationFieldKey; label: string }[] = [
-    { key: 'image', label: 'Image (one per design type)' },
     { key: 'nameOrNumber', label: 'Name or number' },
     { key: 'stitchCount', label: 'Stitch count' },
     { key: 'needle', label: 'Needle' },
     { key: 'area', label: 'Area (mm)' },
     { key: 'height', label: 'Height (mm)' },
     { key: 'width', label: 'Width (mm)' },
+    { key: 'image', label: 'Image (one per design type)' },
 ];
 
 export default function AdminMachineForm({ machine, nextSortOrder, defaultDesignFormConfig, defaultWatermarkConfig }: Props) {

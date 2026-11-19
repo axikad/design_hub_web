@@ -402,24 +402,6 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                                         error={fieldError('customTypeName')}
                                                     />
                                                 ) : null}
-                                                {config.specificationFields.image ? (
-                                                    <VariantImageField
-                                                        id={`variant-image-${index}`}
-                                                        image={variant.image}
-                                                        imageUri={variant.imageUri}
-                                                        imageName={variant.imageName}
-                                                        removed={variant.removeImage}
-                                                        required={config.specificationFields.required.image}
-                                                        error={fieldError('image')}
-                                                        onChange={(image) => updateVariantFields(index, { image, removeImage: false })}
-                                                        onRemove={() =>
-                                                            updateVariantFields(index, {
-                                                                image: null,
-                                                                removeImage: Boolean(variant.imageUri),
-                                                            })
-                                                        }
-                                                    />
-                                                ) : null}
                                                 {config.specificationFields.nameOrNumber ? (
                                                     <VariantField
                                                         label="Name or number"
@@ -488,6 +470,24 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                                         onChange={(value) => updateVariant(index, 'width', value)}
                                                         error={fieldError('width')}
                                                         required={config.specificationFields.required.width}
+                                                    />
+                                                ) : null}
+                                                {config.specificationFields.image ? (
+                                                    <VariantImageField
+                                                        id={`variant-image-${index}`}
+                                                        image={variant.image}
+                                                        imageUri={variant.imageUri}
+                                                        imageName={variant.imageName}
+                                                        removed={variant.removeImage}
+                                                        required={config.specificationFields.required.image}
+                                                        error={fieldError('image')}
+                                                        onChange={(image) => updateVariantFields(index, { image, removeImage: false })}
+                                                        onRemove={() =>
+                                                            updateVariantFields(index, {
+                                                                image: null,
+                                                                removeImage: Boolean(variant.imageUri),
+                                                            })
+                                                        }
                                                     />
                                                 ) : null}
                                             </div>
