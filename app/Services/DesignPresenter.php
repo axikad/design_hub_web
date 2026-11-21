@@ -19,7 +19,8 @@ class DesignPresenter
     {
         $design->loadMissing(['owner', 'type.category', 'machine', 'machineType.machine', 'fileType', 'variants.type']);
         $canAccessFile = $viewer !== null && $this->access->canDownloadStitch($viewer, $design);
-        $images = $this->images($design, $canAccessFile);
+        $isOwner = $viewer !== null && $design->user_id === $viewer->id;
+        $images = $this->images($design, $canAccessFile, $isOwner);
         $files = $this->files($design, $canAccessFile);
         $formCategory = $design->category_id === null
             ? null
@@ -82,12 +83,13 @@ class DesignPresenter
         return $fileIndex === 0 ? $url : $url.'?file='.$fileIndex;
     }
 
-    private function images(Design $design, bool $canDownloadOriginal): array
+    private function images(Design $design, bool $canDownloadOriginal, bool $isOwner): array
     {
         if (is_array($design->images) && $design->images !== []) {
             return collect($design->images)->map(fn (array $image, int $index) => [
                 'name' => $image['name'],
                 'uri' => Storage::disk('public')->url($image['watermarkedPath'] ?? $image['path']),
+                'sourceUri' => $isOwner ? Storage::disk('public')->url($image['path']) : null,
                 'thumbnailUri' => $this->thumbnails->url($image['watermarkedPath'] ?? $image['path']),
                 'isWatermarked' => filled($image['watermarkedPath'] ?? null),
                 'downloadUri' => $canDownloadOriginal
@@ -103,6 +105,7 @@ class DesignPresenter
         return [[
             'name' => basename($design->preview_path),
             'uri' => $this->previewUrl($design),
+            'sourceUri' => $isOwner ? $this->previewUrl($design) : null,
             'thumbnailUri' => $this->thumbnails->url($design->preview_path),
             'isWatermarked' => false,
             'downloadUri' => $canDownloadOriginal

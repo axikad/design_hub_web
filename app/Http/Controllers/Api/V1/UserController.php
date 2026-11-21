@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\DesignResource;
+use App\Http\Resources\FolderResource;
 use App\Http\Resources\PurchaseResource;
 use App\Http\Resources\UserResource;
 use App\Models\Design;
+use App\Models\Folder;
 use App\Models\Machine;
 use App\Models\OtpChallenge;
 use App\Models\ProfileContactChallenge;
@@ -166,9 +168,14 @@ class UserController extends Controller
 
     public function myDesigns(Request $request)
     {
+        $filters = $request->validate([
+            'search' => ['sometimes', 'string', 'max:120'],
+        ]);
+
         $designs = Design::query()
             ->listed()
             ->where('user_id', $request->user()->id)
+            ->when($filters['search'] ?? null, fn ($query, $search) => $query->where('title', 'like', '%'.$search.'%'))
             ->with(['owner', 'type.category'])
             ->latest('created_at')
             ->paginate(Pagination::perPage($request))
@@ -180,6 +187,29 @@ class UserController extends Controller
                 fn (Design $design) => (new DesignResource($design))->resolve($request)
             )->values(),
             'User designs retrieved successfully.',
+        );
+    }
+
+    public function myFolders(Request $request)
+    {
+        $filters = $request->validate([
+            'search' => ['sometimes', 'string', 'max:120'],
+        ]);
+
+        $folders = Folder::query()
+            ->where('user_id', $request->user()->id)
+            ->with('previewFiles')
+            ->when($filters['search'] ?? null, fn ($query, $search) => $query->where('name', 'like', '%'.$search.'%'))
+            ->latest()
+            ->paginate(Pagination::perPage($request))
+            ->withQueryString();
+
+        return ApiResponse::paginated(
+            $folders,
+            $folders->getCollection()->map(
+                fn (Folder $folder) => (new FolderResource($folder))->resolve($request)
+            )->values(),
+            'User folders retrieved successfully.',
         );
     }
 

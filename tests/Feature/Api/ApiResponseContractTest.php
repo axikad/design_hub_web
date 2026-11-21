@@ -297,6 +297,7 @@ class ApiResponseContractTest extends TestCase
             ->assertJsonPath('data.details.0.names.1', 'Rose neckline')
             ->assertJsonPath('data.details.0.needle', 12)
             ->assertJsonPath('data.images.0.name', 'front.jpg')
+            ->assertJsonPath('data.images.0.sourceUri', $uploads->publicUrl($preview))
             ->assertJsonPath('data.files.0.name', 'floral.dst')
             ->assertJsonPath('data.files.0.displayName', 'Floral neckline.dst (.dst)')
             ->assertJsonPath('data.displayName', 'Floral neckline.dst (.dst)')
@@ -333,6 +334,7 @@ class ApiResponseContractTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.files.0.name', 'floral.dst')
             ->assertJsonPath('data.files.0.uri', null)
+            ->assertJsonPath('data.images.0.sourceUri', null)
             ->assertJsonPath('data.fileUri', null);
     }
 

@@ -146,6 +146,41 @@ class FolderApiTest extends TestCase
             ->assertHeader('content-type', 'image/svg+xml');
     }
 
+    public function test_authenticated_user_can_only_list_their_own_folders(): void
+    {
+        $owner = User::factory()->create();
+        $otherUser = User::factory()->create();
+
+        $ownFolder = Folder::query()->create([
+            'user_id' => $owner->id,
+            'name' => 'My Bridal Pack',
+            'price_paise' => 39900,
+            'zip_name' => 'mine.zip',
+            'zip_path' => 'folders/mine.zip',
+            'file_count' => 4,
+            'total_size' => 1200,
+        ]);
+        Folder::query()->create([
+            'user_id' => $otherUser->id,
+            'name' => 'Another Seller Pack',
+            'price_paise' => 49900,
+            'zip_name' => 'other.zip',
+            'zip_path' => 'folders/other.zip',
+        ]);
+
+        $this->getJson('/api/v1/users/me/folders')->assertUnauthorized();
+
+        Sanctum::actingAs($owner);
+
+        $this->getJson('/api/v1/users/me/folders?search=Bridal&per_page=10')
+            ->assertOk()
+            ->assertJsonPath('message', 'User folders retrieved successfully.')
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $ownFolder->public_id)
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonMissing(['name' => 'Another Seller Pack']);
+    }
+
     public function test_folder_api_returns_standard_not_found_errors(): void
     {
         $this->getJson('/api/v1/folders/folder_missing')

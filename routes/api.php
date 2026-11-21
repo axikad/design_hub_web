@@ -66,6 +66,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('users/me/contact/request-otp', [ProfileContactController::class, 'requestOtp']);
         Route::post('users/me/contact/verify-otp', [ProfileContactController::class, 'verifyOtp']);
         Route::get('users/me/designs', [UserController::class, 'myDesigns']);
+        Route::get('users/me/folders', [UserController::class, 'myFolders']);
         Route::get('users/me/purchases', [UserController::class, 'purchases']);
         Route::get('users/me/saved-designs', [UserController::class, 'savedDesigns']);
         Route::put('users/me/saved-designs/{designId}', [UserController::class, 'saveDesign']);
