@@ -33,6 +33,8 @@ class HomeFeedApiTest extends TestCase
             ->assertJsonPath('data.latest.items.0.id', $today->public_id)
             ->assertJsonPath('data.today.total', 1)
             ->assertJsonPath('data.today.items.0.id', $today->public_id)
+            ->assertJsonPath('data.yesterday.total', 1)
+            ->assertJsonPath('data.yesterday.items.0.id', $yesterday->public_id)
             ->assertJsonPath('data.tomorrow.total', 1)
             ->assertJsonPath('data.tomorrow.items.0.id', $tomorrow->public_id)
             ->assertJsonPath('data.categories.0.id', 'saree')
@@ -43,6 +45,7 @@ class HomeFeedApiTest extends TestCase
                 'data' => [
                     'latest' => ['total', 'items', 'hasMore', 'viewMoreUrl'],
                     'today' => ['total', 'items', 'hasMore', 'viewMoreUrl'],
+                    'yesterday' => ['total', 'items', 'hasMore', 'viewMoreUrl'],
                     'tomorrow' => ['total', 'items', 'hasMore', 'viewMoreUrl'],
                     'categories' => [['id', 'name', 'total', 'items', 'hasMore', 'viewMoreUrl']],
                 ],
@@ -52,6 +55,11 @@ class HomeFeedApiTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $tomorrow->public_id);
+
+        $this->getJson('/api/v1/designs?section=yesterday')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $yesterday->public_id);
 
         $this->getJson('/api/v1/designs?categoryId=saree')
             ->assertOk()

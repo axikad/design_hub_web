@@ -24,11 +24,13 @@ class HomeController extends Controller
         $sectionLimit = $validated['sectionLimit'] ?? 6;
         $categoryLimit = $validated['categoryLimit'] ?? 4;
         $today = now(config('designhub.marketplace_timezone'))->toDateString();
+        $yesterday = now(config('designhub.marketplace_timezone'))->subDay()->toDateString();
         $tomorrow = now(config('designhub.marketplace_timezone'))->addDay()->toDateString();
         $user = $request->user();
 
         $latestQuery = $this->designQuery($user)->published($today);
         $todayQuery = $this->designQuery($user)->scheduledFor($today);
+        $yesterdayQuery = $this->designQuery($user)->scheduledFor($yesterday);
         $tomorrowQuery = $this->designQuery($user)->scheduledFor($tomorrow);
 
         $categories = DesignCategory::query()
@@ -75,6 +77,13 @@ class HomeController extends Controller
                 $request,
                 route('api.v1.designs.index', ['section' => 'today']),
             ),
+            'yesterday' => $this->section(
+                $yesterdayQuery,
+                $sectionLimit,
+                $request,
+                route('api.v1.designs.index', ['section' => 'yesterday']),
+            ),
+            // Kept temporarily for older mobile builds. Current clients use yesterday.
             'tomorrow' => $this->section(
                 $tomorrowQuery,
                 $sectionLimit,

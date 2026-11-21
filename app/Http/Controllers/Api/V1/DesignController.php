@@ -36,7 +36,7 @@ class DesignController extends Controller
     public function index(Request $request)
     {
         $filters = $request->validate([
-            'section' => ['sometimes', 'string', Rule::in(['latest', 'today', 'tomorrow'])],
+            'section' => ['sometimes', 'string', Rule::in(['latest', 'today', 'yesterday', 'tomorrow'])],
             'categoryId' => ['sometimes', 'string', 'max:120'],
             'machineTypeId' => ['sometimes', 'string', 'max:120'],
             'machine_id' => ['sometimes', 'nullable', 'string', Rule::exists('machines', 'public_id')->where('is_active', true)],
@@ -54,14 +54,16 @@ class DesignController extends Controller
             'search' => ['sometimes', 'string', 'max:120'],
         ]);
         $today = now(config('designhub.marketplace_timezone'))->toDateString();
+        $yesterday = now(config('designhub.marketplace_timezone'))->subDay()->toDateString();
         $tomorrow = now(config('designhub.marketplace_timezone'))->addDay()->toDateString();
 
         $designs = Design::query()
             ->listed()
             ->forUserMachines($request->user())
             ->when(($filters['section'] ?? null) === 'today', fn ($query) => $query->scheduledFor($today))
+            ->when(($filters['section'] ?? null) === 'yesterday', fn ($query) => $query->scheduledFor($yesterday))
             ->when(($filters['section'] ?? null) === 'tomorrow', fn ($query) => $query->scheduledFor($tomorrow))
-            ->when(! in_array(($filters['section'] ?? null), ['today', 'tomorrow'], true), fn ($query) => $query->published($today))
+            ->when(! in_array(($filters['section'] ?? null), ['today', 'yesterday', 'tomorrow'], true), fn ($query) => $query->published($today))
             ->when($filters['categoryId'] ?? null, fn ($query, $categoryId) => $query->where('category_id', $categoryId))
             ->when($filters['machineTypeId'] ?? null, fn ($query, $machineTypeId) => $query->where('machine_type_id', $machineTypeId))
             ->when($filters['machine_id'] ?? null, fn ($query, $machineId) => $query->where(function ($machineFilter) use ($machineId) {

@@ -57,6 +57,10 @@ class DesignPresenter
             'fileUri' => $files[0]['uri'] ?? null,
             'hasFile' => $design->stitch_path !== null,
             'createdAt' => $design->created_at?->utc()->toIso8601String(),
+            'sellerName' => $design->owner?->name,
+            'sellerAvatarUri' => $design->owner?->avatar_path === null
+                ? null
+                : Storage::disk('public')->url($design->owner->avatar_path),
             'ownerKey' => $viewer === null ? null : $design->owner?->ownerKey(),
         ];
 
