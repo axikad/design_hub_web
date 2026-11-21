@@ -21,6 +21,9 @@ class DesignBrowseFiltersApiTest extends TestCase
 
         $this->getJson('/api/v1/catalog/browse-filters')
             ->assertOk()
+            ->assertJsonPath('data.machines.0.id', $catalog['machine']->public_id)
+            ->assertJsonPath('data.machines.0.name', $catalog['machine']->name)
+            ->assertJsonPath('data.machines.0.machineTypeIds.0', $catalog['machineType']->public_id)
             ->assertJsonPath('data.machineTypes.0.id', $catalog['machineType']->public_id)
             ->assertJsonPath('data.machineTypes.0.categoryIds.0', $catalog['category']->public_id)
             ->assertJsonPath('data.categories.0.machineTypeIds.0', $catalog['machineType']->public_id)
@@ -32,6 +35,44 @@ class DesignBrowseFiltersApiTest extends TestCase
             ])
             ->assertJsonMissingPath('meta')
             ->assertJsonMissingPath('links');
+    }
+
+    public function test_design_list_filters_by_top_level_machine_for_current_and_legacy_records(): void
+    {
+        $catalog = $this->catalog();
+        $current = $this->design($catalog, ['title' => 'Current machine design']);
+        $legacy = $this->design($catalog, ['title' => 'Legacy machine design']);
+        $legacy->update(['machine_id' => null]);
+
+        $otherMachine = Machine::query()->create(['public_id' => 'knitting', 'name' => 'Knitting']);
+        $otherMachineType = MachineType::query()->create([
+            'machine_id' => $otherMachine->id,
+            'public_id' => 'flat-knitting',
+            'name' => 'Flat Knitting',
+        ]);
+        $otherCategory = DesignCategory::query()->create(['public_id' => 'knitwear', 'name' => 'Knitwear']);
+        $otherCategory->machineTypes()->attach($otherMachineType);
+        $otherType = DesignType::query()->create([
+            'public_id' => 'knit-pattern',
+            'design_category_id' => $otherCategory->id,
+            'name' => 'Knit Pattern',
+        ]);
+        $otherCatalog = [
+            'machine' => $otherMachine,
+            'machineType' => $otherMachineType,
+            'category' => $otherCategory,
+            'firstType' => $otherType,
+        ];
+        $this->design($otherCatalog, ['title' => 'Other machine design']);
+
+        $response = $this->getJson('/api/v1/designs?'.http_build_query([
+            'machine_id' => $catalog['machine']->public_id,
+        ]))->assertOk();
+
+        $this->assertEqualsCanonicalizing(
+            [$current->public_id, $legacy->public_id],
+            collect($response->json('data'))->pluck('id')->all(),
+        );
     }
 
     public function test_design_list_filters_machine_type_category_and_design_type(): void
@@ -176,12 +217,14 @@ class DesignBrowseFiltersApiTest extends TestCase
     public function test_invalid_filter_values_return_validation_errors(): void
     {
         $this->getJson('/api/v1/designs?'.http_build_query([
+            'machine_id' => 'missing-machine',
             'stitch_ranges' => ['10:20'],
             'needle_values' => [13],
             'area_ranges' => ['500:600'],
         ]))
             ->assertUnprocessable()
             ->assertJsonValidationErrors([
+                'machine_id',
                 'stitch_ranges.0',
                 'needle_values.0',
                 'area_ranges.0',

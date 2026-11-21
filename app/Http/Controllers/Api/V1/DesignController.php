@@ -39,6 +39,7 @@ class DesignController extends Controller
             'section' => ['sometimes', 'string', Rule::in(['latest', 'today', 'tomorrow'])],
             'categoryId' => ['sometimes', 'string', 'max:120'],
             'machineTypeId' => ['sometimes', 'string', 'max:120'],
+            'machine_id' => ['sometimes', 'nullable', 'string', Rule::exists('machines', 'public_id')->where('is_active', true)],
             'machine_type_id' => ['sometimes', 'nullable', 'string', Rule::exists('machine_types', 'public_id')->where('is_active', true)],
             'category_ids' => ['sometimes', 'array'],
             'category_ids.*' => ['string', 'distinct', Rule::exists('design_categories', 'public_id')->where('is_active', true)],
@@ -63,6 +64,15 @@ class DesignController extends Controller
             ->when(! in_array(($filters['section'] ?? null), ['today', 'tomorrow'], true), fn ($query) => $query->published($today))
             ->when($filters['categoryId'] ?? null, fn ($query, $categoryId) => $query->where('category_id', $categoryId))
             ->when($filters['machineTypeId'] ?? null, fn ($query, $machineTypeId) => $query->where('machine_type_id', $machineTypeId))
+            ->when($filters['machine_id'] ?? null, fn ($query, $machineId) => $query->where(function ($machineFilter) use ($machineId) {
+                $machineFilter
+                    ->whereHas('machine', fn ($machineQuery) => $machineQuery->where('public_id', $machineId))
+                    ->orWhere(function ($legacyQuery) use ($machineId) {
+                        $legacyQuery
+                            ->whereNull('machine_id')
+                            ->whereHas('machineType.machine', fn ($machineQuery) => $machineQuery->where('public_id', $machineId));
+                    });
+            }))
             ->when($filters['machine_type_id'] ?? null, fn ($query, $machineTypeId) => $query->where('machine_type_id', $machineTypeId))
             ->when($filters['category_ids'] ?? [], fn ($query, $categoryIds) => $query->whereIn('category_id', $categoryIds))
             ->when($this->hasVariantFilters($filters), fn ($query) => $query->whereHas(

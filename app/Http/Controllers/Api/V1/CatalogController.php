@@ -15,6 +15,16 @@ class CatalogController extends Controller
 {
     public function browseFilters()
     {
+        $machines = Machine::query()
+            ->where('is_active', true)
+            ->with(['machineTypes' => fn ($query) => $query
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('name')])
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
         $machineTypes = MachineType::query()
             ->where('is_active', true)
             ->whereHas('machine', fn ($query) => $query->where('is_active', true))
@@ -58,6 +68,12 @@ class CatalogController extends Controller
             ->get();
 
         return ApiResponse::data([
+            'machines' => $machines->map(fn (Machine $machine) => [
+                'id' => $machine->public_id,
+                'name' => $machine->name,
+                'imageUri' => $machine->imageUrl(),
+                'machineTypeIds' => $machine->machineTypes->pluck('public_id')->values(),
+            ])->values(),
             'machineTypes' => $machineTypes->map(fn (MachineType $machineType) => [
                 'id' => $machineType->public_id,
                 'name' => $machineType->name,
