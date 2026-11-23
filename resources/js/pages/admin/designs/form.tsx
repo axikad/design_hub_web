@@ -423,30 +423,6 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                             description="Enter specifications and one image for every catalog or custom design type."
                             icon={Layers3}
                         >
-                            <div className="mb-4 flex gap-2 overflow-x-auto border-b border-slate-200 pb-3 dark:border-slate-700">
-                                {data.variants.map((variant, index) => {
-                                    const type = types.find((option) => option.id === variant.typeId);
-                                    const hasError = Object.keys(errors).some((key) => key.startsWith(`variants.${index}.`));
-
-                                    return (
-                                        <button
-                                            key={`specification-tab-${variant.typeId || 'custom'}-${index}`}
-                                            type="button"
-                                            onClick={() => setActiveVariantIndex(index)}
-                                            className={`shrink-0 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
-                                                index === activeVariantIndex
-                                                    ? 'border-indigo-600 bg-indigo-600 text-white'
-                                                    : hasError
-                                                      ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300'
-                                                      : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
-                                            }`}
-                                        >
-                                            {type?.name || variant.customTypeName || `Custom type ${index + 1}`}
-                                            {hasError ? ' · Error' : ''}
-                                        </button>
-                                    );
-                                })}
-                            </div>
                             <div>
                                 {data.variants.map((variant, index) => {
                                     if (index !== activeVariantIndex) return null;
