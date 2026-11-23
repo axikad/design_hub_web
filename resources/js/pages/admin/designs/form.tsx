@@ -161,7 +161,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
         if (!data.variants.length) {
             setActiveVariantIndex(0);
         } else if (activeVariantIndex >= data.variants.length) {
-            setActiveVariantIndex(0);
+            setActiveVariantIndex(data.variants.length - 1);
         }
     }, [activeVariantIndex, data.variants.length]);
 
@@ -220,7 +220,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
         }
         if (selectedIndex >= 0) {
             setData('variants', data.variants.filter((_, index) => index !== selectedIndex));
-            setActiveVariantIndex(0);
+            setActiveVariantIndex(Math.max(0, selectedIndex - 1));
             return;
         }
         setData('variants', [...data.variants, emptyVariant(typeId)]);
@@ -235,7 +235,11 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
             'variants',
             data.variants.filter((_, variantIndex) => variantIndex !== index),
         );
-        setActiveVariantIndex(0);
+        setActiveVariantIndex((current) => {
+            if (current < index) return current;
+            if (current > index) return current - 1;
+            return Math.max(0, index - 1);
+        });
     };
     const updateVariant = <K extends keyof VariantInput,>(index: number, field: K, value: VariantInput[K]) => {
         setData(
