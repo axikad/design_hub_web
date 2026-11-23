@@ -10,6 +10,7 @@ use App\Models\Machine;
 use App\Models\MachineType;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class CatalogController extends Controller
 {
@@ -135,6 +136,14 @@ class CatalogController extends Controller
                 'extension' => $fileType->extension,
                 'machineId' => $machine->public_id,
             ]);
+
+        Log::info('catalog.machine_design_file_types', [
+            'machine_id' => $machine->public_id,
+            'machine_name' => $machine->name,
+            'design_file_type_enabled' => (bool) ($machine->normalizedDesignFormConfig()['designFileType'] ?? true),
+            'file_type_count' => $fileTypes->count(),
+            'file_type_ids' => $fileTypes->pluck('id')->values()->all(),
+        ]);
 
         return ApiResponse::data($fileTypes->values(), message: 'Machine design file types retrieved successfully.');
     }
