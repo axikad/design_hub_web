@@ -147,6 +147,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
         stitchFiles: [] as File[],
     });
     const { data, setData, post, processing, errors } = form;
+    const [activeVariantIndex, setActiveVariantIndex] = useState(0);
     const selectedMachine = catalog.find((machine) => machine.id === data.machineId) ?? catalog[0];
     const config = selectedMachine?.designFormConfig;
     const machineTypes = selectedMachine?.machineTypes ?? [];
@@ -155,6 +156,23 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
         : uniqueCategories(machineTypes.flatMap((type) => type.categories));
     const types = categories.find((category) => category.id === data.categoryId)?.types ?? [];
     const availableFileTypes = fileTypes.filter((fileType) => fileType.machineIds.includes(data.machineId));
+
+    useEffect(() => {
+        if (!data.variants.length) {
+            setActiveVariantIndex(0);
+        } else if (activeVariantIndex >= data.variants.length) {
+            setActiveVariantIndex(0);
+        }
+    }, [activeVariantIndex, data.variants.length]);
+
+    useEffect(() => {
+        const firstVariantError = Object.keys(errors).find((key) => /^variants\.\d+\./.test(key));
+        if (!firstVariantError) return;
+        const errorIndex = Number(firstVariantError.split('.')[1]);
+        if (Number.isInteger(errorIndex) && errorIndex >= 0 && errorIndex < data.variants.length) {
+            setActiveVariantIndex(errorIndex);
+        }
+    }, [data.variants.length, errors]);
 
     const selectMachine = (machineId: string) => {
         const machine = catalog.find((item) => item.id === machineId);
@@ -176,6 +194,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
             designFileTypeId: machineConfig?.designFileType ? fileTypeId : '',
             sequenceType: machineConfig?.sequenceType ? current.sequenceType : '',
         }));
+        setActiveVariantIndex(0);
     };
     const selectMachineType = (machineTypeId: string) => {
         const category = config?.category ? machineTypes.find((type) => type.id === machineTypeId)?.categories[0] : undefined;
@@ -186,21 +205,38 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
             categoryId: category?.id ?? '',
             variants: config?.designTypes && typeId ? [emptyVariant(typeId)] : [],
         }));
+        setActiveVariantIndex(0);
     };
     const selectCategory = (categoryId: string) => {
         const typeId = categories.find((category) => category.id === categoryId)?.types[0]?.id;
         setData((current) => ({ ...current, categoryId, variants: typeId ? [emptyVariant(typeId)] : [] }));
+        setActiveVariantIndex(0);
     };
     const toggleType = (typeId: string) => {
-        const selected = data.variants.some((variant) => variant.typeId === typeId);
-        setData('variants', selected ? data.variants.filter((variant) => variant.typeId !== typeId) : [emptyVariant(typeId), ...data.variants]);
+        const selectedIndex = data.variants.findIndex((variant) => variant.typeId === typeId);
+        if (selectedIndex >= 0 && selectedIndex !== activeVariantIndex) {
+            setActiveVariantIndex(selectedIndex);
+            return;
+        }
+        if (selectedIndex >= 0) {
+            setData('variants', data.variants.filter((_, index) => index !== selectedIndex));
+            setActiveVariantIndex(0);
+            return;
+        }
+        setData('variants', [...data.variants, emptyVariant(typeId)]);
+        setActiveVariantIndex(data.variants.length);
     };
-    const addCustomType = () => setData('variants', [emptyCustomVariant(), ...data.variants]);
-    const removeVariant = (index: number) =>
+    const addCustomType = () => {
+        setData('variants', [...data.variants, emptyCustomVariant()]);
+        setActiveVariantIndex(data.variants.length);
+    };
+    const removeVariant = (index: number) => {
         setData(
             'variants',
             data.variants.filter((_, variantIndex) => variantIndex !== index),
         );
+        setActiveVariantIndex(0);
+    };
     const updateVariant = <K extends keyof VariantInput,>(index: number, field: K, value: VariantInput[K]) => {
         setData(
             'variants',
@@ -335,7 +371,9 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     {types.map((type) => {
-                                        const selected = data.variants.some((variant) => variant.typeId === type.id);
+                                        const selectedIndex = data.variants.findIndex((variant) => variant.typeId === type.id);
+                                        const selected = selectedIndex >= 0;
+                                        const active = selectedIndex === activeVariantIndex;
 
                                         return (
                                             <button
@@ -343,8 +381,10 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                                 type="button"
                                                 onClick={() => toggleType(type.id)}
                                                 className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                                                    selected
-                                                        ? 'border-indigo-600 bg-indigo-600 text-white'
+                                                    active
+                                                        ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm'
+                                                        : selected
+                                                          ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'
                                                         : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
                                                 }`}
                                             >
@@ -352,6 +392,24 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                             </button>
                                         );
                                     })}
+                                    {data.variants.map((variant, index) =>
+                                        variant.typeId ? null : (
+                                            <button
+                                                key={`custom-tab-${index}`}
+                                                type="button"
+                                                onClick={() =>
+                                                    index === activeVariantIndex ? removeVariant(index) : setActiveVariantIndex(index)
+                                                }
+                                                className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                                                    index === activeVariantIndex
+                                                        ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm'
+                                                        : 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'
+                                                }`}
+                                            >
+                                                {variant.customTypeName || `Custom type ${index + 1}`}
+                                            </button>
+                                        ),
+                                    )}
                                 </div>
                                 <InputError message={errors.variants} />
                             </div>
@@ -365,8 +423,33 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                             description="Enter specifications and one image for every catalog or custom design type."
                             icon={Layers3}
                         >
-                            <div className="space-y-4">
+                            <div className="mb-4 flex gap-2 overflow-x-auto border-b border-slate-200 pb-3 dark:border-slate-700">
                                 {data.variants.map((variant, index) => {
+                                    const type = types.find((option) => option.id === variant.typeId);
+                                    const hasError = Object.keys(errors).some((key) => key.startsWith(`variants.${index}.`));
+
+                                    return (
+                                        <button
+                                            key={`specification-tab-${variant.typeId || 'custom'}-${index}`}
+                                            type="button"
+                                            onClick={() => setActiveVariantIndex(index)}
+                                            className={`shrink-0 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
+                                                index === activeVariantIndex
+                                                    ? 'border-indigo-600 bg-indigo-600 text-white'
+                                                    : hasError
+                                                      ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300'
+                                                      : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+                                            }`}
+                                        >
+                                            {type?.name || variant.customTypeName || `Custom type ${index + 1}`}
+                                            {hasError ? ' · Error' : ''}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <div>
+                                {data.variants.map((variant, index) => {
+                                    if (index !== activeVariantIndex) return null;
                                     const type = types.find((option) => option.id === variant.typeId);
                                     const isCustom = !variant.typeId;
                                     const fieldError = (field: keyof VariantInput) =>
