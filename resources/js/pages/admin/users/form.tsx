@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Cpu, LoaderCircle, LockKeyhole, Mail, Save, ShieldCheck, Smartphone, UserRound } from 'lucide-react';
+import { ArrowLeft, Cpu, LoaderCircle, LockKeyhole, Mail, ReceiptText, Save, ShieldCheck, Smartphone, UserRound } from 'lucide-react';
 import { type FormEventHandler, useMemo } from 'react';
 
 type RoleOption = { id: number; name: string; slug: string };
@@ -30,15 +30,19 @@ type UserForm = {
     allowPasswordLogin: boolean;
     hasPassword: boolean;
     sellerSettlementMode: 'manual' | 'automatic';
+    taxStateCode: string | null;
+    gstRegistered: boolean;
+    gstin: string | null;
 };
 
 type Props = {
     user: UserForm | null;
     roles: RoleOption[];
     machines: MachineOption[];
+    indiaStates: Record<string, string>;
 };
 
-export default function AdminUserForm({ user, roles, machines }: Props) {
+export default function AdminUserForm({ user, roles, machines, indiaStates }: Props) {
     const editing = Boolean(user?.id);
     const protectedSuperAdmin = user?.roleSlug === 'super_admin';
 
@@ -61,6 +65,9 @@ export default function AdminUserForm({ user, roles, machines }: Props) {
         allowOtpLogin: user?.allowOtpLogin ?? roles[0]?.slug === 'marketplace_user',
         allowPasswordLogin: user?.allowPasswordLogin ?? roles[0]?.slug !== 'marketplace_user',
         sellerSettlementMode: user?.sellerSettlementMode ?? 'manual',
+        taxStateCode: user?.taxStateCode ?? '',
+        gstRegistered: user?.gstRegistered ?? false,
+        gstin: user?.gstin ?? '',
     });
 
     const { data, setData, post, put, processing, errors } = form;
@@ -191,6 +198,51 @@ export default function AdminUserForm({ user, roles, machines }: Props) {
                             </div>
                         </AdminFormPanel>
                     </div>
+
+                    {isMarketplace ? (
+                        <AdminFormPanel
+                            title="India GST profile"
+                            description="The seller state determines CGST/SGST or IGST. GST is charged on this seller's listings only when the seller is marked GST registered."
+                            icon={ReceiptText}
+                        >
+                            <div className="grid gap-5 sm:grid-cols-2">
+                                <div className="grid gap-2">
+                                    <Label>GST state</Label>
+                                    <Select value={data.taxStateCode || undefined} onValueChange={(value) => setData('taxStateCode', value)}>
+                                        <SelectTrigger className={fieldClass}><SelectValue placeholder="Select state" /></SelectTrigger>
+                                        <SelectContent>
+                                            {Object.entries(indiaStates).map(([code, name]) => (
+                                                <SelectItem key={code} value={code}>{code} · {name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError message={errors.taxStateCode} />
+                                </div>
+                                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+                                    <Checkbox checked={data.gstRegistered} onCheckedChange={(value) => setData('gstRegistered', value === true)} />
+                                    <span>
+                                        <span className="block text-sm font-semibold">GST-registered seller</span>
+                                        <span className="mt-1 block text-xs text-slate-500">Charge buyer GST on this seller's taxable listings.</span>
+                                    </span>
+                                </label>
+                                {data.gstRegistered ? (
+                                    <div className="grid gap-2 sm:col-span-2">
+                                        <Label htmlFor="gstin">GSTIN</Label>
+                                        <Input
+                                            id="gstin"
+                                            value={data.gstin}
+                                            onChange={(event) => setData('gstin', event.target.value.toUpperCase())}
+                                            maxLength={15}
+                                            placeholder="24ABCDE1234F1Z5"
+                                            className={fieldClass}
+                                            required
+                                        />
+                                        <InputError message={errors.gstin} />
+                                    </div>
+                                ) : null}
+                            </div>
+                        </AdminFormPanel>
+                    ) : null}
 
                     <AdminFormPanel
                         title="Login methods"

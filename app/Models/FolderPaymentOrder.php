@@ -15,9 +15,21 @@ class FolderPaymentOrder extends Model
         'razorpay_order_id',
         'razorpay_payment_id',
         'amount_paise',
+        'taxable_amount_paise',
+        'buyer_gst_basis_points',
+        'buyer_gst_paise',
+        'cgst_paise',
+        'sgst_paise',
+        'igst_paise',
+        'gst_supply_type',
+        'seller_state_code',
+        'buyer_state_code',
         'currency',
         'payment_environment',
         'commission_basis_points',
+        'commission_gst_basis_points',
+        'commission_gst_paise',
+        'tax_snapshot',
         'status',
         'last_reconciled_at',
     ];
@@ -26,7 +38,16 @@ class FolderPaymentOrder extends Model
     {
         return [
             'amount_paise' => 'integer',
+            'taxable_amount_paise' => 'integer',
+            'buyer_gst_basis_points' => 'integer',
+            'buyer_gst_paise' => 'integer',
+            'cgst_paise' => 'integer',
+            'sgst_paise' => 'integer',
+            'igst_paise' => 'integer',
             'commission_basis_points' => 'integer',
+            'commission_gst_basis_points' => 'integer',
+            'commission_gst_paise' => 'integer',
+            'tax_snapshot' => 'array',
             'last_reconciled_at' => 'datetime',
         ];
     }

@@ -14,6 +14,8 @@ class RazorpayFolderPaymentService
     public function __construct(
         private readonly MarketplacePaymentSettings $settings,
         private readonly SaleEarningService $earnings,
+        private readonly BuyerCheckoutPricingService $checkoutPricing,
+        private readonly IndiaGstCalculator $gst,
     ) {}
 
     public function isConfigured(): bool
@@ -22,15 +24,28 @@ class RazorpayFolderPaymentService
             && filled(config('designhub.razorpay_key_secret'));
     }
 
-    public function createOrder(User $buyer, Folder $folder): array
+    public function createOrder(User $buyer, Folder $folder, ?string $buyerStateCode): array
     {
         $this->guardCheckout($buyer, $folder);
         $environment = $this->settings->environment();
+        $pricing = $this->checkoutPricing->preview(
+            'folder', $folder->public_id, $folder->name, (int) $folder->price_paise,
+            $folder->owner, $buyerStateCode,
+        );
+        $amount = (int) $pricing['totalPayablePaise'];
+        $commissionPaise = $this->gst->percentage((int) $folder->price_paise, $this->settings->commissionBasisPoints());
+        $commissionGstPaise = $this->gst->commissionGst(
+            $commissionPaise,
+            $this->settings->commissionGstEnabled(),
+            $this->settings->commissionGstBasisPoints(),
+        );
 
         $existing = FolderPaymentOrder::query()
             ->where('buyer_id', $buyer->id)
             ->where('folder_id', $folder->id)
             ->where('payment_environment', $environment)
+            ->where('amount_paise', $amount)
+            ->where('buyer_state_code', $pricing['taxes']['buyerStateCode'])
             ->whereIn('status', ['created', 'pending'])
             ->latest('id')
             ->first();
@@ -39,7 +54,6 @@ class RazorpayFolderPaymentService
             return $this->orderPayload($folder, $existing);
         }
 
-        $amount = (int) $folder->price_paise;
         $razorpayOrder = $this->client()->order->create([
             'receipt' => 'folder_'.$folder->id.'_'.now()->format('YmdHis'),
             'amount' => $amount,
@@ -52,9 +66,23 @@ class RazorpayFolderPaymentService
             'folder_id' => $folder->id,
             'razorpay_order_id' => $razorpayOrder['id'],
             'amount_paise' => $amount,
+            'taxable_amount_paise' => $folder->price_paise,
+            'buyer_gst_basis_points' => (int) (($pricing['taxes']['lines'][0]['basisPoints'] ?? 0)
+                + ($pricing['taxes']['lines'][1]['basisPoints'] ?? 0)),
+            'buyer_gst_paise' => $pricing['taxes']['totalPaise'],
+            'cgst_paise' => collect($pricing['taxes']['lines'])->firstWhere('type', 'cgst')['amountPaise'] ?? 0,
+            'sgst_paise' => collect($pricing['taxes']['lines'])->firstWhere('type', 'sgst')['amountPaise'] ?? 0,
+            'igst_paise' => collect($pricing['taxes']['lines'])->firstWhere('type', 'igst')['amountPaise'] ?? 0,
+            'gst_supply_type' => $pricing['taxes']['supplyType'],
+            'seller_state_code' => $pricing['taxes']['sellerStateCode'],
+            'buyer_state_code' => $pricing['taxes']['buyerStateCode'],
             'currency' => 'INR',
             'payment_environment' => $environment,
             'commission_basis_points' => $this->settings->commissionBasisPoints(),
+            'commission_gst_basis_points' => $this->settings->commissionGstEnabled()
+                ? $this->settings->commissionGstBasisPoints() : 0,
+            'commission_gst_paise' => $commissionGstPaise,
+            'tax_snapshot' => $pricing['taxes'],
             'status' => 'created',
         ]);
 
@@ -260,6 +288,7 @@ class RazorpayFolderPaymentService
             'currency' => $order->currency,
             'environment' => $order->payment_environment,
             'isRealMoney' => $order->payment_environment === 'live',
+            'buyerStateCode' => $order->buyer_state_code,
         ];
     }
 

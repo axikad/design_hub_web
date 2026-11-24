@@ -51,11 +51,28 @@ class SellerWalletController extends Controller
                     'name' => $earning->item_name,
                 ],
                 'currency' => $earning->currency,
+                'taxableAmountPaise' => $earning->taxable_amount_paise,
+                'buyerGst' => [
+                    'basisPoints' => $earning->buyer_gst_basis_points,
+                    'percent' => $earning->buyer_gst_basis_points / 100,
+                    'amountPaise' => $earning->buyer_gst_paise,
+                    'supplyType' => $earning->gst_supply_type,
+                    'cgstPaise' => $earning->cgst_paise,
+                    'sgstPaise' => $earning->sgst_paise,
+                    'igstPaise' => $earning->igst_paise,
+                    'sellerStateCode' => $earning->seller_state_code,
+                    'buyerStateCode' => $earning->buyer_state_code,
+                ],
                 'buyerPaidPaise' => $earning->buyer_paid_paise,
                 'commissionBasisPoints' => $earning->commission_basis_points,
                 'commissionPercent' => $earning->commission_basis_points / 100,
                 'commissionPaise' => $earning->commission_paise,
                 'sellerGrossPaise' => $earning->seller_gross_paise,
+                'commissionGst' => [
+                    'basisPoints' => $earning->commission_gst_basis_points,
+                    'percent' => $earning->commission_gst_basis_points / 100,
+                    'amountPaise' => $earning->commission_gst_paise,
+                ],
                 'deductionsPaise' => $earning->commission_gst_paise
                     + $earning->tds_paise
                     + $earning->gst_tcs_paise

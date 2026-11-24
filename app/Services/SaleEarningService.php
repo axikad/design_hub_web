@@ -86,10 +86,16 @@ class SaleEarningService
             $commissionBasisPoints,
         ): SaleEarning {
             $settlement = $this->settlements->scheduleFor(now());
+            $paymentOrder = $purchase->paymentOrder;
+            $taxableAmountPaise = (int) ($paymentOrder?->taxable_amount_paise ?: $purchase->amount_paise);
+            $buyerGstPaise = (int) ($paymentOrder?->buyer_gst_paise ?? 0);
+            $commissionGstPaise = (int) ($paymentOrder?->commission_gst_paise ?? 0);
             $breakdown = $this->calculator->calculate(
-                taxableAmountPaise: (int) $purchase->amount_paise,
+                taxableAmountPaise: $taxableAmountPaise,
                 buyerPaidPaise: (int) $purchase->amount_paise,
                 commissionBasisPoints: $commissionBasisPoints,
+                buyerGstPaise: $buyerGstPaise,
+                commissionGstPaise: $commissionGstPaise,
             );
 
             $identity = $designPurchaseId !== null
@@ -110,11 +116,21 @@ class SaleEarningService
                     'currency' => $purchase->currency,
                     'payment_environment' => $purchase->payment_environment,
                     ...$breakdown,
+                    'buyer_gst_basis_points' => (int) ($paymentOrder?->buyer_gst_basis_points ?? 0),
+                    'cgst_paise' => (int) ($paymentOrder?->cgst_paise ?? 0),
+                    'sgst_paise' => (int) ($paymentOrder?->sgst_paise ?? 0),
+                    'igst_paise' => (int) ($paymentOrder?->igst_paise ?? 0),
+                    'gst_supply_type' => (string) ($paymentOrder?->gst_supply_type ?? 'none'),
+                    'seller_state_code' => $paymentOrder?->seller_state_code,
+                    'buyer_state_code' => $paymentOrder?->buyer_state_code,
+                    'commission_gst_basis_points' => (int) ($paymentOrder?->commission_gst_basis_points ?? 0),
                     'refund_paise' => 0,
                     'status' => 'pending',
                     'available_at' => $settlement['availableAt'],
                     'calculation_snapshot' => [
                         ...$breakdown,
+                        'tax' => $paymentOrder?->tax_snapshot,
+                        'commission_gst_basis_points' => (int) ($paymentOrder?->commission_gst_basis_points ?? 0),
                         'payment_environment' => $purchase->payment_environment,
                         'settlement' => $settlement['snapshot'],
                     ],

@@ -19,6 +19,7 @@ use App\Services\MarketplacePaymentSettings;
 use App\Services\UploadService;
 use App\Support\ApiResponse;
 use App\Support\Pagination;
+use App\Support\IndiaGstState;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -54,7 +55,20 @@ class UserController extends Controller
             'name' => ['required', 'string', 'min:1', 'max:120'],
             'image' => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'removeImage' => ['sometimes', 'boolean'],
+            'taxStateCode' => ['sometimes', 'nullable', 'string', Rule::in(IndiaGstState::codes())],
+            'gstRegistered' => ['sometimes', 'boolean'],
+            'gstin' => ['sometimes', 'nullable', 'string', 'size:15', 'regex:/^[0-9]{2}[A-Z0-9]{13}$/'],
         ]);
+
+        $gstRegistered = (bool) ($validated['gstRegistered'] ?? $user->gst_registered);
+        $taxStateCode = $validated['taxStateCode'] ?? $user->tax_state_code;
+        $gstin = array_key_exists('gstin', $validated) ? $validated['gstin'] : $user->gstin;
+        if ($gstRegistered && (blank($taxStateCode) || blank($gstin))) {
+            throw ValidationException::withMessages(['gstin' => 'GST state and GSTIN are required for a GST-registered seller.']);
+        }
+        if ($gstRegistered && ! str_starts_with(strtoupper((string) $gstin), (string) $taxStateCode)) {
+            throw ValidationException::withMessages(['gstin' => 'GSTIN must begin with the selected two-digit GST state code.']);
+        }
 
         if ($request->hasFile('image')) {
             $upload = $this->uploads->store($user, $request->file('image'));
@@ -65,6 +79,18 @@ class UserController extends Controller
         }
 
         unset($validated['image'], $validated['removeImage']);
+
+        if (array_key_exists('taxStateCode', $validated)) {
+            $validated['tax_state_code'] = $validated['taxStateCode'];
+            unset($validated['taxStateCode']);
+        }
+        if (array_key_exists('gstRegistered', $validated)) {
+            $validated['gst_registered'] = $validated['gstRegistered'];
+            unset($validated['gstRegistered']);
+        }
+        if (array_key_exists('gstin', $validated)) {
+            $validated['gstin'] = $gstRegistered ? strtoupper((string) $validated['gstin']) : null;
+        }
 
         $user->fill($validated);
 

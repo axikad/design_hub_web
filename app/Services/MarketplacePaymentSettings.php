@@ -28,6 +28,26 @@ class MarketplacePaymentSettings
         return (int) (SiteSetting::current()->platform_commission_basis_points ?? 2500);
     }
 
+    public function buyerGstEnabled(): bool
+    {
+        return (bool) (SiteSetting::current()->buyer_gst_enabled ?? false);
+    }
+
+    public function buyerGstBasisPoints(): int
+    {
+        return (int) (SiteSetting::current()->buyer_gst_basis_points ?? 0);
+    }
+
+    public function commissionGstEnabled(): bool
+    {
+        return (bool) (SiteSetting::current()->commission_gst_enabled ?? false);
+    }
+
+    public function commissionGstBasisPoints(): int
+    {
+        return (int) (SiteSetting::current()->commission_gst_basis_points ?? 0);
+    }
+
     public function earningHoldDays(): int
     {
         return (int) (SiteSetting::current()->earning_hold_days ?? 7);

@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\Design;
 use App\Models\Folder;
+use App\Models\SiteSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -57,6 +58,68 @@ class BuyerCheckoutPricingApiTest extends TestCase
             ->assertJsonPath('data.item.name', 'Buyer Preview Folder')
             ->assertJsonPath('data.itemPricePaise', 29900)
             ->assertJsonPath('data.totalPayablePaise', 29900);
+    }
+
+    public function test_same_state_checkout_splits_india_gst_into_cgst_and_sgst(): void
+    {
+        $this->enableBuyerGst();
+        $seller = User::factory()->create([
+            'tax_state_code' => '24',
+            'gst_registered' => true,
+            'gstin' => '24AAAAA0000A1Z5',
+        ]);
+        $buyer = User::factory()->create();
+        $design = $this->designOwnedBy($seller, 10000);
+        Sanctum::actingAs($buyer);
+
+        $this->getJson('/api/v1/payments/checkout-preview?designId='.$design->public_id.'&buyerStateCode=24')
+            ->assertOk()
+            ->assertJsonPath('data.itemPricePaise', 10000)
+            ->assertJsonPath('data.taxes.enabled', true)
+            ->assertJsonPath('data.taxes.supplyType', 'intra_state')
+            ->assertJsonPath('data.taxes.totalPaise', 1800)
+            ->assertJsonPath('data.taxes.lines.0.type', 'cgst')
+            ->assertJsonPath('data.taxes.lines.0.amountPaise', 900)
+            ->assertJsonPath('data.taxes.lines.1.type', 'sgst')
+            ->assertJsonPath('data.taxes.lines.1.amountPaise', 900)
+            ->assertJsonPath('data.totalPayablePaise', 11800);
+    }
+
+    public function test_interstate_checkout_uses_igst(): void
+    {
+        $this->enableBuyerGst();
+        $seller = User::factory()->create([
+            'tax_state_code' => '24',
+            'gst_registered' => true,
+            'gstin' => '24AAAAA0000A1Z5',
+        ]);
+        $buyer = User::factory()->create();
+        $folder = $this->folderOwnedBy($seller, 10000);
+        Sanctum::actingAs($buyer);
+
+        $this->getJson('/api/v1/payments/checkout-preview?folderId='.$folder->public_id.'&buyerStateCode=27')
+            ->assertOk()
+            ->assertJsonPath('data.taxes.supplyType', 'inter_state')
+            ->assertJsonCount(1, 'data.taxes.lines')
+            ->assertJsonPath('data.taxes.lines.0.type', 'igst')
+            ->assertJsonPath('data.taxes.lines.0.amountPaise', 1800)
+            ->assertJsonPath('data.totalPayablePaise', 11800);
+    }
+
+    public function test_taxable_checkout_requires_buyer_state(): void
+    {
+        $this->enableBuyerGst();
+        $seller = User::factory()->create([
+            'tax_state_code' => '24',
+            'gst_registered' => true,
+            'gstin' => '24AAAAA0000A1Z5',
+        ]);
+        $design = $this->designOwnedBy($seller, 10000);
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->getJson('/api/v1/payments/checkout-preview?designId='.$design->public_id)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('buyerStateCode');
     }
 
     public function test_checkout_preview_requires_exactly_one_item_identifier(): void
@@ -117,5 +180,14 @@ class BuyerCheckoutPricingApiTest extends TestCase
             'file_count' => 2,
             'total_size' => 120,
         ]);
+    }
+
+    private function enableBuyerGst(): void
+    {
+        SiteSetting::current()->update([
+            'buyer_gst_enabled' => true,
+            'buyer_gst_basis_points' => 1800,
+        ]);
+        SiteSetting::forgetCache();
     }
 }

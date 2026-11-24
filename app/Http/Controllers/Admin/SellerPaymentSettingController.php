@@ -33,10 +33,6 @@ class SellerPaymentSettingController extends Controller
                 'buyerGstPercent' => $this->basisPointsToPercent((int) ($settings->buyer_gst_basis_points ?? 0)),
                 'commissionGstEnabled' => (bool) ($settings->commission_gst_enabled ?? false),
                 'commissionGstPercent' => $this->basisPointsToPercent((int) ($settings->commission_gst_basis_points ?? 0)),
-                'tdsEnabled' => (bool) ($settings->tds_enabled ?? false),
-                'tdsPercent' => $this->basisPointsToPercent((int) ($settings->tds_basis_points ?? 0)),
-                'gstTcsEnabled' => (bool) ($settings->gst_tcs_enabled ?? false),
-                'gstTcsPercent' => $this->basisPointsToPercent((int) ($settings->gst_tcs_basis_points ?? 0)),
                 'settlementCycles' => SettlementCycle::query()
                     ->orderBy('sort_order')
                     ->orderBy('start_day')
@@ -64,10 +60,6 @@ class SellerPaymentSettingController extends Controller
             'buyerGstPercent' => ['required', 'numeric', 'between:0,100', 'decimal:0,2'],
             'commissionGstEnabled' => ['required', 'boolean'],
             'commissionGstPercent' => ['required', 'numeric', 'between:0,100', 'decimal:0,2'],
-            'tdsEnabled' => ['required', 'boolean'],
-            'tdsPercent' => ['required', 'numeric', 'between:0,100', 'decimal:0,2'],
-            'gstTcsEnabled' => ['required', 'boolean'],
-            'gstTcsPercent' => ['required', 'numeric', 'between:0,100', 'decimal:0,2'],
             'settlementCycles' => ['sometimes', 'array', 'max:31'],
             'settlementCycles.*.startDay' => ['required', 'integer', 'between:1,31'],
             'settlementCycles.*.endDay' => ['required', 'integer', 'between:1,31'],
@@ -108,10 +100,6 @@ class SellerPaymentSettingController extends Controller
                 'buyer_gst_basis_points' => $this->percentToBasisPoints($validated['buyerGstPercent']),
                 'commission_gst_enabled' => $validated['commissionGstEnabled'],
                 'commission_gst_basis_points' => $this->percentToBasisPoints($validated['commissionGstPercent']),
-                'tds_enabled' => $validated['tdsEnabled'],
-                'tds_basis_points' => $this->percentToBasisPoints($validated['tdsPercent']),
-                'gst_tcs_enabled' => $validated['gstTcsEnabled'],
-                'gst_tcs_basis_points' => $this->percentToBasisPoints($validated['gstTcsPercent']),
             ]);
 
             SettlementCycle::query()->delete();

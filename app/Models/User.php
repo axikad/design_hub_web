@@ -30,6 +30,9 @@ class User extends Authenticatable
         'country_code',
         'mobile_number',
         'phone_key',
+        'tax_state_code',
+        'gst_registered',
+        'gstin',
         'email',
         'avatar_path',
         'password',
@@ -53,6 +56,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'allow_otp_login' => 'boolean',
             'allow_password_login' => 'boolean',
+            'gst_registered' => 'boolean',
         ];
     }
 
@@ -209,6 +213,12 @@ class User extends Authenticatable
                 'password' => (bool) $this->allow_password_login,
             ],
             'sellerSettlementMode' => $this->seller_settlement_mode ?? 'manual',
+            'taxProfile' => [
+                'country' => 'IN',
+                'stateCode' => $this->tax_state_code,
+                'gstRegistered' => (bool) $this->gst_registered,
+                'gstin' => $this->gstin,
+            ],
         ];
     }
 
@@ -233,6 +243,9 @@ class User extends Authenticatable
             'allowPasswordLogin' => (bool) $this->allow_password_login,
             'hasPassword' => $this->password !== null,
             'sellerSettlementMode' => $this->seller_settlement_mode ?? 'manual',
+            'taxStateCode' => $this->tax_state_code,
+            'gstRegistered' => (bool) $this->gst_registered,
+            'gstin' => $this->gstin,
         ];
     }
 

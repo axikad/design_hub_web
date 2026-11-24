@@ -11,8 +11,10 @@ use App\Services\BuyerCheckoutPricingService;
 use App\Services\RazorpayFolderPaymentService;
 use App\Services\RazorpayPaymentService;
 use App\Support\ApiResponse;
+use App\Support\IndiaGstState;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 
 class PaymentController extends Controller
 {
@@ -29,6 +31,7 @@ class PaymentController extends Controller
         $validated = $request->validate([
             'designId' => ['required_without:folderId', 'string'],
             'folderId' => ['required_without:designId', 'string'],
+            'buyerStateCode' => ['nullable', 'string', Rule::in(IndiaGstState::codes())],
         ]);
 
         if (isset($validated['folderId'])) {
@@ -46,8 +49,17 @@ class PaymentController extends Controller
                 throw ValidationException::withMessages(['folderId' => 'You cannot purchase your own folder.']);
             }
 
+            try {
+                $breakdown = $this->checkoutPricing->preview(
+                    'folder', $folder->public_id, $folder->name, (int) $folder->price_paise,
+                    $folder->owner, $validated['buyerStateCode'] ?? null,
+                );
+            } catch (\InvalidArgumentException $exception) {
+                throw ValidationException::withMessages(['buyerStateCode' => $exception->getMessage()]);
+            }
+
             return ApiResponse::data(
-                $this->checkoutPricing->preview('folder', $folder->public_id, $folder->name, (int) $folder->price_paise),
+                $breakdown,
                 message: 'Buyer checkout breakdown calculated successfully.',
             );
         }
@@ -66,8 +78,17 @@ class PaymentController extends Controller
             throw ValidationException::withMessages(['designId' => 'You cannot purchase your own design.']);
         }
 
+        try {
+            $breakdown = $this->checkoutPricing->preview(
+                'design', $design->public_id, $design->title, (int) $design->price_paise,
+                $design->owner, $validated['buyerStateCode'] ?? null,
+            );
+        } catch (\InvalidArgumentException $exception) {
+            throw ValidationException::withMessages(['buyerStateCode' => $exception->getMessage()]);
+        }
+
         return ApiResponse::data(
-            $this->checkoutPricing->preview('design', $design->public_id, $design->title, (int) $design->price_paise),
+            $breakdown,
             message: 'Buyer checkout breakdown calculated successfully.',
         );
     }
@@ -104,10 +125,11 @@ class PaymentController extends Controller
         $validated = $request->validate([
             'designId' => ['required_without:folderId', 'string'],
             'folderId' => ['required_without:designId', 'string'],
+            'buyerStateCode' => ['nullable', 'string', Rule::in(IndiaGstState::codes())],
         ]);
 
         if (isset($validated['folderId'])) {
-            return $this->createFolderOrder($request, $validated['folderId']);
+            return $this->createFolderOrder($request, $validated['folderId'], $validated['buyerStateCode'] ?? null);
         }
 
         if (! $this->razorpay->isConfigured()) {
@@ -121,9 +143,11 @@ class PaymentController extends Controller
         }
 
         try {
-            $payload = $this->razorpay->createOrder($request->user(), $design);
+            $payload = $this->razorpay->createOrder($request->user(), $design, $validated['buyerStateCode'] ?? null);
         } catch (\InvalidArgumentException $exception) {
-            throw ValidationException::withMessages(['designId' => $exception->getMessage()]);
+            throw ValidationException::withMessages([
+                str_contains($exception->getMessage(), 'state') ? 'buyerStateCode' : 'designId' => $exception->getMessage(),
+            ]);
         } catch (\Throwable $exception) {
             report($exception);
 
@@ -134,7 +158,9 @@ class PaymentController extends Controller
             'design',
             $design->public_id,
             $design->title,
-            (int) ($payload['amount'] ?? $design->price_paise),
+            (int) $design->price_paise,
+            $design->owner,
+            $payload['buyerStateCode'] ?? ($validated['buyerStateCode'] ?? null),
         );
 
         return ApiResponse::data($payload, message: 'Payment order created successfully.');
@@ -255,7 +281,7 @@ class PaymentController extends Controller
         return ApiResponse::data($payload, message: 'Purchase status retrieved successfully.');
     }
 
-    private function createFolderOrder(Request $request, string $folderId)
+    private function createFolderOrder(Request $request, string $folderId, ?string $buyerStateCode)
     {
         if (! $this->folderRazorpay->isConfigured()) {
             return ApiResponse::error('Payments are not configured yet.', 'payments_unavailable', 503);
@@ -267,9 +293,11 @@ class PaymentController extends Controller
         }
 
         try {
-            $payload = $this->folderRazorpay->createOrder($request->user(), $folder);
+            $payload = $this->folderRazorpay->createOrder($request->user(), $folder, $buyerStateCode);
         } catch (\InvalidArgumentException $exception) {
-            throw ValidationException::withMessages(['folderId' => $exception->getMessage()]);
+            throw ValidationException::withMessages([
+                str_contains($exception->getMessage(), 'state') ? 'buyerStateCode' : 'folderId' => $exception->getMessage(),
+            ]);
         } catch (\Throwable $exception) {
             report($exception);
 
@@ -280,7 +308,9 @@ class PaymentController extends Controller
             'folder',
             $folder->public_id,
             $folder->name,
-            (int) ($payload['amount'] ?? $folder->price_paise),
+            (int) $folder->price_paise,
+            $folder->owner,
+            $payload['buyerStateCode'] ?? $buyerStateCode,
         );
 
         return ApiResponse::data($payload, message: 'Payment order created successfully.');

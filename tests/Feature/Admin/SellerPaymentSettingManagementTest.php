@@ -275,10 +275,6 @@ class SellerPaymentSettingManagementTest extends TestCase
             'buyerGstPercent' => '0.00',
             'commissionGstEnabled' => false,
             'commissionGstPercent' => '0.00',
-            'tdsEnabled' => false,
-            'tdsPercent' => '0.00',
-            'gstTcsEnabled' => false,
-            'gstTcsPercent' => '0.00',
             ...$overrides,
         ];
     }

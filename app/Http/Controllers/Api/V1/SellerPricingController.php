@@ -17,7 +17,7 @@ class SellerPricingController extends Controller
         ]);
 
         return ApiResponse::data(
-            $pricing->preview((int) $validated['pricePaise']),
+            $pricing->preview((int) $validated['pricePaise'], $request->user()),
             message: 'Seller pricing preview calculated successfully.',
         );
     }

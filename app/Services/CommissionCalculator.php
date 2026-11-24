@@ -36,6 +36,7 @@ class CommissionCalculator
         $commissionPaise = intdiv(($taxableAmountPaise * $commissionBasisPoints) + 5000, 10000);
         $sellerGrossPaise = $taxableAmountPaise - $commissionPaise;
         $sellerNetPaise = $sellerGrossPaise
+            + $buyerGstPaise
             - $commissionGstPaise
             - $tdsPaise
             - $gstTcsPaise

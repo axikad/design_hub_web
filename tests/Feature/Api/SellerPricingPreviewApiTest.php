@@ -60,6 +60,34 @@ class SellerPricingPreviewApiTest extends TestCase
             ->assertUnauthorized();
     }
 
+    public function test_preview_shows_purchase_gst_and_commission_gst_for_registered_seller(): void
+    {
+        SiteSetting::current()->update([
+            'platform_commission_basis_points' => 2500,
+            'buyer_gst_enabled' => true,
+            'buyer_gst_basis_points' => 1800,
+            'commission_gst_enabled' => true,
+            'commission_gst_basis_points' => 1800,
+        ]);
+        SiteSetting::forgetCache();
+        Sanctum::actingAs(User::factory()->create([
+            'tax_state_code' => '24',
+            'gst_registered' => true,
+            'gstin' => '24AAAAA0000A1Z5',
+        ]));
+
+        $this->postJson('/api/v1/seller/pricing-preview', ['pricePaise' => 10000])
+            ->assertOk()
+            ->assertJsonPath('data.itemPricePaise', 10000)
+            ->assertJsonPath('data.buyerPayablePaise', 11800)
+            ->assertJsonPath('data.platformCommission.amountPaise', 2500)
+            ->assertJsonPath('data.sellerGrossPaise', 7500)
+            ->assertJsonPath('data.taxes.buyerGst.amountPaise', 1800)
+            ->assertJsonPath('data.taxes.commissionGst.amountPaise', 450)
+            ->assertJsonPath('data.sellerDeductionsPaise', 450)
+            ->assertJsonPath('data.estimatedSellerEarningPaise', 8850);
+    }
+
     public function test_admin_web_session_can_request_a_pricing_preview(): void
     {
         $this->actingAs(User::factory()->create())

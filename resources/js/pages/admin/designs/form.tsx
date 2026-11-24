@@ -297,7 +297,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                             <div className={`grid gap-5 ${config?.title ? 'sm:grid-cols-2' : ''}`}>
                                 {canChooseSeller ? (
                                     <div className="grid gap-2">
-                                        <Label>Seller</Label>
+                                        <Label>Seller <RequiredMark /></Label>
                                         <Select value={data.ownerId} onValueChange={(value) => setData('ownerId', value)}>
                                             <SelectTrigger className={selectClass}>
                                                 <SelectValue placeholder="Select user" />
@@ -318,7 +318,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                 ) : null}
                                 {config?.title ? (
                                     <div className="grid gap-2">
-                                        <Label htmlFor="title">Title</Label>
+                                        <Label htmlFor="title">Title {config.required.title ? <RequiredMark /> : null}</Label>
                                         <Input
                                             id="title"
                                             value={data.title}
@@ -341,7 +341,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                         icon={Layers3}
                     >
                         <div className="grid gap-5 sm:grid-cols-3">
-                            <SelectField label="Machine" value={data.machineId} onChange={selectMachine} options={catalog} error={errors.machineId} />
+                            <SelectField label="Machine" value={data.machineId} onChange={selectMachine} options={catalog} error={errors.machineId} required />
                             {config?.machineType ? (
                                 <SelectField
                                     key={`machine-type-${data.machineId}`}
@@ -351,6 +351,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                     options={machineTypes}
                                     error={errors.machineTypeId}
                                     disabled={!machineTypes.length}
+                                    required={config.required.machineType}
                                 />
                             ) : null}
                             {config?.category ? (
@@ -362,13 +363,14 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                     options={categories}
                                     error={errors.categoryId}
                                     disabled={!categories.length}
+                                    required={config.required.category}
                                 />
                             ) : null}
                         </div>
                         {config?.designTypes ? (
                             <div className="mt-5 grid gap-2">
                                 <div className="flex items-center justify-between gap-3">
-                                    <Label>Design types</Label>
+                                    <Label>Design types {config.required.designTypes ? <RequiredMark /> : null}</Label>
                                     <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={addCustomType}>
                                         <Plus className="size-4" /> Add custom type
                                     </Button>
@@ -588,7 +590,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                             <div className="grid gap-5 sm:grid-cols-2">
                                 {config?.pricing ? (
                                     <div className="grid gap-2">
-                                        <Label htmlFor="priceRupees">Price (INR)</Label>
+                                        <Label htmlFor="priceRupees">Price (INR) {config.required.pricing ? <RequiredMark /> : null}</Label>
                                         <Input
                                             id="priceRupees"
                                             type="number"
@@ -611,6 +613,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                         options={availableFileTypes.map((item) => ({ ...item, name: `${item.name} (.${item.extension})` }))}
                                         error={errors.designFileTypeId}
                                         disabled={!availableFileTypes.length}
+                                        required={config.required.designFileType}
                                     />
                                 ) : null}
                                 {config?.designFileType && !availableFileTypes.length ? (
@@ -648,6 +651,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                             ))}
                                         </div>
                                     ) : null}
+                                    <Label htmlFor="previewImages">Preview images {!editing && config.required.previewImages ? <RequiredMark /> : null}</Label>
                                     <Input
                                         id="previewImages"
                                         type="file"
@@ -690,6 +694,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                             </ul>
                                         </div>
                                     ) : null}
+                                    <Label htmlFor="stitchFiles">Stitch files {!editing && config.required.stitchFiles ? <RequiredMark /> : null}</Label>
                                     <Input
                                         id="stitchFiles"
                                         type="file"
@@ -803,12 +808,13 @@ type SelectFieldProps = {
     options: { id: string; name: string }[];
     error?: string;
     disabled?: boolean;
+    required?: boolean;
 };
 
-function SelectField({ label, value, onChange, options, error, disabled = false }: SelectFieldProps) {
+function SelectField({ label, value, onChange, options, error, disabled = false, required = false }: SelectFieldProps) {
     return (
         <div className="grid gap-2">
-            <Label>{label}</Label>
+            <Label>{label} {required ? <RequiredMark /> : null}</Label>
             <Select value={value} onValueChange={onChange} disabled={disabled}>
                 <SelectTrigger className={selectClass}>
                     <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
@@ -841,7 +847,7 @@ type VariantFieldProps = {
 function VariantField({ label, value, onChange, error, type = 'text', min, step, suffix, required = true }: VariantFieldProps) {
     return (
         <div className="grid gap-2">
-            <Label>{label}</Label>
+            <Label>{label} {required ? <RequiredMark /> : null}</Label>
             <div className="relative">
                 <Input
                     type={type}
@@ -862,4 +868,8 @@ function VariantField({ label, value, onChange, error, type = 'text', min, step,
             <InputError message={error} />
         </div>
     );
+}
+
+function RequiredMark() {
+    return <span className="text-red-500" aria-hidden="true">*</span>;
 }

@@ -3902,8 +3902,8 @@
                                 "value": "application/json"
                             }
                         ],
-                        "url": "{{base_url}}/payments/checkout-preview?designId={{design_id}}",
-                        "description": "Returns the backend-calculated buyer checkout breakdown before Razorpay is opened. Send exactly one designId or folderId. Taxes and buyer fees are currently disabled and zero."
+                        "url": "{{base_url}}/payments/checkout-preview?designId={{design_id}}&buyerStateCode=24",
+                        "description": "Returns the backend-calculated buyer checkout breakdown before Razorpay is opened. Send exactly one designId or folderId. buyerStateCode is the two-digit Indian GST state code; the response returns CGST + SGST for same-state supply or IGST for interstate supply."
                     },
                     "response": [
                         {
@@ -3916,7 +3916,7 @@
                                         "value": "application/json"
                                     }
                                 ],
-                                "url": "{{base_url}}/payments/checkout-preview?designId={{design_id}}"
+                                "url": "{{base_url}}/payments/checkout-preview?designId={{design_id}}&buyerStateCode=24"
                             },
                             "status": "OK",
                             "code": 200,
@@ -3957,7 +3957,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"designId\": \"{{design_id}}\"\n}"
+                            "raw": "{\n  \"designId\": \"{{design_id}}\",\n  \"buyerStateCode\": \"24\"\n}"
                         },
                         "url": "{{base_url}}/payments/orders",
                         "description": "Requires RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in .env"
@@ -3979,7 +3979,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n  \"designId\": \"{{design_id}}\"\n}"
+                                    "raw": "{\n  \"designId\": \"{{design_id}}\",\n  \"buyerStateCode\": \"24\"\n}"
                                 },
                                 "url": "{{base_url}}/payments/orders",
                                 "description": "Requires RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in .env"
@@ -4293,7 +4293,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n  \"folderId\": \"{{folder_id}}\"\n}"
+                            "raw": "{\n  \"folderId\": \"{{folder_id}}\",\n  \"buyerStateCode\": \"24\"\n}"
                         },
                         "url": "{{base_url}}/payments/orders",
                         "description": "Creates a Razorpay order using the folder price stored by the backend. Send folderId instead of designId."
@@ -4315,7 +4315,7 @@
                                 ],
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n  \"folderId\": \"{{folder_id}}\"\n}"
+                                    "raw": "{\n  \"folderId\": \"{{folder_id}}\",\n  \"buyerStateCode\": \"24\"\n}"
                                 },
                                 "url": "{{base_url}}/payments/orders",
                                 "description": "Creates a Razorpay order using the folder price stored by the backend. Send folderId instead of designId."

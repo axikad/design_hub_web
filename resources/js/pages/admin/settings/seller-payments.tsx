@@ -21,10 +21,6 @@ type SellerPaymentSettings = {
     buyerGstPercent: string;
     commissionGstEnabled: boolean;
     commissionGstPercent: string;
-    tdsEnabled: boolean;
-    tdsPercent: string;
-    gstTcsEnabled: boolean;
-    gstTcsPercent: string;
     settlementCycles: { startDay: number; endDay: number; settlementDay: number }[];
 };
 
@@ -246,14 +242,14 @@ export default function SellerPaymentSettingsPage({ settings, paymentEnvironment
                     </AdminFormPanel>
 
                     <AdminFormPanel
-                        title="Tax configuration"
-                        description="These values are stored for future server-side calculations. Keep them disabled until your CA confirms the exact treatment."
+                        title="India GST"
+                        description="Configure GST for Indian buyer purchases and the separate platform service supplied to sellers. CGST/SGST or IGST will be selected automatically from the billing states."
                         icon={ReceiptText}
                     >
                         <div className="grid gap-4 sm:grid-cols-2">
                             <TaxSetting
                                 id="buyerGst"
-                                title="Buyer GST"
+                                title="GST on design and folder purchases"
                                 checked={data.buyerGstEnabled}
                                 onCheckedChange={(checked) => setData('buyerGstEnabled', checked)}
                                 value={data.buyerGstPercent}
@@ -263,32 +259,12 @@ export default function SellerPaymentSettingsPage({ settings, paymentEnvironment
                             />
                             <TaxSetting
                                 id="commissionGst"
-                                title="GST on commission"
+                                title="GST on platform commission"
                                 checked={data.commissionGstEnabled}
                                 onCheckedChange={(checked) => setData('commissionGstEnabled', checked)}
                                 value={data.commissionGstPercent}
                                 onValueChange={(value) => setData('commissionGstPercent', value)}
                                 error={errors.commissionGstPercent}
-                                disabled={!canUpdate}
-                            />
-                            <TaxSetting
-                                id="tds"
-                                title="Seller TDS"
-                                checked={data.tdsEnabled}
-                                onCheckedChange={(checked) => setData('tdsEnabled', checked)}
-                                value={data.tdsPercent}
-                                onValueChange={(value) => setData('tdsPercent', value)}
-                                error={errors.tdsPercent}
-                                disabled={!canUpdate}
-                            />
-                            <TaxSetting
-                                id="gstTcs"
-                                title="GST TCS"
-                                checked={data.gstTcsEnabled}
-                                onCheckedChange={(checked) => setData('gstTcsEnabled', checked)}
-                                value={data.gstTcsPercent}
-                                onValueChange={(value) => setData('gstTcsPercent', value)}
-                                error={errors.gstTcsPercent}
                                 disabled={!canUpdate}
                             />
                         </div>

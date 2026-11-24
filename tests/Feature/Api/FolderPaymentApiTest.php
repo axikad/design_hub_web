@@ -26,7 +26,7 @@ class FolderPaymentApiTest extends TestCase
         $service->shouldReceive('isConfigured')->once()->andReturnTrue();
         $service->shouldReceive('createOrder')->once()->with($buyer, Mockery::on(
             fn (Folder $argument) => $argument->is($folder)
-        ))->andReturn([
+        ), null)->andReturn([
             'folderId' => $folder->public_id,
             'orderId' => 'order_folder_test',
             'keyId' => 'rzp_test_public_key',

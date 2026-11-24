@@ -7,6 +7,7 @@ use App\Models\Machine;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\PhoneNormalizer;
+use App\Support\IndiaGstState;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -72,6 +73,7 @@ class UserAdminController extends Controller
             'user' => null,
             'roles' => $this->roleOptions(),
             'machines' => $this->machineOptions(),
+            'indiaStates' => IndiaGstState::all(),
         ]);
     }
 
@@ -92,6 +94,9 @@ class UserAdminController extends Controller
             'phone_key' => $validated['phoneKey'],
             'status' => $validated['status'],
             'seller_settlement_mode' => $validated['sellerSettlementMode'],
+            'tax_state_code' => $validated['taxStateCode'],
+            'gst_registered' => $validated['gstRegistered'],
+            'gstin' => $validated['gstin'],
         ]);
         $user->machines()->sync($this->machineDatabaseIds($validated['machineIds']));
 
@@ -109,6 +114,7 @@ class UserAdminController extends Controller
             ],
             'roles' => $this->roleOptions(),
             'machines' => $this->machineOptions(),
+            'indiaStates' => IndiaGstState::all(),
         ]);
     }
 
@@ -129,6 +135,9 @@ class UserAdminController extends Controller
             'allow_password_login' => $validated['allowPasswordLogin'],
             'status' => $validated['status'],
             'seller_settlement_mode' => $validated['sellerSettlementMode'],
+            'tax_state_code' => $validated['taxStateCode'],
+            'gst_registered' => $validated['gstRegistered'],
+            'gstin' => $validated['gstin'],
         ];
 
         if ($model->role?->isSuperAdmin() && ($role->id !== $model->role_id || $validated['status'] !== 'active')) {
@@ -240,6 +249,9 @@ class UserAdminController extends Controller
                 Rule::exists('machines', 'public_id')->where('is_active', true),
             ],
             'sellerSettlementMode' => ['sometimes', Rule::in(['manual', 'automatic'])],
+            'taxStateCode' => ['nullable', 'string', Rule::in(IndiaGstState::codes())],
+            'gstRegistered' => ['sometimes', 'boolean'],
+            'gstin' => ['nullable', 'string', 'size:15', 'regex:/^[0-9]{2}[A-Z0-9]{13}$/'],
         ]);
 
         $role = Role::query()->findOrFail($validated['roleId']);
@@ -263,6 +275,18 @@ class UserAdminController extends Controller
                 'mobileNumber' => ['required', 'string', 'max:20'],
                 'machineIds' => ['required', 'array', 'min:1', 'max:50'],
             ]);
+        }
+
+        $gstRegistered = (bool) ($validated['gstRegistered'] ?? false);
+        if ($gstRegistered) {
+            $request->validate([
+                'taxStateCode' => ['required', 'string', Rule::in(IndiaGstState::codes())],
+                'gstin' => ['required', 'string', 'size:15', 'regex:/^[0-9]{2}[A-Z0-9]{13}$/'],
+            ]);
+
+            if (! str_starts_with(strtoupper((string) $validated['gstin']), (string) $validated['taxStateCode'])) {
+                throw ValidationException::withMessages(['gstin' => 'GSTIN must begin with the selected two-digit GST state code.']);
+            }
         }
 
         if ($allowOtpLogin) {
@@ -324,6 +348,9 @@ class UserAdminController extends Controller
             'status' => $validated['status'],
             'machineIds' => array_values($validated['machineIds'] ?? []),
             'sellerSettlementMode' => $validated['sellerSettlementMode'] ?? 'manual',
+            'taxStateCode' => $validated['taxStateCode'] ?? null,
+            'gstRegistered' => $gstRegistered,
+            'gstin' => $gstRegistered ? strtoupper((string) $validated['gstin']) : null,
         ];
     }
 }

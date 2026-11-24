@@ -16,7 +16,10 @@ type Preview = {
     sellerGrossPaise: number;
     sellerDeductionsPaise: number;
     estimatedSellerEarningPaise: number;
-    taxes: Record<string, { enabled: boolean; amountPaise: number }>;
+    taxes: {
+        buyerGst: { enabled: boolean; percent: number; amountPaise: number; note: string | null };
+        commissionGst: { enabled: boolean; percent: number; amountPaise: number };
+    };
     notice: string;
 };
 
@@ -103,12 +106,32 @@ export function MarketplacePricingPreview({ priceRupees }: { priceRupees: string
                             <dt className="text-slate-500">Selling price</dt>
                             <dd className="font-semibold text-slate-900 dark:text-white">{formatMoney(preview.itemPricePaise, preview.currency)}</dd>
                         </div>
+                        {preview.taxes.buyerGst.enabled ? (
+                            <div className="flex items-center justify-between gap-3">
+                                <dt className="text-slate-500">GST charged to buyer ({preview.taxes.buyerGst.percent}%)</dt>
+                                <dd className="font-semibold text-slate-900 dark:text-white">+{formatMoney(preview.taxes.buyerGst.amountPaise, preview.currency)}</dd>
+                            </div>
+                        ) : null}
+                        <div className="flex items-center justify-between gap-3">
+                            <dt className="font-medium text-slate-700 dark:text-slate-200">Buyer will pay</dt>
+                            <dd className="font-semibold text-slate-900 dark:text-white">{formatMoney(preview.buyerPayablePaise, preview.currency)}</dd>
+                        </div>
                         <div className="flex items-center justify-between gap-3">
                             <dt className="text-slate-500">Platform commission ({preview.platformCommission.percent}%)</dt>
                             <dd className="font-semibold text-rose-600">-{formatMoney(preview.platformCommission.amountPaise, preview.currency)}</dd>
                         </div>
+                        {preview.taxes.commissionGst.enabled ? (
+                            <div className="flex items-center justify-between gap-3">
+                                <dt className="text-slate-500">GST on platform commission ({preview.taxes.commissionGst.percent}%)</dt>
+                                <dd className="font-semibold text-rose-600">-{formatMoney(preview.taxes.commissionGst.amountPaise, preview.currency)}</dd>
+                            </div>
+                        ) : null}
+                        <div className="flex items-center justify-between gap-3">
+                            <dt className="text-slate-500">Seller earning before buyer GST</dt>
+                            <dd className="font-semibold text-slate-900 dark:text-white">{formatMoney(preview.sellerGrossPaise, preview.currency)}</dd>
+                        </div>
                         <div className="flex items-center justify-between gap-3 border-t border-indigo-100 pt-2 dark:border-indigo-900/60">
-                            <dt className="font-bold text-slate-800 dark:text-slate-100">Estimated earning</dt>
+                            <dt className="font-bold text-slate-800 dark:text-slate-100">Estimated wallet credit</dt>
                             <dd className="text-base font-bold text-emerald-600">
                                 {formatMoney(preview.estimatedSellerEarningPaise, preview.currency)}
                             </dd>

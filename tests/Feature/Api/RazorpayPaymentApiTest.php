@@ -44,7 +44,7 @@ class RazorpayPaymentApiTest extends TestCase
         $service->shouldReceive('isConfigured')->once()->andReturnTrue();
         $service->shouldReceive('createOrder')->once()->with($buyer, Mockery::on(
             fn (Design $argument) => $argument->is($design)
-        ))->andReturn([
+        ), null)->andReturn([
             'designId' => $design->public_id,
             'orderId' => 'order_test123',
             'keyId' => 'rzp_test_public_key',
@@ -76,6 +76,11 @@ class RazorpayPaymentApiTest extends TestCase
                         'itemPricePaise' => 29900,
                         'taxes' => [
                             'enabled' => false,
+                            'supplyType' => 'none',
+                            'sellerStateCode' => null,
+                            'sellerStateName' => null,
+                            'buyerStateCode' => null,
+                            'buyerStateName' => null,
                             'totalPaise' => 0,
                             'lines' => [],
                         ],
@@ -84,7 +89,7 @@ class RazorpayPaymentApiTest extends TestCase
                             'amountPaise' => 0,
                         ],
                         'totalPayablePaise' => 29900,
-                        'notice' => 'No tax or additional buyer fee is currently applied. The final payable amount is calculated by the backend.',
+                        'notice' => 'No buyer GST is applied to this listing. The final payable amount is calculated by the backend.',
                     ],
                 ],
             ]);
