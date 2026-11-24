@@ -606,15 +606,17 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                     </div>
                                 ) : null}
                                 {config?.designFileType ? (
-                                    <SelectField
-                                        label="File type"
-                                        value={data.designFileTypeId}
-                                        onChange={(value) => setData('designFileTypeId', value)}
-                                        options={availableFileTypes.map((item) => ({ ...item, name: `${item.name} (.${item.extension})` }))}
-                                        error={errors.designFileTypeId}
-                                        disabled={!availableFileTypes.length}
-                                        required={config.required.designFileType}
-                                    />
+                                    <div className="self-start">
+                                        <SelectField
+                                            label="File type"
+                                            value={data.designFileTypeId}
+                                            onChange={(value) => setData('designFileTypeId', value)}
+                                            options={availableFileTypes.map((item) => ({ ...item, name: `${item.name} (.${item.extension})` }))}
+                                            error={errors.designFileTypeId}
+                                            disabled={!availableFileTypes.length}
+                                            required={config.required.designFileType}
+                                        />
+                                    </div>
                                 ) : null}
                                 {config?.designFileType && !availableFileTypes.length ? (
                                     <p className="text-sm text-amber-700">No active file type is connected to this machine.</p>

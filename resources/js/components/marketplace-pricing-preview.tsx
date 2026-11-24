@@ -140,7 +140,9 @@ export function MarketplacePricingPreview({ priceRupees, sellerId }: { priceRupe
                             </dd>
                         </div>
                     </dl>
-                    <p className="mt-3 text-xs leading-5 text-slate-500">{preview.notice}</p>
+                    <p className="mt-2 text-[10px] leading-4 text-slate-500">
+                        Estimate only. Final amounts and tax details are saved when the buyer pays.
+                    </p>
                 </>
             ) : null}
         </div>

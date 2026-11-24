@@ -1,6 +1,0 @@
-import{j as e}from"./app-Bcd3FVME.js";import{I as l}from"./input-zxlmK5yp.js";import{c as i,a as n}from"./app-logo-icon-GX9Q9v6d.js";import{X as c}from"./app-layout-Cy5FSm0a.js";/**
- * @license lucide-react v0.475.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */const d=[["circle",{cx:"11",cy:"11",r:"8",key:"4ej97u"}],["path",{d:"m21 21-4.3-4.3",key:"1qie3q"}]],m=i("Search",d);function b({className:a,value:t,onClear:s,...r}){const o=typeof t=="string"&&t.length>0;return e.jsxs("div",{className:"relative min-w-0 flex-1 sm:max-w-sm",children:[e.jsx(m,{className:"pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"}),e.jsx(l,{type:"search",value:t,className:n("h-10 rounded-xl border-slate-200 bg-slate-50 pr-9 pl-9 focus-visible:border-indigo-500 focus-visible:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-950",a),...r}),o&&s?e.jsx("button",{type:"button",onClick:s,className:"absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200","aria-label":"Clear search",children:e.jsx(c,{className:"size-3.5"})}):null]})}export{b as A,m as S};
