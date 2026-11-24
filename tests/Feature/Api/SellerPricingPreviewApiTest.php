@@ -95,4 +95,41 @@ class SellerPricingPreviewApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.itemPricePaise', 10000);
     }
+
+    public function test_super_admin_can_preview_pricing_for_the_selected_registered_seller(): void
+    {
+        SiteSetting::current()->update([
+            'platform_commission_basis_points' => 2500,
+            'buyer_gst_enabled' => true,
+            'buyer_gst_basis_points' => 1800,
+            'commission_gst_enabled' => true,
+            'commission_gst_basis_points' => 1800,
+        ]);
+        SiteSetting::forgetCache();
+
+        $admin = User::factory()->superAdmin()->create();
+        $seller = User::factory()->create([
+            'tax_state_code' => '24',
+            'gst_registered' => true,
+            'gstin' => '24AAAAA0000A1Z5',
+        ]);
+
+        $this->actingAs($admin)
+            ->getJson('/api/v1/seller/pricing-preview?pricePaise=10000&sellerId='.$seller->public_id)
+            ->assertOk()
+            ->assertJsonPath('data.buyerPayablePaise', 11800)
+            ->assertJsonPath('data.taxes.buyerGst.amountPaise', 1800)
+            ->assertJsonPath('data.taxes.commissionGst.amountPaise', 450)
+            ->assertJsonPath('data.estimatedSellerEarningPaise', 8850);
+    }
+
+    public function test_seller_cannot_preview_pricing_for_another_seller(): void
+    {
+        $seller = User::factory()->create();
+        $otherSeller = User::factory()->create();
+
+        $this->actingAs($seller)
+            ->getJson('/api/v1/seller/pricing-preview?pricePaise=10000&sellerId='.$otherSeller->public_id)
+            ->assertForbidden();
+    }
 }

@@ -25,7 +25,7 @@ type Preview = {
 
 const formatMoney = (paise: number, currency: string) => new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format(paise / 100);
 
-export function MarketplacePricingPreview({ priceRupees }: { priceRupees: string }) {
+export function MarketplacePricingPreview({ priceRupees, sellerId }: { priceRupees: string; sellerId?: string }) {
     const [preview, setPreview] = useState<Preview | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -45,7 +45,10 @@ export function MarketplacePricingPreview({ priceRupees }: { priceRupees: string
             setError(null);
 
             try {
-                const response = await fetch(`/api/v1/seller/pricing-preview?pricePaise=${pricePaise}`, {
+                const query = new URLSearchParams({ pricePaise: pricePaise.toString() });
+                if (sellerId) query.set('sellerId', sellerId);
+
+                const response = await fetch(`/api/v1/seller/pricing-preview?${query.toString()}`, {
                     credentials: 'same-origin',
                     headers: {
                         Accept: 'application/json',
@@ -75,7 +78,7 @@ export function MarketplacePricingPreview({ priceRupees }: { priceRupees: string
             window.clearTimeout(timeout);
             controller.abort();
         };
-    }, [pricePaise]);
+    }, [pricePaise, sellerId]);
 
     if (pricePaise === null) return null;
 

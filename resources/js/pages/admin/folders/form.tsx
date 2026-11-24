@@ -138,7 +138,7 @@ export default function AdminFolderForm({ folder, owners, canChooseSeller }: Pro
                                     className="h-11 rounded-xl border-slate-200 focus-visible:border-indigo-500 dark:border-slate-700"
                                 />
                                 <InputError message={errors.priceRupees} />
-                                <MarketplacePricingPreview priceRupees={data.priceRupees} />
+                                <MarketplacePricingPreview priceRupees={data.priceRupees} sellerId={data.ownerId} />
                             </div>
                         </div>
                     </AdminFormPanel>

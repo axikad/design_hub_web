@@ -602,7 +602,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                             className={inputClass}
                                         />
                                         <InputError message={errors.priceRupees} />
-                                        <MarketplacePricingPreview priceRupees={data.priceRupees} />
+                                        <MarketplacePricingPreview priceRupees={data.priceRupees} sellerId={data.ownerId} />
                                     </div>
                                 ) : null}
                                 {config?.designFileType ? (
