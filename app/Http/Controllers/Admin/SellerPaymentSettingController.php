@@ -26,7 +26,8 @@ class SellerPaymentSettingController extends Controller
         return Inertia::render('admin/settings/seller-payments', [
             'settings' => [
                 'sellerPayoutsEnabled' => (bool) ($settings->seller_payouts_enabled ?? false),
-                'platformCommissionPercent' => $this->basisPointsToPercent((int) ($settings->platform_commission_basis_points ?? 2500)),
+                'gstSellerCommissionPercent' => $this->basisPointsToPercent((int) ($settings->gst_seller_commission_basis_points ?? 2000)),
+                'nonGstSellerCommissionPercent' => $this->basisPointsToPercent((int) ($settings->non_gst_seller_commission_basis_points ?? 1500)),
                 'earningHoldDays' => (int) ($settings->earning_hold_days ?? 7),
                 'minimumWithdrawalRupees' => $this->paiseToRupees((int) ($settings->minimum_withdrawal_paise ?? 50000)),
                 'buyerGstEnabled' => (bool) ($settings->buyer_gst_enabled ?? false),
@@ -53,7 +54,8 @@ class SellerPaymentSettingController extends Controller
     {
         $validated = $request->validate([
             'sellerPayoutsEnabled' => ['required', 'boolean'],
-            'platformCommissionPercent' => ['required', 'numeric', 'between:0,100', 'decimal:0,2'],
+            'gstSellerCommissionPercent' => ['required', 'numeric', 'between:0,100', 'decimal:0,2'],
+            'nonGstSellerCommissionPercent' => ['required', 'numeric', 'between:0,100', 'decimal:0,2'],
             'earningHoldDays' => ['required', 'integer', 'between:0,365'],
             'minimumWithdrawalRupees' => ['required', 'numeric', 'between:1,10000000', 'decimal:0,2'],
             'buyerGstEnabled' => ['required', 'boolean'],
@@ -93,7 +95,9 @@ class SellerPaymentSettingController extends Controller
         DB::transaction(function () use ($validated, $cycles): void {
             SiteSetting::current()->update([
                 'seller_payouts_enabled' => $validated['sellerPayoutsEnabled'],
-                'platform_commission_basis_points' => $this->percentToBasisPoints($validated['platformCommissionPercent']),
+                'platform_commission_basis_points' => $this->percentToBasisPoints($validated['gstSellerCommissionPercent']),
+                'gst_seller_commission_basis_points' => $this->percentToBasisPoints($validated['gstSellerCommissionPercent']),
+                'non_gst_seller_commission_basis_points' => $this->percentToBasisPoints($validated['nonGstSellerCommissionPercent']),
                 'earning_hold_days' => $validated['earningHoldDays'],
                 'minimum_withdrawal_paise' => $this->rupeesToPaise($validated['minimumWithdrawalRupees']),
                 'buyer_gst_enabled' => $validated['buyerGstEnabled'],

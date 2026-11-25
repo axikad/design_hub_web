@@ -15,7 +15,8 @@ class MarketplacePricingPreviewService
     /** @return array<string, mixed> */
     public function preview(int $pricePaise, User $seller): array
     {
-        $commissionPaise = $this->gst->percentage($pricePaise, $this->settings->commissionBasisPoints());
+        $commissionBasisPoints = $this->settings->commissionBasisPoints($seller);
+        $commissionPaise = $this->gst->percentage($pricePaise, $commissionBasisPoints);
         $buyerGstPaise = $this->settings->buyerGstEnabled() && $seller->gst_registered
             ? $this->gst->percentage($pricePaise, $this->settings->buyerGstBasisPoints())
             : 0;
@@ -27,7 +28,7 @@ class MarketplacePricingPreviewService
         $calculation = $this->calculator->calculate(
             taxableAmountPaise: $pricePaise,
             buyerPaidPaise: $pricePaise + $buyerGstPaise,
-            commissionBasisPoints: $this->settings->commissionBasisPoints(),
+            commissionBasisPoints: $commissionBasisPoints,
             buyerGstPaise: $buyerGstPaise,
             commissionGstPaise: $commissionGstPaise,
         );

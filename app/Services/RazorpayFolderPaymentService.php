@@ -33,18 +33,23 @@ class RazorpayFolderPaymentService
             $folder->owner, $buyerStateCode,
         );
         $amount = (int) $pricing['totalPayablePaise'];
-        $commissionPaise = $this->gst->percentage((int) $folder->price_paise, $this->settings->commissionBasisPoints());
+        $commissionBasisPoints = $this->settings->commissionBasisPoints($folder->owner);
+        $commissionPaise = $this->gst->percentage((int) $folder->price_paise, $commissionBasisPoints);
         $commissionGstPaise = $this->gst->commissionGst(
             $commissionPaise,
             $this->settings->commissionGstEnabled(),
             $this->settings->commissionGstBasisPoints(),
         );
+        $commissionGstBasisPoints = $this->settings->commissionGstEnabled()
+            ? $this->settings->commissionGstBasisPoints() : 0;
 
         $existing = FolderPaymentOrder::query()
             ->where('buyer_id', $buyer->id)
             ->where('folder_id', $folder->id)
             ->where('payment_environment', $environment)
             ->where('amount_paise', $amount)
+            ->where('commission_basis_points', $commissionBasisPoints)
+            ->where('commission_gst_basis_points', $commissionGstBasisPoints)
             ->where('buyer_state_code', $pricing['taxes']['buyerStateCode'])
             ->whereIn('status', ['created', 'pending'])
             ->latest('id')
@@ -78,9 +83,8 @@ class RazorpayFolderPaymentService
             'buyer_state_code' => $pricing['taxes']['buyerStateCode'],
             'currency' => 'INR',
             'payment_environment' => $environment,
-            'commission_basis_points' => $this->settings->commissionBasisPoints(),
-            'commission_gst_basis_points' => $this->settings->commissionGstEnabled()
-                ? $this->settings->commissionGstBasisPoints() : 0,
+            'commission_basis_points' => $commissionBasisPoints,
+            'commission_gst_basis_points' => $commissionGstBasisPoints,
             'commission_gst_paise' => $commissionGstPaise,
             'tax_snapshot' => $pricing['taxes'],
             'status' => 'created',

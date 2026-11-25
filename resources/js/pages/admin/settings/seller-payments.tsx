@@ -14,7 +14,8 @@ import { type FormEventHandler, type ReactNode, useEffect, useState } from 'reac
 
 type SellerPaymentSettings = {
     sellerPayoutsEnabled: boolean;
-    platformCommissionPercent: string;
+    gstSellerCommissionPercent: string;
+    nonGstSellerCommissionPercent: string;
     earningHoldDays: number;
     minimumWithdrawalRupees: string;
     buyerGstEnabled: boolean;
@@ -91,23 +92,38 @@ export default function SellerPaymentSettingsPage({ settings, paymentEnvironment
                 <form onSubmit={submit} className="space-y-5">
                     <AdminFormPanel
                         title="Marketplace split"
-                        description="Set the platform share and the delay before a seller earning becomes withdrawable."
+                        description="Set separate platform commission rates for GST-registered and non-GST sellers."
                         icon={Percent}
                     >
                         <div className="grid gap-5 sm:grid-cols-2">
                             <NumberField
-                                id="platformCommissionPercent"
-                                label="Platform commission"
-                                value={data.platformCommissionPercent}
-                                onChange={(value) => setData('platformCommissionPercent', value)}
+                                id="gstSellerCommissionPercent"
+                                label="GST-registered seller commission"
+                                value={data.gstSellerCommissionPercent}
+                                onChange={(value) => setData('gstSellerCommissionPercent', value)}
                                 suffix="%"
                                 min="0"
                                 max="100"
                                 step="0.01"
-                                error={errors.platformCommissionPercent}
+                                error={errors.gstSellerCommissionPercent}
                                 disabled={!canUpdate}
-                                hint={`Seller currently receives ${(100 - Number(data.platformCommissionPercent || 0)).toFixed(2)}%.`}
+                                hint={`Before taxes, the seller retains ${(100 - Number(data.gstSellerCommissionPercent || 0)).toFixed(2)}% of the base price.`}
                             />
+                            <NumberField
+                                id="nonGstSellerCommissionPercent"
+                                label="Non-GST seller commission"
+                                value={data.nonGstSellerCommissionPercent}
+                                onChange={(value) => setData('nonGstSellerCommissionPercent', value)}
+                                suffix="%"
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                error={errors.nonGstSellerCommissionPercent}
+                                disabled={!canUpdate}
+                                hint={`Before commission GST, the seller retains ${(100 - Number(data.nonGstSellerCommissionPercent || 0)).toFixed(2)}% of the base price.`}
+                            />
+                        </div>
+                        <div className="mt-5 grid gap-5 sm:grid-cols-2">
                             <NumberField
                                 id="earningHoldDays"
                                 label="Earning hold period"

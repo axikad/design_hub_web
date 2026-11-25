@@ -52,6 +52,7 @@ class MarketplaceFinancialFoundationTest extends TestCase
     {
         SiteSetting::current()->update([
             'platform_commission_basis_points' => 2500,
+            'non_gst_seller_commission_basis_points' => 2500,
             'earning_hold_days' => 7,
         ]);
         SiteSetting::forgetCache();

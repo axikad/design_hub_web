@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\SiteSetting;
+use App\Models\User;
 use RuntimeException;
 
 class MarketplacePaymentSettings
@@ -23,9 +24,17 @@ class MarketplacePaymentSettings
         return $this->environment() === 'live';
     }
 
-    public function commissionBasisPoints(): int
+    public function commissionBasisPoints(?User $seller = null): int
     {
-        return (int) (SiteSetting::current()->platform_commission_basis_points ?? 2500);
+        $settings = SiteSetting::current();
+
+        if ($seller === null) {
+            return (int) ($settings->platform_commission_basis_points ?? 2000);
+        }
+
+        return $seller->gst_registered
+            ? (int) ($settings->gst_seller_commission_basis_points ?? $settings->platform_commission_basis_points ?? 2000)
+            : (int) ($settings->non_gst_seller_commission_basis_points ?? $settings->platform_commission_basis_points ?? 1500);
     }
 
     public function buyerGstEnabled(): bool

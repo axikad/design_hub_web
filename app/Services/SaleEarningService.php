@@ -32,7 +32,7 @@ class SaleEarningService
             designPurchaseId: (int) $purchase->id,
             folderPurchaseId: null,
             commissionBasisPoints: (int) ($purchase->paymentOrder?->commission_basis_points
-                ?? $this->settings->commissionBasisPoints()),
+                ?? $this->settings->commissionBasisPoints($design->owner)),
         );
     }
 
@@ -53,7 +53,7 @@ class SaleEarningService
             designPurchaseId: null,
             folderPurchaseId: (int) $purchase->id,
             commissionBasisPoints: (int) ($purchase->paymentOrder?->commission_basis_points
-                ?? $this->settings->commissionBasisPoints()),
+                ?? $this->settings->commissionBasisPoints($folder->owner)),
         );
     }
 

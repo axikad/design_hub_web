@@ -26,7 +26,8 @@ class SellerPaymentSettingManagementTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('admin/settings/seller-payments')
                 ->where('paymentEnvironment', 'test')
-                ->where('settings.platformCommissionPercent', '25.00')
+                ->where('settings.gstSellerCommissionPercent', '20.00')
+                ->where('settings.nonGstSellerCommissionPercent', '15.00')
                 ->where('settings.earningHoldDays', 7)
                 ->where('settings.minimumWithdrawalRupees', '500.00')
                 ->where('settings.sellerPayoutsEnabled', false));
@@ -39,7 +40,8 @@ class SellerPaymentSettingManagementTest extends TestCase
         $this->actingAs($admin)
             ->put(route('admin.settings.seller-payments.update'), $this->validPayload([
                 'sellerPayoutsEnabled' => true,
-                'platformCommissionPercent' => '20.50',
+                'gstSellerCommissionPercent' => '20.50',
+                'nonGstSellerCommissionPercent' => '12.75',
                 'earningHoldDays' => 10,
                 'minimumWithdrawalRupees' => '750.25',
             ]))
@@ -50,6 +52,8 @@ class SellerPaymentSettingManagementTest extends TestCase
 
         $this->assertTrue($settings->seller_payouts_enabled);
         $this->assertSame(2050, $settings->platform_commission_basis_points);
+        $this->assertSame(2050, $settings->gst_seller_commission_basis_points);
+        $this->assertSame(1275, $settings->non_gst_seller_commission_basis_points);
         $this->assertSame(10, $settings->earning_hold_days);
         $this->assertSame(75025, $settings->minimum_withdrawal_paise);
         $this->assertSame(0, $settings->buyer_gst_basis_points);
@@ -90,13 +94,15 @@ class SellerPaymentSettingManagementTest extends TestCase
         $this->actingAs($admin)
             ->from(route('admin.settings.seller-payments.edit'))
             ->put(route('admin.settings.seller-payments.update'), $this->validPayload([
-                'platformCommissionPercent' => '101',
+                'gstSellerCommissionPercent' => '101',
+                'nonGstSellerCommissionPercent' => '-1',
                 'earningHoldDays' => -1,
                 'minimumWithdrawalRupees' => '0',
             ]))
             ->assertRedirect(route('admin.settings.seller-payments.edit'))
             ->assertSessionHasErrors([
-                'platformCommissionPercent',
+                'gstSellerCommissionPercent',
+                'nonGstSellerCommissionPercent',
                 'earningHoldDays',
                 'minimumWithdrawalRupees',
             ]);
@@ -268,7 +274,8 @@ class SellerPaymentSettingManagementTest extends TestCase
     {
         return [
             'sellerPayoutsEnabled' => false,
-            'platformCommissionPercent' => '25.00',
+            'gstSellerCommissionPercent' => '20.00',
+            'nonGstSellerCommissionPercent' => '15.00',
             'earningHoldDays' => 7,
             'minimumWithdrawalRupees' => '500.00',
             'buyerGstEnabled' => false,

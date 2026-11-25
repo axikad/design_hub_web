@@ -10,7 +10,9 @@ class SiteSetting extends Model
 {
     protected $attributes = [
         'seller_payouts_enabled' => false,
-        'platform_commission_basis_points' => 2500,
+        'platform_commission_basis_points' => 2000,
+        'gst_seller_commission_basis_points' => 2000,
+        'non_gst_seller_commission_basis_points' => 1500,
         'earning_hold_days' => 7,
         'minimum_withdrawal_paise' => 50000,
         'buyer_gst_enabled' => false,
@@ -33,6 +35,8 @@ class SiteSetting extends Model
         'duplicate_image_similarity',
         'seller_payouts_enabled',
         'platform_commission_basis_points',
+        'gst_seller_commission_basis_points',
+        'non_gst_seller_commission_basis_points',
         'earning_hold_days',
         'minimum_withdrawal_paise',
         'buyer_gst_enabled',
@@ -52,6 +56,8 @@ class SiteSetting extends Model
             'duplicate_image_similarity' => 'integer',
             'seller_payouts_enabled' => 'boolean',
             'platform_commission_basis_points' => 'integer',
+            'gst_seller_commission_basis_points' => 'integer',
+            'non_gst_seller_commission_basis_points' => 'integer',
             'earning_hold_days' => 'integer',
             'minimum_withdrawal_paise' => 'integer',
             'buyer_gst_enabled' => 'boolean',
