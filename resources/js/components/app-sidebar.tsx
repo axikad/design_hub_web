@@ -43,6 +43,12 @@ const workspaceNavItems: NavItem[] = [
         permission: 'folders.read',
     },
     {
+        title: 'Catalogs',
+        url: '/admin/catalogs',
+        icon: FolderTree,
+        permission: 'catalogs.read',
+    },
+    {
         title: 'My Wallet',
         url: '/admin/wallet',
         icon: WalletCards,

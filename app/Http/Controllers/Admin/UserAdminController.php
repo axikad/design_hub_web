@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Machine;
 use App\Models\Role;
 use App\Models\User;
-use App\Support\PhoneNormalizer;
 use App\Support\IndiaGstState;
+use App\Support\PhoneNormalizer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -32,8 +32,10 @@ class UserAdminController extends Controller
             ->withCount([
                 'designs as listed_designs_count' => fn ($query) => $query->listed(),
                 'folders',
+                'catalogs',
                 'purchases',
                 'folderPurchases',
+                'catalogPurchases',
                 'saleEarnings',
                 'withdrawals',
             ])
@@ -52,7 +54,8 @@ class UserAdminController extends Controller
             ->through(fn (User $user) => array_merge($user->toAdminArray(), [
                 'designsCount' => $user->listed_designs_count,
                 'foldersCount' => $user->folders_count,
-                'purchasesCount' => $user->purchases_count + $user->folder_purchases_count,
+                'catalogsCount' => $user->catalogs_count,
+                'purchasesCount' => $user->purchases_count + $user->folder_purchases_count + $user->catalog_purchases_count,
                 'financialRecordsCount' => $user->sale_earnings_count + $user->withdrawals_count,
             ]));
 
@@ -170,7 +173,7 @@ class UserAdminController extends Controller
 
         $model->delete();
 
-        return redirect()->route('admin.users.index')->with('success', 'User archived. Their designs, folders, purchases, and financial history were retained.');
+        return redirect()->route('admin.users.index')->with('success', 'User archived. Their designs, folders, catalogs, purchases, and financial history were retained.');
     }
 
     /** @return list<array{id: int, name: string, slug: string}> */

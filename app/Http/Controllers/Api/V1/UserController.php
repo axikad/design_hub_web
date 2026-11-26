@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\CatalogResource;
 use App\Http\Resources\DesignResource;
 use App\Http\Resources\FolderResource;
 use App\Http\Resources\PurchaseResource;
 use App\Http\Resources\UserResource;
+use App\Models\Catalog;
 use App\Models\Design;
 use App\Models\Folder;
 use App\Models\Machine;
@@ -18,8 +20,8 @@ use App\Models\User;
 use App\Services\MarketplacePaymentSettings;
 use App\Services\UploadService;
 use App\Support\ApiResponse;
-use App\Support\Pagination;
 use App\Support\IndiaGstState;
+use App\Support\Pagination;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -236,6 +238,29 @@ class UserController extends Controller
                 fn (Folder $folder) => (new FolderResource($folder))->resolve($request)
             )->values(),
             'User folders retrieved successfully.',
+        );
+    }
+
+    public function myCatalogs(Request $request)
+    {
+        $filters = $request->validate([
+            'search' => ['sometimes', 'string', 'max:120'],
+        ]);
+
+        $catalogs = Catalog::query()
+            ->where('user_id', $request->user()->id)
+            ->with('previewFiles')
+            ->when($filters['search'] ?? null, fn ($query, $search) => $query->where('name', 'like', '%'.$search.'%'))
+            ->latest()
+            ->paginate(Pagination::perPage($request))
+            ->withQueryString();
+
+        return ApiResponse::paginated(
+            $catalogs,
+            $catalogs->getCollection()->map(
+                fn (Catalog $catalog) => (new CatalogResource($catalog))->resolve($request)
+            )->values(),
+            'User catalogs retrieved successfully.',
         );
     }
 

@@ -23,7 +23,7 @@ type Props = {
         lastReconciledAt: string | null;
         purchasedAt: string | null;
         buyer: { name: string | null; countryCode: string; mobileNumber: string } | null;
-        itemType: 'design' | 'folder';
+        itemType: 'design' | 'folder' | 'catalog';
         item: { id: string; name: string; imageUri: string | null } | null;
     };
     statusOptions: string[];

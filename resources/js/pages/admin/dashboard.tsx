@@ -8,11 +8,11 @@ import { ArrowRight, CreditCard, IndianRupee, Palette, ShoppingBag, UsersRound }
 
 type Props = {
     ownContentOnly: boolean;
-    stats: { users: number; designs: number; folders: number; purchases: number; pendingPayments: number; revenuePaise: number };
+    stats: { users: number; designs: number; folders: number; catalogs: number; purchases: number; pendingPayments: number; revenuePaise: number };
     recentDesigns: { id: string; title: string; owner: string | null; fileType: string | null; createdAt: string | null }[];
     recentPurchases: {
         id: string;
-        itemType: 'design' | 'folder';
+        itemType: 'design' | 'folder' | 'catalog';
         itemName: string | null;
         buyer: string | null;
         amountPaise: number;
@@ -40,6 +40,12 @@ export default function AdminDashboard({ ownContentOnly, stats, recentDesigns, r
                   value: stats.folders.toLocaleString('en-IN'),
                   icon: ShoppingBag,
                   tone: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300',
+              },
+              {
+                  label: 'My catalogs',
+                  value: stats.catalogs.toLocaleString('en-IN'),
+                  icon: ShoppingBag,
+                  tone: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-950/40 dark:text-cyan-300',
               },
               {
                   label: 'Paid sales',

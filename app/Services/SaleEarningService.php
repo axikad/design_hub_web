@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Catalog;
+use App\Models\CatalogPurchase;
 use App\Models\Design;
 use App\Models\Folder;
 use App\Models\FolderPurchase;
@@ -31,6 +33,7 @@ class SaleEarningService
             itemName: $design->title,
             designPurchaseId: (int) $purchase->id,
             folderPurchaseId: null,
+            catalogPurchaseId: null,
             commissionBasisPoints: (int) ($purchase->paymentOrder?->commission_basis_points
                 ?? $this->settings->commissionBasisPoints($design->owner)),
         );
@@ -52,13 +55,36 @@ class SaleEarningService
             itemName: $folder->name,
             designPurchaseId: null,
             folderPurchaseId: (int) $purchase->id,
+            catalogPurchaseId: null,
             commissionBasisPoints: (int) ($purchase->paymentOrder?->commission_basis_points
                 ?? $this->settings->commissionBasisPoints($folder->owner)),
         );
     }
 
+    public function createForCatalogPurchase(CatalogPurchase $purchase, Catalog $catalog): ?SaleEarning
+    {
+        if ($catalog->user_id === null) {
+            return null;
+        }
+
+        return $this->create(
+            purchase: $purchase,
+            sellerId: (int) $catalog->user_id,
+            buyerId: (int) $purchase->buyer_id,
+            itemType: 'catalog',
+            itemId: (int) $catalog->id,
+            itemPublicId: $catalog->public_id,
+            itemName: $catalog->name,
+            designPurchaseId: null,
+            folderPurchaseId: null,
+            catalogPurchaseId: (int) $purchase->id,
+            commissionBasisPoints: (int) ($purchase->paymentOrder?->commission_basis_points
+                ?? $this->settings->commissionBasisPoints($catalog->owner)),
+        );
+    }
+
     private function create(
-        Purchase|FolderPurchase $purchase,
+        Purchase|FolderPurchase|CatalogPurchase $purchase,
         int $sellerId,
         int $buyerId,
         string $itemType,
@@ -67,6 +93,7 @@ class SaleEarningService
         string $itemName,
         ?int $designPurchaseId,
         ?int $folderPurchaseId,
+        ?int $catalogPurchaseId,
         int $commissionBasisPoints,
     ): SaleEarning {
         if ($sellerId === $buyerId) {
@@ -83,6 +110,7 @@ class SaleEarningService
             $itemName,
             $designPurchaseId,
             $folderPurchaseId,
+            $catalogPurchaseId,
             $commissionBasisPoints,
         ): SaleEarning {
             $settlement = $this->settlements->scheduleFor(now());
@@ -98,9 +126,11 @@ class SaleEarningService
                 commissionGstPaise: $commissionGstPaise,
             );
 
-            $identity = $designPurchaseId !== null
-                ? ['design_purchase_id' => $designPurchaseId]
-                : ['folder_purchase_id' => $folderPurchaseId];
+            $identity = match (true) {
+                $designPurchaseId !== null => ['design_purchase_id' => $designPurchaseId],
+                $folderPurchaseId !== null => ['folder_purchase_id' => $folderPurchaseId],
+                default => ['catalog_purchase_id' => $catalogPurchaseId],
+            };
 
             $earning = SaleEarning::query()->firstOrCreate(
                 $identity,
@@ -109,6 +139,7 @@ class SaleEarningService
                     'buyer_id' => $buyerId,
                     'design_purchase_id' => $designPurchaseId,
                     'folder_purchase_id' => $folderPurchaseId,
+                    'catalog_purchase_id' => $catalogPurchaseId,
                     'item_type' => $itemType,
                     'item_id' => $itemId,
                     'item_public_id' => $itemPublicId,

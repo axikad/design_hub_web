@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CatalogPurchase;
 use App\Models\FolderPurchase;
 use App\Models\Purchase;
 use App\Services\DesignPresenter;
+use App\Support\CatalogFilePreview;
 use App\Support\FolderFilePreview;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
@@ -23,7 +25,7 @@ class PurchaseAdminController extends Controller
     {
         $search = trim((string) $request->string('search'));
         $status = (string) $request->string('status');
-        $type = in_array((string) $request->string('type'), ['design', 'folder'], true)
+        $type = in_array((string) $request->string('type'), ['design', 'folder', 'catalog'], true)
             ? (string) $request->string('type')
             : '';
 
@@ -41,10 +43,18 @@ class PurchaseAdminController extends Controller
             ->selectRaw("'folder' as item_type")
             ->addSelect($this->purchaseColumns('purchases', 'users', 'items', 'orders', 'name'));
 
+        $catalogPurchases = DB::table('catalog_purchases as purchases')
+            ->leftJoin('users as users', 'users.id', '=', 'purchases.buyer_id')
+            ->leftJoin('catalogs as items', 'items.id', '=', 'purchases.catalog_id')
+            ->leftJoin('catalog_payment_orders as orders', 'orders.id', '=', 'purchases.catalog_payment_order_id')
+            ->selectRaw("'catalog' as item_type")
+            ->addSelect($this->purchaseColumns('purchases', 'users', 'items', 'orders', 'name'));
+
         $query = match ($type) {
             'design' => $designPurchases,
             'folder' => $folderPurchases,
-            default => $designPurchases->unionAll($folderPurchases),
+            'catalog' => $catalogPurchases,
+            default => $designPurchases->unionAll($folderPurchases)->unionAll($catalogPurchases),
         };
 
         $purchases = DB::query()
@@ -94,11 +104,22 @@ class PurchaseAdminController extends Controller
     {
         $model = $this->findPurchase($purchase);
         $isFolder = $model instanceof FolderPurchase;
-        $model->load($isFolder
-            ? ['buyer', 'folder.previewFiles', 'paymentOrder']
-            : ['buyer', 'design.owner', 'paymentOrder']);
+        $isCatalog = $model instanceof CatalogPurchase;
+        $model->load(match (true) {
+            $isFolder => ['buyer', 'folder.previewFiles', 'paymentOrder'],
+            $isCatalog => ['buyer', 'catalog.previewFiles', 'paymentOrder'],
+            default => ['buyer', 'design.owner', 'paymentOrder'],
+        });
 
-        if ($isFolder) {
+        if ($isCatalog) {
+            $catalog = $model->catalog;
+            $preview = $catalog?->previewFiles->first();
+            $item = $catalog ? [
+                'id' => $catalog->public_id,
+                'name' => $catalog->name,
+                'imageUri' => $preview ? CatalogFilePreview::temporaryUrl($catalog, $preview) : null,
+            ] : null;
+        } elseif ($isFolder) {
             $folder = $model->folder;
             $preview = $folder?->previewFiles->first();
             $item = $folder ? [
@@ -120,7 +141,7 @@ class PurchaseAdminController extends Controller
         return Inertia::render('admin/purchases/form', [
             'purchase' => [
                 'id' => $model->public_id,
-                'itemType' => $isFolder ? 'folder' : 'design',
+                'itemType' => $isCatalog ? 'catalog' : ($isFolder ? 'folder' : 'design'),
                 'item' => $item,
                 'status' => $model->status,
                 'amountPaise' => $model->amount_paise,
@@ -183,7 +204,12 @@ class PurchaseAdminController extends Controller
             return FolderPurchase::query()->where('public_id', $publicId)->firstOrFail();
         }
 
+        if (str_starts_with($publicId, 'catalog_purchase_')) {
+            return CatalogPurchase::query()->where('public_id', $publicId)->firstOrFail();
+        }
+
         return Purchase::query()->where('public_id', $publicId)->first()
-            ?? FolderPurchase::query()->where('public_id', $publicId)->firstOrFail();
+            ?? FolderPurchase::query()->where('public_id', $publicId)->first()
+            ?? CatalogPurchase::query()->where('public_id', $publicId)->firstOrFail();
     }
 }

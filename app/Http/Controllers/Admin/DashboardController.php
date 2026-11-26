@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CatalogPaymentOrder;
+use App\Models\CatalogPurchase;
 use App\Models\Design;
 use App\Models\FolderPaymentOrder;
 use App\Models\FolderPurchase;
@@ -54,12 +56,31 @@ class DashboardController extends Controller
                 'purchasedAt' => $purchase->purchased_at?->toIso8601String(),
             ]);
 
+        $recentCatalogPurchases = CatalogPurchase::query()
+            ->with(['buyer', 'catalog'])
+            ->when($ownContentOnly, fn ($query) => $query->whereHas('catalog', fn ($catalogQuery) => $catalogQuery->where('user_id', $actor->id)))
+            ->latest('purchased_at')
+            ->limit(5)
+            ->get()
+            ->map(fn (CatalogPurchase $purchase) => [
+                'id' => $purchase->public_id,
+                'itemType' => 'catalog',
+                'itemName' => $purchase->catalog?->name,
+                'buyer' => $purchase->buyer?->name,
+                'amountPaise' => $purchase->amount_paise,
+                'currency' => $purchase->currency,
+                'status' => $purchase->status,
+                'purchasedAt' => $purchase->purchased_at?->toIso8601String(),
+            ]);
+
         $designs = Design::query()->listed()
             ->when($ownContentOnly, fn ($query) => $query->where('user_id', $actor->id));
         $designPurchases = Purchase::query()
             ->when($ownContentOnly, fn ($query) => $query->whereHas('design', fn ($designQuery) => $designQuery->where('user_id', $actor->id)));
         $folderPurchases = FolderPurchase::query()
             ->when($ownContentOnly, fn ($query) => $query->whereHas('folder', fn ($folderQuery) => $folderQuery->where('user_id', $actor->id)));
+        $catalogPurchases = CatalogPurchase::query()
+            ->when($ownContentOnly, fn ($query) => $query->whereHas('catalog', fn ($catalogQuery) => $catalogQuery->where('user_id', $actor->id)));
 
         return Inertia::render('admin/dashboard', [
             'ownContentOnly' => $ownContentOnly,
@@ -67,15 +88,20 @@ class DashboardController extends Controller
                 'users' => $ownContentOnly ? 0 : User::query()->whereNotNull('phone_key')->count(),
                 'designs' => (clone $designs)->count(),
                 'folders' => $ownContentOnly ? $actor->folders()->count() : 0,
+                'catalogs' => $ownContentOnly ? $actor->catalogs()->count() : 0,
                 'purchases' => (clone $designPurchases)->where('status', 'paid')->count()
-                    + (clone $folderPurchases)->where('status', 'paid')->count(),
+                    + (clone $folderPurchases)->where('status', 'paid')->count()
+                    + (clone $catalogPurchases)->where('status', 'paid')->count(),
                 'pendingPayments' => $ownContentOnly
                     ? (clone $designPurchases)->whereIn('status', ['unpaid', 'pending'])->count()
                         + (clone $folderPurchases)->whereIn('status', ['unpaid', 'pending'])->count()
+                        + (clone $catalogPurchases)->whereIn('status', ['unpaid', 'pending'])->count()
                     : PaymentOrder::query()->whereIn('status', ['created', 'pending', 'authorized'])->count()
-                        + FolderPaymentOrder::query()->whereIn('status', ['created', 'pending', 'authorized'])->count(),
+                        + FolderPaymentOrder::query()->whereIn('status', ['created', 'pending', 'authorized'])->count()
+                        + CatalogPaymentOrder::query()->whereIn('status', ['created', 'pending', 'authorized'])->count(),
                 'revenuePaise' => (int) (clone $designPurchases)->where('status', 'paid')->sum('amount_paise')
-                    + (int) (clone $folderPurchases)->where('status', 'paid')->sum('amount_paise'),
+                    + (int) (clone $folderPurchases)->where('status', 'paid')->sum('amount_paise')
+                    + (int) (clone $catalogPurchases)->where('status', 'paid')->sum('amount_paise'),
             ],
             'recentDesigns' => Design::query()
                 ->listed()
@@ -93,6 +119,7 @@ class DashboardController extends Controller
                 ]),
             'recentPurchases' => $recentDesignPurchases
                 ->concat($recentFolderPurchases)
+                ->concat($recentCatalogPurchases)
                 ->sortByDesc('purchasedAt')
                 ->take(5)
                 ->values(),

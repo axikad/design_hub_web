@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\CatalogAdminController;
 use App\Http\Controllers\Admin\CategoryAdminController;
 use App\Http\Controllers\Admin\ContentPageAdminController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -177,6 +178,18 @@ Route::middleware(['auth', 'admin'])->group(function () {
         ->middlewareFor(['create', 'store'], 'permission:folders.create')
         ->middlewareFor(['edit', 'update'], 'permission:folders.update')
         ->middlewareFor('destroy', 'permission:folders.delete');
+
+    Route::get('admin/catalogs/{catalog}/files/{file}/preview', [CatalogAdminController::class, 'preview'])
+        ->middleware('permission:catalogs.read')
+        ->name('admin.catalogs.files.preview');
+
+    Route::resource('admin/catalogs', CatalogAdminController::class)
+        ->parameters(['catalogs' => 'catalog'])
+        ->names('admin.catalogs')
+        ->middlewareFor(['index', 'show'], 'permission:catalogs.read')
+        ->middlewareFor(['create', 'store'], 'permission:catalogs.create')
+        ->middlewareFor(['edit', 'update'], 'permission:catalogs.update')
+        ->middlewareFor('destroy', 'permission:catalogs.delete');
 
     Route::resource('admin/users', UserAdminController::class)
         ->parameters(['users' => 'user'])

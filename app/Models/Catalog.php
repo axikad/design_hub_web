@@ -1,0 +1,67 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
+
+class Catalog extends Model
+{
+    protected $fillable = [
+        'public_id',
+        'user_id',
+        'name',
+        'price_paise',
+        'zip_name',
+        'zip_path',
+        'file_count',
+        'total_size',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'price_paise' => 'integer',
+            'file_count' => 'integer',
+            'total_size' => 'integer',
+        ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (Catalog $catalog) {
+            if (! $catalog->public_id) {
+                $catalog->public_id = 'catalog_'.Str::lower(Str::random(12));
+            }
+        });
+    }
+
+    public function files(): HasMany
+    {
+        return $this->hasMany(CatalogFile::class)->orderBy('relative_path');
+    }
+
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function previewFiles(): HasMany
+    {
+        return $this->hasMany(CatalogFile::class)
+            ->whereIn('extension', ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'avif', 'svg'])
+            ->orderBy('relative_path');
+    }
+
+    public function paymentOrders(): HasMany
+    {
+        return $this->hasMany(CatalogPaymentOrder::class);
+    }
+
+    public function purchases(): HasMany
+    {
+        return $this->hasMany(CatalogPurchase::class);
+    }
+}

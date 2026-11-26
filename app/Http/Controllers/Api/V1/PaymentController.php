@@ -3,24 +3,28 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Catalog;
+use App\Models\CatalogPaymentOrder;
 use App\Models\Design;
 use App\Models\Folder;
 use App\Models\FolderPaymentOrder;
 use App\Models\WebhookEvent;
 use App\Services\BuyerCheckoutPricingService;
+use App\Services\RazorpayCatalogPaymentService;
 use App\Services\RazorpayFolderPaymentService;
 use App\Services\RazorpayPaymentService;
 use App\Support\ApiResponse;
 use App\Support\IndiaGstState;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class PaymentController extends Controller
 {
     public function __construct(
         private readonly RazorpayPaymentService $razorpay,
         private readonly RazorpayFolderPaymentService $folderRazorpay,
+        private readonly RazorpayCatalogPaymentService $catalogRazorpay,
         private readonly BuyerCheckoutPricingService $checkoutPricing,
     ) {}
 
@@ -29,10 +33,38 @@ class PaymentController extends Controller
         $this->ensureSinglePurchasable($request);
 
         $validated = $request->validate([
-            'designId' => ['required_without:folderId', 'string'],
-            'folderId' => ['required_without:designId', 'string'],
+            'designId' => ['required_without_all:folderId,catalogId', 'string'],
+            'folderId' => ['required_without_all:designId,catalogId', 'string'],
+            'catalogId' => ['required_without_all:designId,folderId', 'string'],
             'buyerStateCode' => ['nullable', 'string', Rule::in(IndiaGstState::codes())],
         ]);
+
+        if (isset($validated['catalogId'])) {
+            $catalog = Catalog::query()->where('public_id', $validated['catalogId'])->first();
+
+            if ($catalog === null) {
+                return ApiResponse::error('Catalog not found.', 'catalog_not_found', 404);
+            }
+
+            if ($catalog->price_paise < 100) {
+                throw ValidationException::withMessages(['catalogId' => 'This catalog is not available for purchase.']);
+            }
+
+            if ($catalog->user_id === $request->user()->id) {
+                throw ValidationException::withMessages(['catalogId' => 'You cannot purchase your own catalog.']);
+            }
+
+            try {
+                $breakdown = $this->checkoutPricing->preview(
+                    'catalog', $catalog->public_id, $catalog->name, (int) $catalog->price_paise,
+                    $catalog->owner, $validated['buyerStateCode'] ?? null,
+                );
+            } catch (\InvalidArgumentException $exception) {
+                throw ValidationException::withMessages(['buyerStateCode' => $exception->getMessage()]);
+            }
+
+            return ApiResponse::data($breakdown, message: 'Buyer checkout breakdown calculated successfully.');
+        }
 
         if (isset($validated['folderId'])) {
             $folder = Folder::query()->where('public_id', $validated['folderId'])->first();
@@ -123,10 +155,15 @@ class PaymentController extends Controller
         $this->ensureSinglePurchasable($request);
 
         $validated = $request->validate([
-            'designId' => ['required_without:folderId', 'string'],
-            'folderId' => ['required_without:designId', 'string'],
+            'designId' => ['required_without_all:folderId,catalogId', 'string'],
+            'folderId' => ['required_without_all:designId,catalogId', 'string'],
+            'catalogId' => ['required_without_all:designId,folderId', 'string'],
             'buyerStateCode' => ['nullable', 'string', Rule::in(IndiaGstState::codes())],
         ]);
+
+        if (isset($validated['catalogId'])) {
+            return $this->createCatalogOrder($request, $validated['catalogId'], $validated['buyerStateCode'] ?? null);
+        }
 
         if (isset($validated['folderId'])) {
             return $this->createFolderOrder($request, $validated['folderId'], $validated['buyerStateCode'] ?? null);
@@ -171,12 +208,17 @@ class PaymentController extends Controller
         $this->ensureSinglePurchasable($request);
 
         $validated = $request->validate([
-            'designId' => ['required_without:folderId', 'string'],
-            'folderId' => ['required_without:designId', 'string'],
+            'designId' => ['required_without_all:folderId,catalogId', 'string'],
+            'folderId' => ['required_without_all:designId,catalogId', 'string'],
+            'catalogId' => ['required_without_all:designId,folderId', 'string'],
             'razorpay_order_id' => ['required', 'string'],
             'razorpay_payment_id' => ['required', 'string'],
             'razorpay_signature' => ['required', 'string'],
         ]);
+
+        if (isset($validated['catalogId'])) {
+            return $this->verifyCatalogPayment($request, $validated);
+        }
 
         if (isset($validated['folderId'])) {
             return $this->verifyFolderPayment($request, $validated);
@@ -239,7 +281,9 @@ class PaymentController extends Controller
 
         if ($event->wasRecentlyCreated && is_array($payment)) {
             try {
-                if (FolderPaymentOrder::query()->where('razorpay_order_id', $payment['order_id'] ?? null)->exists()) {
+                if (CatalogPaymentOrder::query()->where('razorpay_order_id', $payment['order_id'] ?? null)->exists()) {
+                    $this->catalogRazorpay->reconcileWebhookPayment($payment);
+                } elseif (FolderPaymentOrder::query()->where('razorpay_order_id', $payment['order_id'] ?? null)->exists()) {
                     $this->folderRazorpay->reconcileWebhookPayment($payment);
                 } else {
                     $this->razorpay->reconcileWebhookPayment($payment);
@@ -270,6 +314,31 @@ class PaymentController extends Controller
 
         try {
             $payload = $this->folderRazorpay->purchaseStatus($request->user(), $folder);
+        } catch (\InvalidArgumentException $exception) {
+            return ApiResponse::error('Payment reconciliation failed.', 'payment_reconciliation_failed', 422);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return ApiResponse::error('Payment provider is temporarily unavailable.', 'payment_provider_unavailable', 503);
+        }
+
+        return ApiResponse::data($payload, message: 'Purchase status retrieved successfully.');
+    }
+
+    public function catalogPurchaseStatus(Request $request, string $catalogId)
+    {
+        $catalog = Catalog::query()->where('public_id', $catalogId)->first();
+
+        if ($catalog === null) {
+            return ApiResponse::error('Catalog not found.', 'catalog_not_found', 404);
+        }
+
+        if (! $this->catalogRazorpay->isConfigured()) {
+            return ApiResponse::error('Payments are not configured yet.', 'payments_unavailable', 503);
+        }
+
+        try {
+            $payload = $this->catalogRazorpay->purchaseStatus($request->user(), $catalog);
         } catch (\InvalidArgumentException $exception) {
             return ApiResponse::error('Payment reconciliation failed.', 'payment_reconciliation_failed', 422);
         } catch (\Throwable $exception) {
@@ -316,6 +385,37 @@ class PaymentController extends Controller
         return ApiResponse::data($payload, message: 'Payment order created successfully.');
     }
 
+    private function createCatalogOrder(Request $request, string $catalogId, ?string $buyerStateCode)
+    {
+        if (! $this->catalogRazorpay->isConfigured()) {
+            return ApiResponse::error('Payments are not configured yet.', 'payments_unavailable', 503);
+        }
+
+        $catalog = Catalog::query()->where('public_id', $catalogId)->first();
+        if ($catalog === null) {
+            return ApiResponse::error('Catalog not found.', 'catalog_not_found', 404);
+        }
+
+        try {
+            $payload = $this->catalogRazorpay->createOrder($request->user(), $catalog, $buyerStateCode);
+        } catch (\InvalidArgumentException $exception) {
+            throw ValidationException::withMessages([
+                str_contains($exception->getMessage(), 'state') ? 'buyerStateCode' : 'catalogId' => $exception->getMessage(),
+            ]);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return ApiResponse::error('Payment provider is temporarily unavailable.', 'payment_provider_unavailable', 503);
+        }
+
+        $payload['checkoutBreakdown'] = $this->checkoutPricing->preview(
+            'catalog', $catalog->public_id, $catalog->name, (int) $catalog->price_paise,
+            $catalog->owner, $payload['buyerStateCode'] ?? $buyerStateCode,
+        );
+
+        return ApiResponse::data($payload, message: 'Payment order created successfully.');
+    }
+
     /** @param array<string, string> $validated */
     private function verifyFolderPayment(Request $request, array $validated)
     {
@@ -345,11 +445,40 @@ class PaymentController extends Controller
         return ApiResponse::data($payload, message: 'Payment verified successfully.');
     }
 
+    /** @param array<string, string> $validated */
+    private function verifyCatalogPayment(Request $request, array $validated)
+    {
+        if (! $this->catalogRazorpay->isConfigured()) {
+            return ApiResponse::error('Payments are not configured yet.', 'payments_unavailable', 503);
+        }
+
+        $catalog = Catalog::query()->where('public_id', $validated['catalogId'])->first();
+        if ($catalog === null) {
+            return ApiResponse::error('Catalog not found.', 'catalog_not_found', 404);
+        }
+
+        try {
+            $payload = $this->catalogRazorpay->verify(
+                $request->user(), $catalog, $validated['razorpay_order_id'],
+                $validated['razorpay_payment_id'], $validated['razorpay_signature'],
+            );
+        } catch (\InvalidArgumentException $exception) {
+            throw ValidationException::withMessages(['razorpay_signature' => $exception->getMessage()]);
+        } catch (\Exception $exception) {
+            return ApiResponse::error('Payment verification failed.', 'payment_verification_failed', 422);
+        }
+
+        return ApiResponse::data($payload, message: 'Payment verified successfully.');
+    }
+
     private function ensureSinglePurchasable(Request $request): void
     {
-        if ($request->filled('designId') && $request->filled('folderId')) {
+        $identifiers = collect(['designId', 'folderId', 'catalogId'])
+            ->filter(fn (string $key) => $request->filled($key));
+
+        if ($identifiers->count() > 1) {
             throw ValidationException::withMessages([
-                'folderId' => 'Send either designId or folderId, not both.',
+                $identifiers->last() => 'Send only one of designId, folderId, or catalogId.',
             ]);
         }
     }

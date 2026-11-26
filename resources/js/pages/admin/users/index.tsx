@@ -27,6 +27,7 @@ type UserRow = {
     mobileNumber: string;
     designsCount?: number;
     foldersCount?: number;
+    catalogsCount?: number;
     purchasesCount?: number;
     financialRecordsCount?: number;
 };
@@ -235,7 +236,7 @@ export default function AdminUsersIndex({ users, roles, filters }: Props) {
                                                 {canDelete && user.roleSlug !== 'super_admin' ? (
                                                     <ConfirmDelete
                                                         title={`Archive ${user.name || 'this user'}?`}
-                                                        description={`The account will lose access, but its ${user.designsCount ?? 0} design(s), ${user.foldersCount ?? 0} folder(s), ${user.purchasesCount ?? 0} purchase(s), and ${user.financialRecordsCount ?? 0} financial record(s) will be retained.`}
+                                                        description={`The account will lose access, but its ${user.designsCount ?? 0} design(s), ${user.foldersCount ?? 0} folder(s), ${user.catalogsCount ?? 0} catalog(s), ${user.purchasesCount ?? 0} purchase(s), and ${user.financialRecordsCount ?? 0} financial record(s) will be retained.`}
                                                         triggerLabel="Archive"
                                                         confirmLabel="Archive account"
                                                         onConfirm={() => router.delete(route('admin.users.destroy', user.id), { preserveScroll: true })}

@@ -99,9 +99,19 @@ class User extends Authenticatable
         return $this->hasMany(FolderPurchase::class, 'buyer_id');
     }
 
+    public function catalogPurchases(): HasMany
+    {
+        return $this->hasMany(CatalogPurchase::class, 'buyer_id');
+    }
+
     public function folders(): HasMany
     {
         return $this->hasMany(Folder::class);
+    }
+
+    public function catalogs(): HasMany
+    {
+        return $this->hasMany(Catalog::class);
     }
 
     public function saleEarnings(): HasMany

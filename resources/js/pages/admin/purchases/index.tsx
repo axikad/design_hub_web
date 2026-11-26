@@ -23,7 +23,7 @@ type PurchaseRow = {
     razorpayOrderId: string | null;
     razorpayPaymentId: string | null;
     purchasedAt: string | null;
-    itemType: 'design' | 'folder';
+    itemType: 'design' | 'folder' | 'catalog';
     itemName: string | null;
     itemId: string | null;
     buyer: { name: string | null; countryCode: string; mobileNumber: string } | null;
@@ -82,7 +82,7 @@ export default function AdminPurchasesIndex({ purchases, filters, statusOptions 
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Purchases" />
             <div className="space-y-6 p-4 md:p-6">
-                <AdminPageHeader title="Purchases" description="Review design and folder purchases with server-side Razorpay state." />
+                <AdminPageHeader title="Purchases" description="Review design, folder, and catalog purchases with server-side Razorpay state." />
                 <form onSubmit={submit}>
                     <AdminFilterBar
                         actions={
@@ -151,7 +151,7 @@ export default function AdminPurchasesIndex({ purchases, filters, statusOptions 
                                         <td className="px-5 py-4">
                                             <div className="flex items-start gap-3">
                                                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-300">
-                                                    {purchase.itemType === 'folder' ? (
+                                                    {purchase.itemType !== 'design' ? (
                                                         <FolderArchive className="size-4" />
                                                     ) : (
                                                         <Palette className="size-4" />

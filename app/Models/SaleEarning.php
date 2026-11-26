@@ -15,6 +15,7 @@ class SaleEarning extends Model
         'buyer_id',
         'design_purchase_id',
         'folder_purchase_id',
+        'catalog_purchase_id',
         'item_type',
         'item_id',
         'item_public_id',
@@ -98,6 +99,11 @@ class SaleEarning extends Model
     public function folderPurchase(): BelongsTo
     {
         return $this->belongsTo(FolderPurchase::class, 'folder_purchase_id');
+    }
+
+    public function catalogPurchase(): BelongsTo
+    {
+        return $this->belongsTo(CatalogPurchase::class, 'catalog_purchase_id');
     }
 
     public function ledgerEntries(): HasMany

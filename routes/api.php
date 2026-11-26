@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CatalogController;
+use App\Http\Controllers\Api\V1\CatalogPackageController;
 use App\Http\Controllers\Api\V1\DesignController;
 use App\Http\Controllers\Api\V1\DesignImageSearchController;
 use App\Http\Controllers\Api\V1\FolderController;
@@ -34,6 +35,12 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
     Route::get('files/folders/{folderId}/download', [FolderController::class, 'streamDownload'])
         ->name('files.folders.download')
         ->middleware('signed');
+    Route::get('files/catalogs/{catalogId}/{fileId}/preview', [CatalogPackageController::class, 'streamPreview'])
+        ->name('files.catalogs.preview')
+        ->middleware('signed');
+    Route::get('files/catalogs/{catalogId}/download', [CatalogPackageController::class, 'streamDownload'])
+        ->name('files.catalogs.download')
+        ->middleware('signed');
 
     Route::middleware('optional.sanctum')->group(function () {
         Route::get('home', [HomeController::class, 'index'])->name('home');
@@ -52,6 +59,8 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::get('designs/{designId}', [DesignController::class, 'show']);
         Route::get('folders', [FolderController::class, 'index'])->name('folders.index');
         Route::get('folders/{folderId}', [FolderController::class, 'show'])->name('folders.show');
+        Route::get('catalogs', [CatalogPackageController::class, 'index'])->name('catalogs.index');
+        Route::get('catalogs/{catalogId}', [CatalogPackageController::class, 'show'])->name('catalogs.show');
     });
 
     Route::middleware('auth:sanctum')->group(function () {
@@ -67,6 +76,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
         Route::post('users/me/contact/verify-otp', [ProfileContactController::class, 'verifyOtp']);
         Route::get('users/me/designs', [UserController::class, 'myDesigns']);
         Route::get('users/me/folders', [UserController::class, 'myFolders']);
+        Route::get('users/me/catalogs', [UserController::class, 'myCatalogs']);
         Route::get('users/me/purchases', [UserController::class, 'purchases']);
         Route::get('users/me/saved-designs', [UserController::class, 'savedDesigns']);
         Route::put('users/me/saved-designs/{designId}', [UserController::class, 'saveDesign']);
@@ -82,11 +92,14 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
 
         Route::post('folders', [FolderController::class, 'store'])->name('folders.store');
         Route::post('folders/{folderId}/download', [FolderController::class, 'download']);
+        Route::post('catalogs', [CatalogPackageController::class, 'store'])->name('catalogs.store');
+        Route::post('catalogs/{catalogId}/download', [CatalogPackageController::class, 'download']);
 
         Route::post('uploads', [UploadController::class, 'store']);
 
         Route::get('purchases/designs/{designId}', [PaymentController::class, 'purchaseStatus']);
         Route::get('purchases/folders/{folderId}', [PaymentController::class, 'folderPurchaseStatus']);
+        Route::get('purchases/catalogs/{catalogId}', [PaymentController::class, 'catalogPurchaseStatus']);
         Route::get('payments/checkout-preview', [PaymentController::class, 'checkoutPreview']);
         Route::post('payments/orders', [PaymentController::class, 'createOrder']);
         Route::post('payments/verify', [PaymentController::class, 'verify']);
