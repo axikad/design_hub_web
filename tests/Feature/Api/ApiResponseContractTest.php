@@ -390,6 +390,7 @@ class ApiResponseContractTest extends TestCase
             'designTypes' => [
                 [
                     'typeId' => 'neckline',
+                    'specificationMode' => 'technical',
                     'details' => [
                         'nameOrNumber' => 'Neck 101',
                         'stitchCount' => 12000,
@@ -442,6 +443,7 @@ class ApiResponseContractTest extends TestCase
             ->assertJsonPath('data.typeId', 'neckline')
             ->assertJsonPath('data.designTypeImageCards', true)
             ->assertJsonPath('data.designTypes.0.typeId', 'neckline')
+            ->assertJsonPath('data.designTypes.0.specificationMode', 'technical')
             ->assertJsonPath('data.designTypes.0.details.needle', 8)
             ->assertJsonPath('data.designTypes.1.typeId', 'sleeve')
             ->assertJsonPath('data.designTypes.1.details.image.name', 'sleeve.jpg')

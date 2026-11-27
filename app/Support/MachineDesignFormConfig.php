@@ -33,6 +33,10 @@ final class MachineDesignFormConfig
         return [
             ...$fields,
             'designTypeImageCards' => false,
+            'specificationModes' => [
+                'designProperty' => true,
+                'technicalSpecifications' => true,
+            ],
             'required' => [
                 ...$fields,
                 'sequenceType' => false,
@@ -54,6 +58,18 @@ final class MachineDesignFormConfig
         $fieldKeys = array_keys($normalized['required']);
 
         $normalized['designTypeImageCards'] = (bool) ($config['designTypeImageCards'] ?? false);
+        $savedModes = isset($config['specificationModes']) && is_array($config['specificationModes'])
+            ? $config['specificationModes']
+            : null;
+
+        $normalized['specificationModes'] = [
+            'designProperty' => $savedModes !== null
+                ? (bool) ($savedModes['designProperty'] ?? false)
+                : (bool) data_get($config, 'specificationFields.image', true),
+            'technicalSpecifications' => $savedModes !== null
+                ? (bool) ($savedModes['technicalSpecifications'] ?? false)
+                : true,
+        ];
 
         foreach ($fieldKeys as $key) {
             $defaultRequired = $normalized['required'][$key];
@@ -112,6 +128,26 @@ final class MachineDesignFormConfig
 
         if (! $normalized['designSpecifications'] || ! $normalized['specificationFields']['image']) {
             $normalized['designTypeImageCards'] = false;
+        }
+
+        if (! $normalized['designSpecifications']) {
+            $normalized['specificationModes']['designProperty'] = false;
+            $normalized['specificationModes']['technicalSpecifications'] = false;
+        } else {
+            if (! $normalized['specificationFields']['image']) {
+                $normalized['specificationModes']['designProperty'] = false;
+            }
+
+            if (! $normalized['specificationModes']['designProperty'] && ! $normalized['specificationModes']['technicalSpecifications']) {
+                $normalized['specificationModes']['technicalSpecifications'] = true;
+            }
+
+            if ($normalized['specificationModes']['designProperty']) {
+                $normalized['specificationFields']['image'] = true;
+            }
+
+            // Both supported modes identify the selected design type by this value.
+            $normalized['specificationFields']['nameOrNumber'] = true;
         }
 
         $normalized['required']['designSpecifications'] = $normalized['designSpecifications']

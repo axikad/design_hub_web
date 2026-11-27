@@ -42,6 +42,8 @@ class MachineDesignFormConfigApiTest extends TestCase
             ->assertJsonPath('data.0.designFormConfig.title', false)
             ->assertJsonPath('data.0.designFormConfig.category', true)
             ->assertJsonPath('data.0.designFormConfig.designTypes', true)
+            ->assertJsonPath('data.0.designFormConfig.specificationModes.designProperty', true)
+            ->assertJsonPath('data.0.designFormConfig.specificationModes.technicalSpecifications', true)
             ->assertJsonPath('data.0.designFormConfig.designSpecifications', true)
             ->assertJsonPath('data.0.designFormConfig.stitchFiles', false)
             ->assertJsonPath('data.0.designFormConfig.designFileType', true)
@@ -393,6 +395,7 @@ class MachineDesignFormConfigApiTest extends TestCase
             'categoryId' => $category->public_id,
             'designTypes' => [[
                 'typeId' => $type->public_id,
+                'specificationMode' => 'design_property',
                 'details' => ['removeImage' => false],
             ]],
         ];
@@ -408,6 +411,7 @@ class MachineDesignFormConfigApiTest extends TestCase
 
         $this->postJson('/api/v1/designs', $payload)
             ->assertCreated()
+            ->assertJsonPath('data.designTypes.0.specificationMode', 'design_property')
             ->assertJsonPath('data.designTypes.0.details.image.name', 'pallu.jpg');
     }
 }

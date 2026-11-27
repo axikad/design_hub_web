@@ -25,6 +25,10 @@ type DesignFieldKey =
 type SpecificationFieldKey = 'image' | 'nameOrNumber' | 'stitchCount' | 'needle' | 'area' | 'height' | 'width';
 type DesignFormConfig = Record<DesignFieldKey, boolean> & {
     designTypeImageCards: boolean;
+    specificationModes: {
+        designProperty: boolean;
+        technicalSpecifications: boolean;
+    };
     required: Record<DesignFieldKey, boolean>;
     specificationFields: Record<SpecificationFieldKey, boolean> & {
         required: Record<SpecificationFieldKey, boolean>;
@@ -62,7 +66,7 @@ const designFieldOptions: { key: DesignFieldKey; label: string; description: str
     { key: 'machineType', label: 'Machine type', description: 'Select a machine type for the design.' },
     { key: 'category', label: 'Category', description: 'Select a compatible category.' },
     { key: 'designTypes', label: 'Design types', description: 'Allow catalog and custom design types.' },
-    { key: 'designSpecifications', label: 'Design type specifications', description: 'Collect one image, stitch count, needle, area, height and width.' },
+    { key: 'designSpecifications', label: 'Design type specifications', description: 'Allow design-property or technical specification details.' },
     { key: 'sequenceType', label: 'Sequence type', description: 'Collect the common sequence measurement in mm.' },
     { key: 'designFileType', label: 'Design file type', description: 'Select EMB, DST, DHB or another configured format.' },
     { key: 'previewImages', label: 'Preview images', description: 'Upload preview images for the design.' },
@@ -76,7 +80,7 @@ const specificationFieldOptions: { key: SpecificationFieldKey; label: string }[]
     { key: 'area', label: 'Area (mm)' },
     { key: 'height', label: 'Height (mm)' },
     { key: 'width', label: 'Width (mm)' },
-    { key: 'image', label: 'Image (one per design type)' },
+    { key: 'image', label: 'Design property image' },
 ];
 
 export default function AdminMachineForm({ machine, nextSortOrder, defaultDesignFormConfig, defaultWatermarkConfig }: Props) {
@@ -126,6 +130,14 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
         setData('designFormConfig', {
             ...data.designFormConfig,
             ...(key === 'image' && !enabled ? { designTypeImageCards: false } : {}),
+            ...(key === 'image' && !enabled
+                ? {
+                      specificationModes: {
+                          ...data.designFormConfig.specificationModes,
+                          designProperty: false,
+                      },
+                  }
+                : {}),
             required: {
                 ...data.designFormConfig.required,
                 designSpecifications: data.designFormConfig.designSpecifications && Object.values(nextRequired).some(Boolean),
@@ -134,6 +146,27 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
                 ...data.designFormConfig.specificationFields,
                 [key]: enabled,
                 required: nextRequired,
+            },
+        });
+    };
+
+    const toggleSpecificationMode = (key: 'designProperty' | 'technicalSpecifications', enabled: boolean) => {
+        const otherKey = key === 'designProperty' ? 'technicalSpecifications' : 'designProperty';
+        const nextModes = {
+            ...data.designFormConfig.specificationModes,
+            [key]: enabled,
+        };
+
+        // At least one input mode must remain available.
+        if (!nextModes[key] && !nextModes[otherKey]) return;
+
+        setData('designFormConfig', {
+            ...data.designFormConfig,
+            specificationModes: nextModes,
+            specificationFields: {
+                ...data.designFormConfig.specificationFields,
+                ...(key === 'designProperty' && enabled ? { image: true, nameOrNumber: true } : {}),
+                ...(key === 'technicalSpecifications' && enabled ? { nameOrNumber: true } : {}),
             },
         });
     };
@@ -431,6 +464,32 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
                                     </div>
                                     {option.key === 'designSpecifications' && data.designFormConfig.designSpecifications ? (
                                         <div className="ml-4 space-y-2 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 dark:border-indigo-900 dark:bg-indigo-950/20">
+                                            <div className="grid gap-3 pb-1 sm:grid-cols-2">
+                                                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                                                    <Checkbox
+                                                        checked={data.designFormConfig.specificationModes.designProperty}
+                                                        onCheckedChange={(value) => toggleSpecificationMode('designProperty', value === true)}
+                                                        className="mt-0.5"
+                                                    />
+                                                    <span>
+                                                        <span className="block text-sm font-semibold">Design property</span>
+                                                        <span className="mt-1 block text-xs text-slate-500">Name or number + one image.</span>
+                                                    </span>
+                                                </label>
+                                                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                                                    <Checkbox
+                                                        checked={data.designFormConfig.specificationModes.technicalSpecifications}
+                                                        onCheckedChange={(value) => toggleSpecificationMode('technicalSpecifications', value === true)}
+                                                        className="mt-0.5"
+                                                    />
+                                                    <span>
+                                                        <span className="block text-sm font-semibold">Technical specifications</span>
+                                                        <span className="mt-1 block text-xs text-slate-500">
+                                                            Name or number + stitch, needle and measurements.
+                                                        </span>
+                                                    </span>
+                                                </label>
+                                            </div>
                                             {specificationFieldOptions.map((field) => (
                                                 <div
                                                     key={field.key}
@@ -444,14 +503,18 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
                                                         />
                                                         Show field
                                                     </label>
-                                                    <label className="flex cursor-pointer items-center gap-2 text-sm">
-                                                        <Checkbox
-                                                            checked={data.designFormConfig.specificationFields.required[field.key]}
-                                                            disabled={!data.designFormConfig.specificationFields[field.key]}
-                                                            onCheckedChange={(value) => toggleSpecificationRequired(field.key, value === true)}
-                                                        />
-                                                        Required
-                                                    </label>
+                                                    {field.key === 'image' ? (
+                                                        <span className="text-xs font-medium text-slate-500">Required in Design property mode</span>
+                                                    ) : (
+                                                        <label className="flex cursor-pointer items-center gap-2 text-sm">
+                                                            <Checkbox
+                                                                checked={data.designFormConfig.specificationFields.required[field.key]}
+                                                                disabled={!data.designFormConfig.specificationFields[field.key]}
+                                                                onCheckedChange={(value) => toggleSpecificationRequired(field.key, value === true)}
+                                                            />
+                                                            Required
+                                                        </label>
+                                                    )}
                                                 </div>
                                             ))}
                                             <div className="rounded-lg border border-indigo-200 bg-white p-3 dark:border-indigo-800 dark:bg-slate-900">

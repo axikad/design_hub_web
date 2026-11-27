@@ -30,6 +30,7 @@ type DesignFieldKey =
 type SpecificationFieldKey = 'image' | 'nameOrNumber' | 'stitchCount' | 'needle' | 'area' | 'height' | 'width';
 type DesignFormConfig = Record<DesignFieldKey, boolean> & {
     required: Record<DesignFieldKey, boolean>;
+    specificationModes: { designProperty: boolean; technicalSpecifications: boolean };
     specificationFields: Record<SpecificationFieldKey, boolean> & { required: Record<SpecificationFieldKey, boolean> };
 };
 type MachineOption = { id: string; name: string; designFormConfig: DesignFormConfig; machineTypes: MachineTypeOption[] };
@@ -41,6 +42,7 @@ type VariantInput = {
     imageUri: string | null;
     imageName: string | null;
     removeImage: boolean;
+    specificationMode: 'design_property' | 'technical';
     nameOrNumber: string;
     stitchCount: string;
     needle: string;
@@ -75,13 +77,17 @@ const uniqueCategories = (categories: CategoryOption[]) => Array.from(new Map(ca
 const selectClass = 'h-11 rounded-xl border-slate-200 dark:border-slate-700';
 const inputClass = 'h-11 rounded-xl border-slate-200 focus-visible:border-indigo-500 dark:border-slate-700';
 
-const emptyVariant = (typeId: string): VariantInput => ({
+const defaultSpecificationMode = (config?: DesignFormConfig): VariantInput['specificationMode'] =>
+    config?.specificationModes.technicalSpecifications ? 'technical' : 'design_property';
+
+const emptyVariant = (typeId: string, specificationMode: VariantInput['specificationMode'] = 'technical'): VariantInput => ({
     typeId,
     customTypeName: '',
     image: null,
     imageUri: null,
     imageName: null,
     removeImage: false,
+    specificationMode,
     nameOrNumber: '',
     stitchCount: '0',
     needle: '0',
@@ -90,8 +96,8 @@ const emptyVariant = (typeId: string): VariantInput => ({
     width: '0',
 });
 
-const emptyCustomVariant = (): VariantInput => ({
-    ...emptyVariant(''),
+const emptyCustomVariant = (specificationMode: VariantInput['specificationMode']): VariantInput => ({
+    ...emptyVariant('', specificationMode),
     customTypeName: '',
 });
 
@@ -141,7 +147,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                   width: variant.width.toString(),
               }))
             : initialConfig?.designTypes && initialType
-              ? [emptyVariant(initialType.id)]
+              ? [emptyVariant(initialType.id, defaultSpecificationMode(initialConfig))]
               : [],
         previewImages: [] as File[],
         stitchFiles: [] as File[],
@@ -190,7 +196,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
             title: machineConfig?.title ? current.title : '',
             machineTypeId: machineConfig?.machineType ? (machineType?.id ?? '') : '',
             categoryId: category?.id ?? '',
-            variants: machineConfig?.designTypes && typeId ? [emptyVariant(typeId)] : [],
+            variants: machineConfig?.designTypes && typeId ? [emptyVariant(typeId, defaultSpecificationMode(machineConfig))] : [],
             designFileTypeId: machineConfig?.designFileType ? fileTypeId : '',
             sequenceType: machineConfig?.sequenceType ? current.sequenceType : '',
         }));
@@ -203,13 +209,17 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
             ...current,
             machineTypeId,
             categoryId: category?.id ?? '',
-            variants: config?.designTypes && typeId ? [emptyVariant(typeId)] : [],
+            variants: config?.designTypes && typeId ? [emptyVariant(typeId, defaultSpecificationMode(config))] : [],
         }));
         setActiveVariantIndex(0);
     };
     const selectCategory = (categoryId: string) => {
         const typeId = categories.find((category) => category.id === categoryId)?.types[0]?.id;
-        setData((current) => ({ ...current, categoryId, variants: typeId ? [emptyVariant(typeId)] : [] }));
+        setData((current) => ({
+            ...current,
+            categoryId,
+            variants: typeId ? [emptyVariant(typeId, defaultSpecificationMode(config))] : [],
+        }));
         setActiveVariantIndex(0);
     };
     const toggleType = (typeId: string) => {
@@ -223,11 +233,11 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
             setActiveVariantIndex(Math.max(0, selectedIndex - 1));
             return;
         }
-        setData('variants', [...data.variants, emptyVariant(typeId)]);
+        setData('variants', [...data.variants, emptyVariant(typeId, defaultSpecificationMode(config))]);
         setActiveVariantIndex(data.variants.length);
     };
     const addCustomType = () => {
-        setData('variants', [...data.variants, emptyCustomVariant()]);
+        setData('variants', [...data.variants, emptyCustomVariant(defaultSpecificationMode(config))]);
         setActiveVariantIndex(data.variants.length);
     };
     const removeVariant = (index: number) => {
@@ -458,6 +468,38 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                                     </Button>
                                                 ) : null}
                                             </div>
+                                            {config.specificationModes.designProperty && config.specificationModes.technicalSpecifications ? (
+                                                <div className="mb-5 grid gap-2 rounded-xl bg-slate-100 p-1 sm:grid-cols-2 dark:bg-slate-800">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updateVariant(index, 'specificationMode', 'design_property')}
+                                                        className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
+                                                            variant.specificationMode === 'design_property'
+                                                                ? 'bg-white text-indigo-700 shadow-sm dark:bg-slate-950 dark:text-indigo-300'
+                                                                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                                                        }`}
+                                                    >
+                                                        Design property
+                                                        <span className="mt-0.5 block text-xs font-normal">Name or number + image</span>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updateVariant(index, 'specificationMode', 'technical')}
+                                                        className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
+                                                            variant.specificationMode === 'technical'
+                                                                ? 'bg-white text-indigo-700 shadow-sm dark:bg-slate-950 dark:text-indigo-300'
+                                                                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                                                        }`}
+                                                    >
+                                                        Technical specifications
+                                                        <span className="mt-0.5 block text-xs font-normal">Name or number + production values</span>
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="mb-5 inline-flex rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+                                                    {variant.specificationMode === 'design_property' ? 'Design property' : 'Technical specifications'}
+                                                </div>
+                                            )}
                                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                                 {isCustom ? (
                                                     <VariantField
@@ -476,7 +518,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                                         required={config.specificationFields.required.nameOrNumber}
                                                     />
                                                 ) : null}
-                                                {config.specificationFields.stitchCount ? (
+                                                {variant.specificationMode === 'technical' && config.specificationFields.stitchCount ? (
                                                     <VariantField
                                                         label="Stitch count"
                                                         type="number"
@@ -487,7 +529,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                                         required={config.specificationFields.required.stitchCount}
                                                     />
                                                 ) : null}
-                                                {config.specificationFields.needle ? (
+                                                {variant.specificationMode === 'technical' && config.specificationFields.needle ? (
                                                     <VariantField
                                                         label="Needle"
                                                         type="number"
@@ -498,7 +540,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                                         required={config.specificationFields.required.needle}
                                                     />
                                                 ) : null}
-                                                {config.specificationFields.area ? (
+                                                {variant.specificationMode === 'technical' && config.specificationFields.area ? (
                                                     <VariantField
                                                         label="Area"
                                                         type="number"
@@ -511,7 +553,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                                         required={config.specificationFields.required.area}
                                                     />
                                                 ) : null}
-                                                {config.specificationFields.height ? (
+                                                {variant.specificationMode === 'technical' && config.specificationFields.height ? (
                                                     <VariantField
                                                         label="Height"
                                                         type="number"
@@ -524,7 +566,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                                         required={config.specificationFields.required.height}
                                                     />
                                                 ) : null}
-                                                {config.specificationFields.width ? (
+                                                {variant.specificationMode === 'technical' && config.specificationFields.width ? (
                                                     <VariantField
                                                         label="Width"
                                                         type="number"
@@ -537,14 +579,14 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                                         required={config.specificationFields.required.width}
                                                     />
                                                 ) : null}
-                                                {config.specificationFields.image ? (
+                                                {variant.specificationMode === 'design_property' && config.specificationFields.image ? (
                                                     <VariantImageField
                                                         id={`variant-image-${index}`}
                                                         image={variant.image}
                                                         imageUri={variant.imageUri}
                                                         imageName={variant.imageName}
                                                         removed={variant.removeImage}
-                                                        required={config.specificationFields.required.image}
+                                                        required
                                                         error={fieldError('image')}
                                                         onChange={(image) => updateVariantFields(index, { image, removeImage: false })}
                                                         onRemove={() =>

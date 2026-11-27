@@ -424,6 +424,12 @@ class DesignAdminController extends Controller
         $required = $config['required'];
         $specificationFields = $config['specificationFields'];
         $specificationRequired = $specificationFields['required'];
+        $allowedSpecificationModes = collect($config['specificationModes'])
+            ->filter()
+            ->keys()
+            ->map(fn (string $mode) => $mode === 'designProperty' ? 'design_property' : 'technical')
+            ->values()
+            ->all();
 
         $rules = [
             'ownerId' => ['required', 'string', Rule::exists('users', 'public_id')],
@@ -437,14 +443,15 @@ class DesignAdminController extends Controller
             'variants' => [$config['designTypes'] && $required['designTypes'] ? 'required' : 'nullable', 'array', 'min:1'],
             'variants.*.typeId' => ['nullable', 'string', 'max:120'],
             'variants.*.customTypeName' => ['nullable', 'string', 'min:1', 'max:120'],
-            'variants.*.image' => [$this->adminSpecificationRule($config, $specificationFields, [], 'image', false), 'file', 'mimetypes:image/*'],
+            'variants.*.specificationMode' => [$config['designSpecifications'] ? 'sometimes' : 'exclude', Rule::in($allowedSpecificationModes)],
+            'variants.*.image' => [$config['designSpecifications'] && $specificationFields['image'] ? 'nullable' : 'exclude', 'file', 'mimetypes:image/*'],
             'variants.*.removeImage' => ['sometimes', 'boolean'],
-            'variants.*.nameOrNumber' => [$this->adminSpecificationRule($config, $specificationFields, $specificationRequired, 'nameOrNumber'), 'string', 'min:1', 'max:120'],
-            'variants.*.stitchCount' => [$this->adminSpecificationRule($config, $specificationFields, $specificationRequired, 'stitchCount'), 'integer', 'min:0'],
-            'variants.*.needle' => [$this->adminSpecificationRule($config, $specificationFields, $specificationRequired, 'needle'), 'integer', 'min:0'],
-            'variants.*.area' => [$this->adminSpecificationRule($config, $specificationFields, $specificationRequired, 'area'), 'numeric', 'min:0', 'max:9999999999.99'],
-            'variants.*.height' => [$this->adminSpecificationRule($config, $specificationFields, $specificationRequired, 'height'), 'numeric', 'min:0', 'max:9999999999.99'],
-            'variants.*.width' => [$this->adminSpecificationRule($config, $specificationFields, $specificationRequired, 'width'), 'numeric', 'min:0', 'max:9999999999.99'],
+            'variants.*.nameOrNumber' => [$config['designSpecifications'] && $specificationFields['nameOrNumber'] ? 'nullable' : 'exclude', 'string', 'min:1', 'max:120'],
+            'variants.*.stitchCount' => [$config['designSpecifications'] && $specificationFields['stitchCount'] ? 'nullable' : 'exclude', 'integer', 'min:0'],
+            'variants.*.needle' => [$config['designSpecifications'] && $specificationFields['needle'] ? 'nullable' : 'exclude', 'integer', 'min:0'],
+            'variants.*.area' => [$config['designSpecifications'] && $specificationFields['area'] ? 'nullable' : 'exclude', 'numeric', 'min:0', 'max:9999999999.99'],
+            'variants.*.height' => [$config['designSpecifications'] && $specificationFields['height'] ? 'nullable' : 'exclude', 'numeric', 'min:0', 'max:9999999999.99'],
+            'variants.*.width' => [$config['designSpecifications'] && $specificationFields['width'] ? 'nullable' : 'exclude', 'numeric', 'min:0', 'max:9999999999.99'],
             'previewImages' => [$creating && $config['previewImages'] && $required['previewImages'] ? 'required_without:previewImage' : 'nullable', 'array', 'min:1', 'max:20'],
             'previewImages.*' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'previewImage' => [$creating && $config['previewImages'] && $required['previewImages'] ? 'required_without:previewImages' : 'nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -474,6 +481,22 @@ class DesignAdminController extends Controller
                 throw ValidationException::withMessages([
                     "variants.{$index}.customTypeName" => 'Choose a catalog design type or enter one custom design type name.',
                 ]);
+            }
+
+            if ($config['designSpecifications'] && $specificationRequired['nameOrNumber'] && blank($variant['nameOrNumber'] ?? null)) {
+                throw ValidationException::withMessages([
+                    "variants.{$index}.nameOrNumber" => 'Enter a name or number for this design type.',
+                ]);
+            }
+
+            if (($variant['specificationMode'] ?? null) === 'technical') {
+                foreach (['stitchCount', 'needle', 'area', 'height', 'width'] as $field) {
+                    if ($specificationFields[$field] && $specificationRequired[$field] && blank($variant[$field] ?? null) && ($variant[$field] ?? null) !== 0 && ($variant[$field] ?? null) !== '0') {
+                        throw ValidationException::withMessages([
+                            "variants.{$index}.{$field}" => 'This technical specification is required.',
+                        ]);
+                    }
+                }
             }
         }
 
@@ -552,17 +575,25 @@ class DesignAdminController extends Controller
             ->keyBy(fn ($variant) => $this->variantIdentity($variant->type?->public_id, $variant->custom_type_name))
             ?? collect();
 
-        $variants = collect($variantsInput)->map(function (array $variant, int $index) use ($request, $types, $config, $specificationFields, $specificationRequired, $existingVariants) {
+        $variants = collect($variantsInput)->map(function (array $variant, int $index) use ($request, $types, $config, $specificationFields, $allowedSpecificationModes, $existingVariants) {
             $typeId = $variant['typeId'] ?? null;
             $fallbackName = trim((string) ($types->get($typeId)?->name ?? $variant['customTypeName'] ?? 'Design'));
             $existingVariant = $existingVariants->get($this->variantIdentity($typeId, $variant['customTypeName'] ?? null));
-            $imageEnabled = $config['designSpecifications'] && $specificationFields['image'];
+            $modeWasExplicit = array_key_exists('specificationMode', $variant);
+            $defaultMode = in_array('technical', $allowedSpecificationModes, true) ? 'technical' : 'design_property';
+            $specificationMode = $variant['specificationMode'] ?? $existingVariant?->specification_mode ?? $defaultMode;
+            $designPropertyMode = $specificationMode === 'design_property';
+            $legacyImageInput = ! $modeWasExplicit
+                && ($request->hasFile("variants.{$index}.image") || $request->has("variants.{$index}.removeImage"));
+            $imageEnabled = $config['designSpecifications']
+                && ($designPropertyMode || $legacyImageInput)
+                && $specificationFields['image'];
             $hasNewImage = $imageEnabled && $request->hasFile("variants.{$index}.image");
             $removeImage = $imageEnabled && $request->boolean("variants.{$index}.removeImage");
             $imagePath = $imageEnabled && ! $removeImage ? $existingVariant?->image_path : null;
             $imageName = $imageEnabled && ! $removeImage ? $existingVariant?->image_name : null;
 
-            if ($imageEnabled && $specificationRequired['image'] && ! $hasNewImage && blank($imagePath)) {
+            if ($designPropertyMode && $imageEnabled && ! $hasNewImage && blank($imagePath)) {
                 throw ValidationException::withMessages([
                     "variants.{$index}.image" => 'Upload one image for this design type.',
                 ]);
@@ -571,16 +602,17 @@ class DesignAdminController extends Controller
             return [
                 'design_type_id' => $typeId ? $types->get($typeId)?->id : null,
                 'custom_type_name' => $typeId ? null : trim($variant['customTypeName']),
+                'specification_mode' => $specificationMode,
                 'image_path' => $imagePath,
                 'image_name' => $imageName,
                 '_store_image' => $hasNewImage,
                 'name_or_number' => $config['designSpecifications'] && $specificationFields['nameOrNumber']
                     ? trim((string) ($variant['nameOrNumber'] ?? $fallbackName)) : $fallbackName,
-                'stitch_count' => $config['designSpecifications'] && $specificationFields['stitchCount'] ? (int) ($variant['stitchCount'] ?? 0) : 0,
-                'needle' => $config['designSpecifications'] && $specificationFields['needle'] ? (int) ($variant['needle'] ?? 0) : 0,
-                'area' => $config['designSpecifications'] && $specificationFields['area'] ? ($variant['area'] ?? 0) : 0,
-                'height' => $config['designSpecifications'] && $specificationFields['height'] ? ($variant['height'] ?? 0) : 0,
-                'width' => $config['designSpecifications'] && $specificationFields['width'] ? ($variant['width'] ?? 0) : 0,
+                'stitch_count' => $config['designSpecifications'] && ! $designPropertyMode && $specificationFields['stitchCount'] ? (int) ($variant['stitchCount'] ?? 0) : 0,
+                'needle' => $config['designSpecifications'] && ! $designPropertyMode && $specificationFields['needle'] ? (int) ($variant['needle'] ?? 0) : 0,
+                'area' => $config['designSpecifications'] && ! $designPropertyMode && $specificationFields['area'] ? ($variant['area'] ?? 0) : 0,
+                'height' => $config['designSpecifications'] && ! $designPropertyMode && $specificationFields['height'] ? ($variant['height'] ?? 0) : 0,
+                'width' => $config['designSpecifications'] && ! $designPropertyMode && $specificationFields['width'] ? ($variant['width'] ?? 0) : 0,
                 'sort_order' => $index,
             ];
         })->values();
@@ -646,6 +678,7 @@ class DesignAdminController extends Controller
                 'customTypeName' => $variant->custom_type_name ?? '',
                 'imageUri' => $variant->image_path ? Storage::disk('public')->url($variant->image_path) : null,
                 'imageName' => $variant->image_name,
+                'specificationMode' => $variant->specification_mode ?? 'technical',
                 'nameOrNumber' => $variant->name_or_number,
                 'stitchCount' => $variant->stitch_count,
                 'needle' => $variant->needle,
@@ -660,6 +693,7 @@ class DesignAdminController extends Controller
             'customTypeName' => '',
             'imageUri' => null,
             'imageName' => null,
+            'specificationMode' => 'technical',
             'nameOrNumber' => $design->title,
             'stitchCount' => 0,
             'needle' => 0,

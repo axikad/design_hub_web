@@ -162,6 +162,7 @@ class DesignPresenter
                     'typeName' => $variant->type?->name ?? $variant->custom_type_name,
                     'customTypeName' => $variant->custom_type_name,
                     'isCustom' => $variant->design_type_id === null,
+                    'specificationMode' => $variant->specification_mode ?? 'technical',
                     'details' => [
                         'image' => $this->variantImage($variant),
                         'nameOrNumber' => $variant->name_or_number,
@@ -183,6 +184,7 @@ class DesignPresenter
         return [[
             'typeId' => $design->type->public_id,
             'typeName' => $design->type->name,
+            'specificationMode' => 'technical',
             'details' => [
                 'image' => null,
                 'nameOrNumber' => $details['names'][0] ?? $design->title,
