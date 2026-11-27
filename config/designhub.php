@@ -26,6 +26,15 @@ return [
         'model' => env('DESIGNHUB_IMAGE_EMBEDDING_MODEL', 'qdrant/clip-vit-b-32-vision'),
         'dimensions' => (int) env('DESIGNHUB_IMAGE_EMBEDDING_DIMENSIONS', 512),
         'timeout_seconds' => (int) env('DESIGNHUB_IMAGE_MATCHING_TIMEOUT', 30),
+        'google' => [
+            'enabled' => env('DESIGNHUB_GOOGLE_IMAGE_SEARCH_ENABLED', false),
+            'project_id' => env('DESIGNHUB_GOOGLE_PROJECT_ID'),
+            'location' => env('DESIGNHUB_GOOGLE_LOCATION', 'asia-east1'),
+            'bucket' => env('DESIGNHUB_GOOGLE_STORAGE_BUCKET'),
+            'product_set_id' => env('DESIGNHUB_GOOGLE_PRODUCT_SET_ID', 'designhub-designs'),
+            'product_category' => env('DESIGNHUB_GOOGLE_PRODUCT_CATEGORY', 'general-v1'),
+            'credentials' => env('GOOGLE_APPLICATION_CREDENTIALS'),
+        ],
     ],
 
     'razorpay_key_id' => env('RAZORPAY_KEY_ID'),

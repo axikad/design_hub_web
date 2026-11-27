@@ -18,6 +18,11 @@ class DesignImageFingerprint extends Model
         'vector_id',
         'vector_status',
         'vector_error',
+        'google_product_id',
+        'google_reference_image_id',
+        'google_gcs_uri',
+        'google_status',
+        'google_error',
     ];
 
     protected function casts(): array

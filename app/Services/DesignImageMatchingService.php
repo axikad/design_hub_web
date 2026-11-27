@@ -18,6 +18,7 @@ class DesignImageMatchingService
     public function __construct(
         private readonly ImageFingerprintService $fingerprints,
         private readonly QdrantImageIndex $vectors,
+        private readonly GoogleProductSearchIndex $google,
     ) {}
 
     /** @param list<array{path: string}> $images */
@@ -60,6 +61,28 @@ class DesignImageMatchingService
         $fingerprint = $this->fingerprints->fromContents($contents, $mime);
         $minimum = (float) SiteSetting::current()->image_search_similarity;
 
+        if ($this->google->enabled()) {
+            try {
+                $matches = $this->uniqueDesignMatches(
+                    $this->google->search($contents, $filters, $minimum, $limit),
+                    $limit,
+                );
+
+                if ($matches !== []) {
+                    return [
+                        'engine' => 'google_product_search',
+                        'matches' => $matches,
+                    ];
+                }
+
+                Log::info('Google Product Search returned no matches; trying the configured fallback.');
+            } catch (Throwable $exception) {
+                Log::warning('Google Product Search failed; trying the configured fallback.', [
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+        }
+
         if ($this->vectors->enabled()) {
             try {
                 return [
@@ -97,6 +120,8 @@ class DesignImageMatchingService
 
         $design->imageFingerprints()->delete();
         $points = [];
+        $googleImages = [];
+        $recordsByIndex = [];
 
         foreach ($this->designImages($design) as $index => $image) {
             try {
@@ -111,7 +136,18 @@ class DesignImageMatchingService
                     'grayscale_layout' => $fingerprint['grayscale_layout'],
                     'vector_id' => $this->vectors->enabled() ? $vectorId : null,
                     'vector_status' => $this->vectors->enabled() ? 'pending' : 'disabled',
+                    'google_status' => $this->google->enabled() ? 'pending' : 'disabled',
                 ]);
+                $recordsByIndex[$index] = $record;
+
+                if ($this->google->enabled()) {
+                    $googleImages[] = [
+                        'contents' => $fingerprint['contents'],
+                        'mime' => $fingerprint['mime'],
+                        'extension' => $this->imageExtension($fingerprint['mime'], $image['name'] ?? $image['path']),
+                        'index' => $index,
+                    ];
+                }
 
                 if ($this->vectors->enabled()) {
                     $points[] = [
@@ -137,32 +173,58 @@ class DesignImageMatchingService
             }
         }
 
-        if ($points === []) {
-            return;
+        if ($points !== []) {
+            try {
+                $this->vectors->upsert(collect($points)->map(fn (array $point) => [
+                    'id' => $point['id'],
+                    'contents' => $point['contents'],
+                    'payload' => $point['payload'],
+                ])->all());
+
+                DesignImageFingerprint::query()
+                    ->whereIn('id', collect($points)->pluck('record.id'))
+                    ->update(['vector_status' => 'ready', 'vector_error' => null]);
+            } catch (Throwable $exception) {
+                DesignImageFingerprint::query()
+                    ->whereIn('id', collect($points)->pluck('record.id'))
+                    ->update([
+                        'vector_status' => 'failed',
+                        'vector_error' => Str::limit($exception->getMessage(), 1000),
+                    ]);
+
+                Log::error('Unable to index design images in Qdrant.', [
+                    'design' => $design->public_id,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
         }
 
-        try {
-            $this->vectors->upsert(collect($points)->map(fn (array $point) => [
-                'id' => $point['id'],
-                'contents' => $point['contents'],
-                'payload' => $point['payload'],
-            ])->all());
+        if ($googleImages !== []) {
+            try {
+                foreach ($this->google->upsertDesign($design, $googleImages) as $indexedImage) {
+                    $record = $recordsByIndex[$indexedImage['index']] ?? null;
 
-            DesignImageFingerprint::query()
-                ->whereIn('id', collect($points)->pluck('record.id'))
-                ->update(['vector_status' => 'ready', 'vector_error' => null]);
-        } catch (Throwable $exception) {
-            DesignImageFingerprint::query()
-                ->whereIn('id', collect($points)->pluck('record.id'))
-                ->update([
-                    'vector_status' => 'failed',
-                    'vector_error' => Str::limit($exception->getMessage(), 1000),
+                    $record?->update([
+                        'google_product_id' => $indexedImage['productId'],
+                        'google_reference_image_id' => $indexedImage['referenceImageId'],
+                        'google_gcs_uri' => $indexedImage['gcsUri'],
+                        'google_status' => 'ready',
+                        'google_error' => null,
+                    ]);
+                }
+            } catch (Throwable $exception) {
+                DesignImageFingerprint::query()
+                    ->whereIn('id', collect($recordsByIndex)->pluck('id'))
+                    ->update([
+                        'google_status' => 'failed',
+                        'google_error' => Str::limit($exception->getMessage(), 1000),
+                    ]);
+
+                Log::error('Unable to index design images in Google Product Search.', [
+                    'design' => $design->public_id,
+                    'error' => $exception->getMessage(),
                 ]);
-
-            Log::error('Unable to index design images.', [
-                'design' => $design->public_id,
-                'error' => $exception->getMessage(),
-            ]);
+            }
         }
     }
 
@@ -174,6 +236,15 @@ class DesignImageMatchingService
             $this->vectors->delete($pointIds);
         } catch (Throwable $exception) {
             Log::warning('Unable to remove design image vectors.', [
+                'design' => $design->public_id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+
+        try {
+            $this->google->removeDesign($design);
+        } catch (Throwable $exception) {
+            Log::warning('Unable to remove design images from Google Product Search.', [
                 'design' => $design->public_id,
                 'error' => $exception->getMessage(),
             ]);
@@ -319,5 +390,18 @@ class DesignImageMatchingService
             'name' => basename($design->preview_path),
             'path' => $design->preview_path,
         ]];
+    }
+
+    private function imageExtension(string $mime, string $name): string
+    {
+        return match (strtolower($mime)) {
+            'image/jpeg', 'image/jpg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            'image/gif' => 'gif',
+            'image/bmp' => 'bmp',
+            'image/tiff' => 'tiff',
+            default => strtolower(pathinfo($name, PATHINFO_EXTENSION)) ?: 'jpg',
+        };
     }
 }

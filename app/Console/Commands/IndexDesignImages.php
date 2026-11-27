@@ -10,7 +10,7 @@ class IndexDesignImages extends Command
 {
     protected $signature = 'designs:index-images {--design= : Index only one public design ID}';
 
-    protected $description = 'Generate image fingerprints and vector index entries for marketplace designs';
+    protected $description = 'Generate local, Qdrant and Google image-search index entries for marketplace designs';
 
     public function handle(DesignImageMatchingService $matching): int
     {

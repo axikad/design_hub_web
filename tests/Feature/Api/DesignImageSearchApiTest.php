@@ -5,6 +5,7 @@ namespace Tests\Feature\Api;
 use App\Models\Design;
 use App\Models\User;
 use App\Services\DesignImageMatchingService;
+use App\Services\GoogleProductSearchIndex;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -24,6 +25,7 @@ class DesignImageSearchApiTest extends TestCase
         config([
             'designhub.image_matching.qdrant_url' => null,
             'designhub.image_matching.qdrant_api_key' => null,
+            'designhub.image_matching.google.enabled' => false,
         ]);
         Storage::fake('public');
         $owner = User::factory()->create();
@@ -64,5 +66,58 @@ class DesignImageSearchApiTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonPath('code', 'validation_error')
             ->assertJsonStructure(['errors' => ['image']]);
+    }
+
+    public function test_design_sync_records_google_product_search_metadata(): void
+    {
+        if (! function_exists('imagecreatetruecolor')) {
+            $this->markTestSkipped('GD is not installed.');
+        }
+
+        config([
+            'designhub.image_matching.qdrant_url' => null,
+            'designhub.image_matching.qdrant_api_key' => null,
+        ]);
+        Storage::fake('public');
+        $owner = User::factory()->create();
+        $image = UploadedFile::fake()->image('reference.png', 320, 240);
+        $path = $image->store('previews/'.$owner->public_id, 'public');
+        $design = Design::query()->create([
+            'user_id' => $owner->id,
+            'title' => 'Indexed design',
+            'price_paise' => 2500,
+            'size' => '10 x 10',
+            'color' => '',
+            'images' => [['name' => 'reference.png', 'path' => $path]],
+        ]);
+
+        $google = $this->mock(GoogleProductSearchIndex::class);
+        $google->shouldReceive('enabled')->andReturnTrue();
+        $google->shouldReceive('upsertDesign')
+            ->once()
+            ->withArgs(function (Design $indexedDesign, array $images) use ($design): bool {
+                return $indexedDesign->is($design)
+                    && count($images) === 1
+                    && $images[0]['mime'] === 'image/png'
+                    && $images[0]['extension'] === 'png'
+                    && $images[0]['index'] === 0;
+            })
+            ->andReturn([[
+                'index' => 0,
+                'productId' => $design->public_id,
+                'referenceImageId' => 'image-0-reference',
+                'gcsUri' => 'gs://designhub-test/designs/'.$design->public_id.'/reference.png',
+            ]]);
+
+        app(DesignImageMatchingService::class)->syncDesign($design);
+
+        $this->assertDatabaseHas('design_image_fingerprints', [
+            'design_id' => $design->id,
+            'image_index' => 0,
+            'google_product_id' => $design->public_id,
+            'google_reference_image_id' => 'image-0-reference',
+            'google_status' => 'ready',
+            'google_error' => null,
+        ]);
     }
 }
