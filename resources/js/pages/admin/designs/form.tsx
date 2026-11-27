@@ -628,6 +628,19 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                     {config?.pricing || config?.designFileType ? (
                         <AdminFormPanel title="Pricing and format" description="Set the enabled marketplace pricing and format fields." icon={Tag}>
                             <div className="grid gap-5 sm:grid-cols-2">
+                                {config?.designFileType ? (
+                                    <div className="self-start">
+                                        <SelectField
+                                            label="File type"
+                                            value={data.designFileTypeId}
+                                            onChange={(value) => setData('designFileTypeId', value)}
+                                            options={availableFileTypes.map((item) => ({ ...item, name: `${item.name} (.${item.extension})` }))}
+                                            error={errors.designFileTypeId}
+                                            disabled={!availableFileTypes.length}
+                                            required={config.required.designFileType}
+                                        />
+                                    </div>
+                                ) : null}
                                 {config?.pricing ? (
                                     <div className="grid gap-2">
                                         <Label htmlFor="priceRupees">Price (INR) {config.required.pricing ? <RequiredMark /> : null}</Label>
@@ -642,20 +655,11 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                             className={inputClass}
                                         />
                                         <InputError message={errors.priceRupees} />
-                                        <MarketplacePricingPreview priceRupees={data.priceRupees} sellerId={data.ownerId} />
                                     </div>
                                 ) : null}
-                                {config?.designFileType ? (
-                                    <div className="self-start">
-                                        <SelectField
-                                            label="File type"
-                                            value={data.designFileTypeId}
-                                            onChange={(value) => setData('designFileTypeId', value)}
-                                            options={availableFileTypes.map((item) => ({ ...item, name: `${item.name} (.${item.extension})` }))}
-                                            error={errors.designFileTypeId}
-                                            disabled={!availableFileTypes.length}
-                                            required={config.required.designFileType}
-                                        />
+                                {config?.pricing ? (
+                                    <div className="sm:col-span-2">
+                                        <MarketplacePricingPreview priceRupees={data.priceRupees} sellerId={data.ownerId} wide />
                                     </div>
                                 ) : null}
                                 {config?.designFileType && !availableFileTypes.length ? (

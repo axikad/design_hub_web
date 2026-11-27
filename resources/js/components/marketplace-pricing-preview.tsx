@@ -25,7 +25,15 @@ type Preview = {
 
 const formatMoney = (paise: number, currency: string) => new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format(paise / 100);
 
-export function MarketplacePricingPreview({ priceRupees, sellerId }: { priceRupees: string; sellerId?: string }) {
+export function MarketplacePricingPreview({
+    priceRupees,
+    sellerId,
+    wide = false,
+}: {
+    priceRupees: string;
+    sellerId?: string;
+    wide?: boolean;
+}) {
     const [preview, setPreview] = useState<Preview | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -84,6 +92,7 @@ export function MarketplacePricingPreview({ priceRupees, sellerId }: { priceRupe
 
     return (
         <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/60 p-4 dark:border-indigo-900/60 dark:bg-indigo-950/20">
+            <div className={wide ? 'sm:ml-auto sm:w-1/2 sm:pl-2.5' : undefined}>
             <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                     <ReceiptIndianRupee className="size-4 text-indigo-600 dark:text-indigo-300" />
@@ -145,6 +154,7 @@ export function MarketplacePricingPreview({ priceRupees, sellerId }: { priceRupe
                     </p>
                 </>
             ) : null}
+            </div>
         </div>
     );
 }
