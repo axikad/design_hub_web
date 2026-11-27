@@ -443,31 +443,32 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                     </AdminFormPanel>
 
                     {config?.designSpecifications && data.variants.length ? (
-                        <AdminFormPanel
-                            title="Design type specifications"
-                            description="Enter specifications and one image for every catalog or custom design type."
-                            icon={Layers3}
-                        >
-                            <div>
-                                {config.specificationModes.designProperty && config.specificationModes.technicalSpecifications ? (
-                                    <div className="mb-5 flex justify-end">
-                                        <div className="inline-flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                                            <button
-                                                type="button"
-                                                role="switch"
-                                                aria-checked={specificationMode === 'design_property'}
-                                                aria-label="Use design property mode"
-                                                onClick={() => updateSpecificationMode(specificationMode === 'design_property' ? 'technical' : 'design_property')}
-                                                className={`relative h-6 w-11 rounded-full transition ${specificationMode === 'design_property' ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'}`}
-                                            >
-                                                <span
-                                                    className={`absolute top-1 size-4 rounded-full bg-white shadow-sm transition ${specificationMode === 'design_property' ? 'left-6' : 'left-1'}`}
-                                                />
-                                            </button>
-                                            <span>Design property</span>
-                                        </div>
+                        <>
+                            {config.specificationModes.designProperty && config.specificationModes.technicalSpecifications ? (
+                                <div className="flex justify-end">
+                                    <div className="inline-flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                        <button
+                                            type="button"
+                                            role="switch"
+                                            aria-checked={specificationMode === 'design_property'}
+                                            aria-label="Use design property mode"
+                                            onClick={() => updateSpecificationMode(specificationMode === 'design_property' ? 'technical' : 'design_property')}
+                                            className={`relative h-6 w-11 rounded-full transition ${specificationMode === 'design_property' ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'}`}
+                                        >
+                                            <span
+                                                className={`absolute top-1 size-4 rounded-full bg-white shadow-sm transition ${specificationMode === 'design_property' ? 'left-6' : 'left-1'}`}
+                                            />
+                                        </button>
+                                        <span>Design property</span>
                                     </div>
-                                ) : null}
+                                </div>
+                            ) : null}
+                            <AdminFormPanel
+                                title="Design type specifications"
+                                description="Enter specifications and one image for every catalog or custom design type."
+                                icon={Layers3}
+                            >
+                                <div>
                                 {data.variants.map((variant, index) => {
                                     if (index !== activeVariantIndex) return null;
                                     const type = types.find((option) => option.id === variant.typeId);
@@ -597,8 +598,9 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                         </div>
                                     );
                                 })}
-                            </div>
-                        </AdminFormPanel>
+                                </div>
+                            </AdminFormPanel>
+                        </>
                     ) : null}
 
                     {config?.sequenceType ? (
