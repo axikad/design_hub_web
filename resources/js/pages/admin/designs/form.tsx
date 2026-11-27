@@ -450,30 +450,21 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                         >
                             <div>
                                 {config.specificationModes.designProperty && config.specificationModes.technicalSpecifications ? (
-                                    <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-900/50">
-                                        <div>
-                                            <p className="text-sm font-semibold text-slate-900 dark:text-white">Specification mode</p>
-                                            <p className="mt-1 text-xs text-slate-500">This selection applies to every design type.</p>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className={`text-sm font-semibold ${specificationMode === 'design_property' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500'}`}>
-                                                Design property
-                                            </span>
+                                    <div className="mb-5 flex justify-end">
+                                        <div className="inline-flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
                                             <button
                                                 type="button"
                                                 role="switch"
-                                                aria-checked={specificationMode === 'technical'}
-                                                aria-label="Use technical specifications for every design type"
-                                                onClick={() => updateSpecificationMode(specificationMode === 'technical' ? 'design_property' : 'technical')}
-                                                className={`relative h-7 w-12 rounded-full transition ${specificationMode === 'technical' ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'}`}
+                                                aria-checked={specificationMode === 'design_property'}
+                                                aria-label="Use design property mode"
+                                                onClick={() => updateSpecificationMode(specificationMode === 'design_property' ? 'technical' : 'design_property')}
+                                                className={`relative h-6 w-11 rounded-full transition ${specificationMode === 'design_property' ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'}`}
                                             >
                                                 <span
-                                                    className={`absolute top-1 size-5 rounded-full bg-white shadow-sm transition ${specificationMode === 'technical' ? 'left-6' : 'left-1'}`}
+                                                    className={`absolute top-1 size-4 rounded-full bg-white shadow-sm transition ${specificationMode === 'design_property' ? 'left-6' : 'left-1'}`}
                                                 />
                                             </button>
-                                            <span className={`text-sm font-semibold ${specificationMode === 'technical' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500'}`}>
-                                                Technical specifications
-                                            </span>
+                                            <span>Design property</span>
                                         </div>
                                     </div>
                                 ) : null}
