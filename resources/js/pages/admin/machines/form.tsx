@@ -24,7 +24,6 @@ type DesignFieldKey =
     | 'pricing';
 type SpecificationFieldKey = 'image' | 'nameOrNumber' | 'stitchCount' | 'needle' | 'area' | 'height' | 'width';
 type DesignFormConfig = Record<DesignFieldKey, boolean> & {
-    designTypeImageCards: boolean;
     specificationModes: {
         designProperty: boolean;
         technicalSpecifications: boolean;
@@ -129,7 +128,6 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
 
         setData('designFormConfig', {
             ...data.designFormConfig,
-            ...(key === 'image' && !enabled ? { designTypeImageCards: false } : {}),
             ...(key === 'image' && !enabled
                 ? {
                       specificationModes: {
@@ -479,7 +477,9 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
                                                 <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
                                                     <Checkbox
                                                         checked={data.designFormConfig.specificationModes.technicalSpecifications}
-                                                        onCheckedChange={(value) => toggleSpecificationMode('technicalSpecifications', value === true)}
+                                                        onCheckedChange={(value) =>
+                                                            toggleSpecificationMode('technicalSpecifications', value === true)
+                                                        }
                                                         className="mt-0.5"
                                                     />
                                                     <span>
@@ -517,29 +517,6 @@ export default function AdminMachineForm({ machine, nextSortOrder, defaultDesign
                                                     )}
                                                 </div>
                                             ))}
-                                            <div className="rounded-lg border border-indigo-200 bg-white p-3 dark:border-indigo-800 dark:bg-slate-900">
-                                                <label className="flex cursor-pointer items-start gap-3">
-                                                    <Checkbox
-                                                        checked={data.designFormConfig.designTypeImageCards}
-                                                        disabled={!data.designFormConfig.specificationFields.image}
-                                                        onCheckedChange={(value) =>
-                                                            setData('designFormConfig', {
-                                                                ...data.designFormConfig,
-                                                                designTypeImageCards: value === true,
-                                                            })
-                                                        }
-                                                        className="mt-0.5"
-                                                    />
-                                                    <span>
-                                                        <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">
-                                                            Show design types as image cards on mobile
-                                                        </span>
-                                                        <span className="mt-1 block text-xs text-slate-500">
-                                                            Mobile design details can show each type name and image as a card instead of the specification table.
-                                                        </span>
-                                                    </span>
-                                                </label>
-                                            </div>
                                         </div>
                                     ) : null}
                                 </div>

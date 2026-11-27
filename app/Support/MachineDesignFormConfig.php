@@ -32,7 +32,6 @@ final class MachineDesignFormConfig
 
         return [
             ...$fields,
-            'designTypeImageCards' => false,
             'specificationModes' => [
                 'designProperty' => true,
                 'technicalSpecifications' => true,
@@ -57,7 +56,6 @@ final class MachineDesignFormConfig
         $normalized = self::defaults();
         $fieldKeys = array_keys($normalized['required']);
 
-        $normalized['designTypeImageCards'] = (bool) ($config['designTypeImageCards'] ?? false);
         $savedModes = isset($config['specificationModes']) && is_array($config['specificationModes'])
             ? $config['specificationModes']
             : null;
@@ -124,10 +122,6 @@ final class MachineDesignFormConfig
         if (! $normalized['designTypes']) {
             $normalized['designSpecifications'] = false;
             $normalized['required']['designSpecifications'] = false;
-        }
-
-        if (! $normalized['designSpecifications'] || ! $normalized['specificationFields']['image']) {
-            $normalized['designTypeImageCards'] = false;
         }
 
         if (! $normalized['designSpecifications']) {

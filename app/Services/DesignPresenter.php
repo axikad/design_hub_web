@@ -44,7 +44,6 @@ class DesignPresenter
             'pricePaise' => $design->price_paise,
             'sequenceType' => $design->sequence_type,
             'measurementUnit' => 'mm',
-            'designTypeImageCards' => $machine?->normalizedDesignFormConfig()['designTypeImageCards'] ?? false,
             'designTypes' => $this->designTypes($design),
             'details' => $this->detailsWithoutSequenceType($design->details ?? $this->legacyDetails($design)),
             'images' => $images,

@@ -38,7 +38,6 @@ class MachineManagementTest extends TestCase
                 'category' => true,
                 'designTypes' => true,
                 'designSpecifications' => true,
-                'designTypeImageCards' => true,
                 'sequenceType' => false,
                 'designFileType' => true,
                 'previewImages' => true,
@@ -88,7 +87,6 @@ class MachineManagementTest extends TestCase
         $this->assertTrue($config['category']);
         $this->assertTrue($config['designTypes']);
         $this->assertTrue($config['designSpecifications']);
-        $this->assertTrue($config['designTypeImageCards']);
         $this->assertFalse($config['stitchFiles']);
         $this->assertTrue($config['designFileType']);
         $this->assertTrue($config['previewImages']);

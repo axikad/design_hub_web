@@ -232,7 +232,10 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
             return;
         }
         if (selectedIndex >= 0) {
-            setData('variants', data.variants.filter((_, index) => index !== selectedIndex));
+            setData(
+                'variants',
+                data.variants.filter((_, index) => index !== selectedIndex),
+            );
             setActiveVariantIndex(Math.max(0, selectedIndex - 1));
             return;
         }
@@ -254,7 +257,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
             return Math.max(0, index - 1);
         });
     };
-    const updateVariant = <K extends keyof VariantInput,>(index: number, field: K, value: VariantInput[K]) => {
+    const updateVariant = <K extends keyof VariantInput>(index: number, field: K, value: VariantInput[K]) => {
         setData(
             'variants',
             data.variants.map((variant, variantIndex) => (variantIndex === index ? { ...variant, [field]: value } : variant)),
@@ -267,9 +270,41 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
         );
     };
     const updateSpecificationMode = (mode: VariantInput['specificationMode']) => {
+        if (mode === specificationMode) return;
+
+        const typeNames = data.variants.map((variant, index) => {
+            const type = types.find((option) => option.id === variant.typeId);
+
+            return type?.name || variant.customTypeName || `Custom type ${index + 1}`;
+        });
+        const removedValues = mode === 'design_property' ? 'stitch count, needle, area, height and width' : 'design property images';
+        const hasDiscardedData = data.variants.some((variant) =>
+            mode === 'design_property'
+                ? [variant.stitchCount, variant.needle, variant.area, variant.height, variant.width].some((value) => value.trim() !== '')
+                : Boolean(variant.image || variant.imageUri),
+        );
+        const confirmed =
+            !hasDiscardedData ||
+            window.confirm(
+                `Change all selected design types to ${mode === 'design_property' ? 'Design property' : 'Technical specifications'} mode?\n\nThis global switch applies to: ${typeNames.join(', ')}.\nThe entered ${removedValues} will be removed. You will need to enter the fields required by the new mode again.`,
+            );
+
+        if (!confirmed) return;
+
         setData(
             'variants',
-            data.variants.map((variant) => ({ ...variant, specificationMode: mode })),
+            data.variants.map((variant) => ({
+                ...variant,
+                specificationMode: mode,
+                ...(mode === 'design_property'
+                    ? { stitchCount: '', needle: '', area: '', height: '', width: '' }
+                    : {
+                          image: null,
+                          imageUri: null,
+                          imageName: null,
+                          removeImage: Boolean(variant.imageUri || variant.image),
+                      }),
+            })),
         );
     };
     const submit: FormEventHandler = (event) => {
@@ -316,7 +351,9 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                             <div className={`grid gap-5 ${config?.title ? 'sm:grid-cols-2' : ''}`}>
                                 {canChooseSeller ? (
                                     <div className="grid gap-2">
-                                        <Label>Seller <RequiredMark /></Label>
+                                        <Label>
+                                            Seller <RequiredMark />
+                                        </Label>
                                         <Select value={data.ownerId} onValueChange={(value) => setData('ownerId', value)}>
                                             <SelectTrigger className={selectClass}>
                                                 <SelectValue placeholder="Select user" />
@@ -360,7 +397,14 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                         icon={Layers3}
                     >
                         <div className="grid gap-5 sm:grid-cols-3">
-                            <SelectField label="Machine" value={data.machineId} onChange={selectMachine} options={catalog} error={errors.machineId} required />
+                            <SelectField
+                                label="Machine"
+                                value={data.machineId}
+                                onChange={selectMachine}
+                                options={catalog}
+                                error={errors.machineId}
+                                required
+                            />
                             {config?.machineType ? (
                                 <SelectField
                                     key={`machine-type-${data.machineId}`}
@@ -410,7 +454,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                                         ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm'
                                                         : selected
                                                           ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'
-                                                        : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+                                                          : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
                                                 }`}
                                             >
                                                 {type.name}
@@ -422,9 +466,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                             <button
                                                 key={`custom-tab-${index}`}
                                                 type="button"
-                                                onClick={() =>
-                                                    index === activeVariantIndex ? removeVariant(index) : setActiveVariantIndex(index)
-                                                }
+                                                onClick={() => (index === activeVariantIndex ? removeVariant(index) : setActiveVariantIndex(index))}
                                                 className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
                                                     index === activeVariantIndex
                                                         ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm'
@@ -451,8 +493,10 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                             type="button"
                                             role="switch"
                                             aria-checked={specificationMode === 'design_property'}
-                                            aria-label="Use design property mode"
-                                            onClick={() => updateSpecificationMode(specificationMode === 'design_property' ? 'technical' : 'design_property')}
+                                            aria-label="Use design property mode for all selected design types"
+                                            onClick={() =>
+                                                updateSpecificationMode(specificationMode === 'design_property' ? 'technical' : 'design_property')
+                                            }
                                             className={`relative h-6 w-11 rounded-full transition ${specificationMode === 'design_property' ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'}`}
                                         >
                                             <span
@@ -469,135 +513,135 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                 icon={Layers3}
                             >
                                 <div>
-                                {data.variants.map((variant, index) => {
-                                    if (index !== activeVariantIndex) return null;
-                                    const type = types.find((option) => option.id === variant.typeId);
-                                    const isCustom = !variant.typeId;
-                                    const fieldError = (field: keyof VariantInput) =>
-                                        (errors as Record<string, string>)[`variants.${index}.${field}`];
+                                    {data.variants.map((variant, index) => {
+                                        if (index !== activeVariantIndex) return null;
+                                        const type = types.find((option) => option.id === variant.typeId);
+                                        const isCustom = !variant.typeId;
+                                        const fieldError = (field: keyof VariantInput) =>
+                                            (errors as Record<string, string>)[`variants.${index}.${field}`];
 
-                                    return (
-                                        <div
-                                            key={`${variant.typeId || 'custom'}-${index}`}
-                                            className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700"
-                                        >
-                                            <div className="mb-4 flex items-center justify-between gap-3">
-                                                <h3 className="font-semibold text-slate-900 dark:text-white">
-                                                    {type?.name || variant.customTypeName || 'Custom design type'}
-                                                </h3>
-                                                {isCustom ? (
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="text-red-600 hover:text-red-700"
-                                                        onClick={() => removeVariant(index)}
-                                                    >
-                                                        <Trash2 className="size-4" /> Remove
-                                                    </Button>
-                                                ) : null}
+                                        return (
+                                            <div
+                                                key={`${variant.typeId || 'custom'}-${index}`}
+                                                className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700"
+                                            >
+                                                <div className="mb-4 flex items-center justify-between gap-3">
+                                                    <h3 className="font-semibold text-slate-900 dark:text-white">
+                                                        {type?.name || variant.customTypeName || 'Custom design type'}
+                                                    </h3>
+                                                    {isCustom ? (
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-red-600 hover:text-red-700"
+                                                            onClick={() => removeVariant(index)}
+                                                        >
+                                                            <Trash2 className="size-4" /> Remove
+                                                        </Button>
+                                                    ) : null}
+                                                </div>
+                                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                                    {isCustom ? (
+                                                        <VariantField
+                                                            label="Custom design type name"
+                                                            value={variant.customTypeName}
+                                                            onChange={(value) => updateVariant(index, 'customTypeName', value)}
+                                                            error={fieldError('customTypeName')}
+                                                        />
+                                                    ) : null}
+                                                    {config.specificationFields.nameOrNumber ? (
+                                                        <VariantField
+                                                            label="Name or number"
+                                                            value={variant.nameOrNumber}
+                                                            onChange={(value) => updateVariant(index, 'nameOrNumber', value)}
+                                                            error={fieldError('nameOrNumber')}
+                                                            required={config.specificationFields.required.nameOrNumber}
+                                                        />
+                                                    ) : null}
+                                                    {variant.specificationMode === 'technical' && config.specificationFields.stitchCount ? (
+                                                        <VariantField
+                                                            label="Stitch count"
+                                                            type="number"
+                                                            min="0"
+                                                            value={variant.stitchCount}
+                                                            onChange={(value) => updateVariant(index, 'stitchCount', value)}
+                                                            error={fieldError('stitchCount')}
+                                                            required={config.specificationFields.required.stitchCount}
+                                                        />
+                                                    ) : null}
+                                                    {variant.specificationMode === 'technical' && config.specificationFields.needle ? (
+                                                        <VariantField
+                                                            label="Needle"
+                                                            type="number"
+                                                            min="0"
+                                                            value={variant.needle}
+                                                            onChange={(value) => updateVariant(index, 'needle', value)}
+                                                            error={fieldError('needle')}
+                                                            required={config.specificationFields.required.needle}
+                                                        />
+                                                    ) : null}
+                                                    {variant.specificationMode === 'technical' && config.specificationFields.area ? (
+                                                        <VariantField
+                                                            label="Area"
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.01"
+                                                            suffix="mm"
+                                                            value={variant.area}
+                                                            onChange={(value) => updateVariant(index, 'area', value)}
+                                                            error={fieldError('area')}
+                                                            required={config.specificationFields.required.area}
+                                                        />
+                                                    ) : null}
+                                                    {variant.specificationMode === 'technical' && config.specificationFields.height ? (
+                                                        <VariantField
+                                                            label="Height"
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.01"
+                                                            suffix="mm"
+                                                            value={variant.height}
+                                                            onChange={(value) => updateVariant(index, 'height', value)}
+                                                            error={fieldError('height')}
+                                                            required={config.specificationFields.required.height}
+                                                        />
+                                                    ) : null}
+                                                    {variant.specificationMode === 'technical' && config.specificationFields.width ? (
+                                                        <VariantField
+                                                            label="Width"
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.01"
+                                                            suffix="mm"
+                                                            value={variant.width}
+                                                            onChange={(value) => updateVariant(index, 'width', value)}
+                                                            error={fieldError('width')}
+                                                            required={config.specificationFields.required.width}
+                                                        />
+                                                    ) : null}
+                                                    {variant.specificationMode === 'design_property' && config.specificationFields.image ? (
+                                                        <VariantImageField
+                                                            id={`variant-image-${index}`}
+                                                            image={variant.image}
+                                                            imageUri={variant.imageUri}
+                                                            imageName={variant.imageName}
+                                                            removed={variant.removeImage}
+                                                            required
+                                                            error={fieldError('image')}
+                                                            onChange={(image) => updateVariantFields(index, { image, removeImage: false })}
+                                                            onRemove={() =>
+                                                                updateVariantFields(index, {
+                                                                    image: null,
+                                                                    removeImage: Boolean(variant.imageUri),
+                                                                })
+                                                            }
+                                                        />
+                                                    ) : null}
+                                                </div>
                                             </div>
-                                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                                {isCustom ? (
-                                                    <VariantField
-                                                        label="Custom design type name"
-                                                        value={variant.customTypeName}
-                                                        onChange={(value) => updateVariant(index, 'customTypeName', value)}
-                                                        error={fieldError('customTypeName')}
-                                                    />
-                                                ) : null}
-                                                {config.specificationFields.nameOrNumber ? (
-                                                    <VariantField
-                                                        label="Name or number"
-                                                        value={variant.nameOrNumber}
-                                                        onChange={(value) => updateVariant(index, 'nameOrNumber', value)}
-                                                        error={fieldError('nameOrNumber')}
-                                                        required={config.specificationFields.required.nameOrNumber}
-                                                    />
-                                                ) : null}
-                                                {variant.specificationMode === 'technical' && config.specificationFields.stitchCount ? (
-                                                    <VariantField
-                                                        label="Stitch count"
-                                                        type="number"
-                                                        min="0"
-                                                        value={variant.stitchCount}
-                                                        onChange={(value) => updateVariant(index, 'stitchCount', value)}
-                                                        error={fieldError('stitchCount')}
-                                                        required={config.specificationFields.required.stitchCount}
-                                                    />
-                                                ) : null}
-                                                {variant.specificationMode === 'technical' && config.specificationFields.needle ? (
-                                                    <VariantField
-                                                        label="Needle"
-                                                        type="number"
-                                                        min="0"
-                                                        value={variant.needle}
-                                                        onChange={(value) => updateVariant(index, 'needle', value)}
-                                                        error={fieldError('needle')}
-                                                        required={config.specificationFields.required.needle}
-                                                    />
-                                                ) : null}
-                                                {variant.specificationMode === 'technical' && config.specificationFields.area ? (
-                                                    <VariantField
-                                                        label="Area"
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.01"
-                                                        suffix="mm"
-                                                        value={variant.area}
-                                                        onChange={(value) => updateVariant(index, 'area', value)}
-                                                        error={fieldError('area')}
-                                                        required={config.specificationFields.required.area}
-                                                    />
-                                                ) : null}
-                                                {variant.specificationMode === 'technical' && config.specificationFields.height ? (
-                                                    <VariantField
-                                                        label="Height"
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.01"
-                                                        suffix="mm"
-                                                        value={variant.height}
-                                                        onChange={(value) => updateVariant(index, 'height', value)}
-                                                        error={fieldError('height')}
-                                                        required={config.specificationFields.required.height}
-                                                    />
-                                                ) : null}
-                                                {variant.specificationMode === 'technical' && config.specificationFields.width ? (
-                                                    <VariantField
-                                                        label="Width"
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.01"
-                                                        suffix="mm"
-                                                        value={variant.width}
-                                                        onChange={(value) => updateVariant(index, 'width', value)}
-                                                        error={fieldError('width')}
-                                                        required={config.specificationFields.required.width}
-                                                    />
-                                                ) : null}
-                                                {variant.specificationMode === 'design_property' && config.specificationFields.image ? (
-                                                    <VariantImageField
-                                                        id={`variant-image-${index}`}
-                                                        image={variant.image}
-                                                        imageUri={variant.imageUri}
-                                                        imageName={variant.imageName}
-                                                        removed={variant.removeImage}
-                                                        required
-                                                        error={fieldError('image')}
-                                                        onChange={(image) => updateVariantFields(index, { image, removeImage: false })}
-                                                        onRemove={() =>
-                                                            updateVariantFields(index, {
-                                                                image: null,
-                                                                removeImage: Boolean(variant.imageUri),
-                                                            })
-                                                        }
-                                                    />
-                                                ) : null}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                                        );
+                                    })}
                                 </div>
                             </AdminFormPanel>
                         </>
@@ -697,7 +741,9 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                             ))}
                                         </div>
                                     ) : null}
-                                    <Label htmlFor="previewImages">Preview images {!editing && config.required.previewImages ? <RequiredMark /> : null}</Label>
+                                    <Label htmlFor="previewImages">
+                                        Preview images {!editing && config.required.previewImages ? <RequiredMark /> : null}
+                                    </Label>
                                     <Input
                                         id="previewImages"
                                         type="file"
@@ -740,7 +786,9 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                             </ul>
                                         </div>
                                     ) : null}
-                                    <Label htmlFor="stitchFiles">Stitch files {!editing && config.required.stitchFiles ? <RequiredMark /> : null}</Label>
+                                    <Label htmlFor="stitchFiles">
+                                        Stitch files {!editing && config.required.stitchFiles ? <RequiredMark /> : null}
+                                    </Label>
                                     <Input
                                         id="stitchFiles"
                                         type="file"
@@ -860,7 +908,9 @@ type SelectFieldProps = {
 function SelectField({ label, value, onChange, options, error, disabled = false, required = false }: SelectFieldProps) {
     return (
         <div className="grid gap-2">
-            <Label>{label} {required ? <RequiredMark /> : null}</Label>
+            <Label>
+                {label} {required ? <RequiredMark /> : null}
+            </Label>
             <Select value={value} onValueChange={onChange} disabled={disabled}>
                 <SelectTrigger className={selectClass}>
                     <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
@@ -893,7 +943,9 @@ type VariantFieldProps = {
 function VariantField({ label, value, onChange, error, type = 'text', min, step, suffix, required = true }: VariantFieldProps) {
     return (
         <div className="grid gap-2">
-            <Label>{label} {required ? <RequiredMark /> : null}</Label>
+            <Label>
+                {label} {required ? <RequiredMark /> : null}
+            </Label>
             <div className="relative">
                 <Input
                     type={type}
@@ -917,5 +969,9 @@ function VariantField({ label, value, onChange, error, type = 'text', min, step,
 }
 
 function RequiredMark() {
-    return <span className="text-red-500" aria-hidden="true">*</span>;
+    return (
+        <span className="text-red-500" aria-hidden="true">
+            *
+        </span>
+    );
 }

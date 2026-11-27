@@ -371,9 +371,6 @@ class ApiResponseContractTest extends TestCase
         $this->seed(DesignFormOptionSeeder::class);
         $this->seed(DesignFileTypeSeeder::class);
         $machine = Machine::query()->where('public_id', 'embroidery')->firstOrFail();
-        $machineConfig = $machine->normalizedDesignFormConfig();
-        $machineConfig['designTypeImageCards'] = true;
-        $machine->update(['design_form_config' => $machineConfig]);
         $preview = $this->upload($user, 'public', 'previews/'.$user->public_id.'/multi.jpg', 'photo', 'multi.jpg');
         $sleeveImage = $this->upload($user, 'public', 'previews/'.$user->public_id.'/sleeve.jpg', 'photo', 'sleeve.jpg');
         $stitch = $this->upload($user, 'local', 'stitch/'.$user->public_id.'/multi.emb', 'stitch', 'multi.emb');
@@ -402,6 +399,7 @@ class ApiResponseContractTest extends TestCase
                 ],
                 [
                     'typeId' => 'sleeve',
+                    'specificationMode' => 'design_property',
                     'details' => [
                         'image' => [
                             'name' => 'sleeve.jpg',
@@ -441,11 +439,11 @@ class ApiResponseContractTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.title', 'Neck 101')
             ->assertJsonPath('data.typeId', 'neckline')
-            ->assertJsonPath('data.designTypeImageCards', true)
             ->assertJsonPath('data.designTypes.0.typeId', 'neckline')
             ->assertJsonPath('data.designTypes.0.specificationMode', 'technical')
             ->assertJsonPath('data.designTypes.0.details.needle', 8)
             ->assertJsonPath('data.designTypes.1.typeId', 'sleeve')
+            ->assertJsonPath('data.designTypes.1.specificationMode', 'design_property')
             ->assertJsonPath('data.designTypes.1.details.image.name', 'sleeve.jpg')
             ->assertJsonPath('data.designTypes.1.details.image.uri', $uploads->publicUrl($sleeveImage))
             ->assertJsonPath('data.designTypes.1.details.nameOrNumber', 'Sleeve 202')
@@ -458,6 +456,16 @@ class ApiResponseContractTest extends TestCase
 
         $designId = $response->json('data.id');
         $this->assertDatabaseCount('design_variants', 3);
+        $this->assertDatabaseHas('design_variants', [
+            'design_id' => Design::query()->where('public_id', $designId)->value('id'),
+            'design_type_id' => DesignType::query()->where('public_id', 'neckline')->value('id'),
+            'specification_mode' => 'technical',
+        ]);
+        $this->assertDatabaseHas('design_variants', [
+            'design_id' => Design::query()->where('public_id', $designId)->value('id'),
+            'design_type_id' => DesignType::query()->where('public_id', 'sleeve')->value('id'),
+            'specification_mode' => 'design_property',
+        ]);
 
         $payload['designTypes'] = [$payload['designTypes'][1]];
         $payload['designTypes'][0]['details']['nameOrNumber'] = 'Sleeve updated';
@@ -472,6 +480,7 @@ class ApiResponseContractTest extends TestCase
         $this->assertDatabaseCount('design_variants', 1);
 
         $payload['designTypes'][0]['details']['removeImage'] = true;
+        $payload['designTypes'][0]['specificationMode'] = 'technical';
         unset($payload['designTypes'][0]['details']['image']);
 
         $this->patchJson('/api/v1/designs/'.$designId, $payload)
