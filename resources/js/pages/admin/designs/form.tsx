@@ -476,11 +476,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                             </span>
                                         </div>
                                     </div>
-                                ) : (
-                                    <div className="mb-5 inline-flex rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
-                                        {specificationMode === 'design_property' ? 'Design property' : 'Technical specifications'}
-                                    </div>
-                                )}
+                                ) : null}
                                 {data.variants.map((variant, index) => {
                                     if (index !== activeVariantIndex) return null;
                                     const type = types.find((option) => option.id === variant.typeId);
