@@ -118,6 +118,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
     const initialFileTypes = fileTypes.filter((fileType) => fileType.machineIds.includes(initialMachine?.id ?? ''));
     const initialFileType = initialFileTypes.find((fileType) => fileType.id === design?.designFileTypeId) ?? initialFileTypes[0];
     const editing = Boolean(design?.id);
+    const initialSpecificationMode = design?.variants?.[0]?.specificationMode ?? defaultSpecificationMode(initialConfig);
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Overview', href: '/dashboard' },
         { title: 'Designs', href: '/admin/designs' },
@@ -135,6 +136,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
         variants: design?.variants?.length
             ? design.variants.map((variant) => ({
                   ...variant,
+                  specificationMode: initialSpecificationMode,
                   customTypeName: variant.customTypeName ?? '',
                   image: null,
                   imageUri: variant.imageUri ?? null,
@@ -162,6 +164,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
         : uniqueCategories(machineTypes.flatMap((type) => type.categories));
     const types = categories.find((category) => category.id === data.categoryId)?.types ?? [];
     const availableFileTypes = fileTypes.filter((fileType) => fileType.machineIds.includes(data.machineId));
+    const specificationMode = data.variants[0]?.specificationMode ?? defaultSpecificationMode(config);
 
     useEffect(() => {
         if (!data.variants.length) {
@@ -233,11 +236,11 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
             setActiveVariantIndex(Math.max(0, selectedIndex - 1));
             return;
         }
-        setData('variants', [...data.variants, emptyVariant(typeId, defaultSpecificationMode(config))]);
+        setData('variants', [...data.variants, emptyVariant(typeId, specificationMode)]);
         setActiveVariantIndex(data.variants.length);
     };
     const addCustomType = () => {
-        setData('variants', [...data.variants, emptyCustomVariant(defaultSpecificationMode(config))]);
+        setData('variants', [...data.variants, emptyCustomVariant(specificationMode)]);
         setActiveVariantIndex(data.variants.length);
     };
     const removeVariant = (index: number) => {
@@ -261,6 +264,12 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
         setData(
             'variants',
             data.variants.map((variant, variantIndex) => (variantIndex === index ? { ...variant, ...fields } : variant)),
+        );
+    };
+    const updateSpecificationMode = (mode: VariantInput['specificationMode']) => {
+        setData(
+            'variants',
+            data.variants.map((variant) => ({ ...variant, specificationMode: mode })),
         );
     };
     const submit: FormEventHandler = (event) => {
@@ -440,6 +449,38 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                             icon={Layers3}
                         >
                             <div>
+                                {config.specificationModes.designProperty && config.specificationModes.technicalSpecifications ? (
+                                    <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-900/50">
+                                        <div>
+                                            <p className="text-sm font-semibold text-slate-900 dark:text-white">Specification mode</p>
+                                            <p className="mt-1 text-xs text-slate-500">This selection applies to every design type.</p>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className={`text-sm font-semibold ${specificationMode === 'design_property' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500'}`}>
+                                                Design property
+                                            </span>
+                                            <button
+                                                type="button"
+                                                role="switch"
+                                                aria-checked={specificationMode === 'technical'}
+                                                aria-label="Use technical specifications for every design type"
+                                                onClick={() => updateSpecificationMode(specificationMode === 'technical' ? 'design_property' : 'technical')}
+                                                className={`relative h-7 w-12 rounded-full transition ${specificationMode === 'technical' ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'}`}
+                                            >
+                                                <span
+                                                    className={`absolute top-1 size-5 rounded-full bg-white shadow-sm transition ${specificationMode === 'technical' ? 'left-6' : 'left-1'}`}
+                                                />
+                                            </button>
+                                            <span className={`text-sm font-semibold ${specificationMode === 'technical' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500'}`}>
+                                                Technical specifications
+                                            </span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="mb-5 inline-flex rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+                                        {specificationMode === 'design_property' ? 'Design property' : 'Technical specifications'}
+                                    </div>
+                                )}
                                 {data.variants.map((variant, index) => {
                                     if (index !== activeVariantIndex) return null;
                                     const type = types.find((option) => option.id === variant.typeId);
@@ -468,38 +509,6 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                                     </Button>
                                                 ) : null}
                                             </div>
-                                            {config.specificationModes.designProperty && config.specificationModes.technicalSpecifications ? (
-                                                <div className="mb-5 grid gap-2 rounded-xl bg-slate-100 p-1 sm:grid-cols-2 dark:bg-slate-800">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => updateVariant(index, 'specificationMode', 'design_property')}
-                                                        className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
-                                                            variant.specificationMode === 'design_property'
-                                                                ? 'bg-white text-indigo-700 shadow-sm dark:bg-slate-950 dark:text-indigo-300'
-                                                                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-                                                        }`}
-                                                    >
-                                                        Design property
-                                                        <span className="mt-0.5 block text-xs font-normal">Name or number + image</span>
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => updateVariant(index, 'specificationMode', 'technical')}
-                                                        className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
-                                                            variant.specificationMode === 'technical'
-                                                                ? 'bg-white text-indigo-700 shadow-sm dark:bg-slate-950 dark:text-indigo-300'
-                                                                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-                                                        }`}
-                                                    >
-                                                        Technical specifications
-                                                        <span className="mt-0.5 block text-xs font-normal">Name or number + production values</span>
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <div className="mb-5 inline-flex rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
-                                                    {variant.specificationMode === 'design_property' ? 'Design property' : 'Technical specifications'}
-                                                </div>
-                                            )}
                                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                                 {isCustom ? (
                                                     <VariantField
