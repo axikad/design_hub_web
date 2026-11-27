@@ -3,13 +3,14 @@ import { AdminPageHeader } from '@/components/admin/page-header';
 import InputError from '@/components/input-error';
 import { MarketplacePricingPreview } from '@/components/marketplace-pricing-preview';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, FileArchive, ImageIcon, Layers3, LoaderCircle, Plus, Save, Tag, Trash2, UserRound, X } from 'lucide-react';
+import { ArrowLeft, FileArchive, ImageIcon, Layers3, LoaderCircle, Plus, Save, Tag, Trash2, TriangleAlert, UserRound, X } from 'lucide-react';
 import { type FormEventHandler, useEffect, useRef, useState } from 'react';
 
 type OwnerOption = { id: string; label: string };
@@ -118,6 +119,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
     const initialFileTypes = fileTypes.filter((fileType) => fileType.machineIds.includes(initialMachine?.id ?? ''));
     const initialFileType = initialFileTypes.find((fileType) => fileType.id === design?.designFileTypeId) ?? initialFileTypes[0];
     const editing = Boolean(design?.id);
+    const [pendingSpecificationMode, setPendingSpecificationMode] = useState<VariantInput['specificationMode'] | null>(null);
     const initialSpecificationMode = design?.variants?.[0]?.specificationMode ?? defaultSpecificationMode(initialConfig);
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Overview', href: '/dashboard' },
@@ -269,27 +271,24 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
             data.variants.map((variant, variantIndex) => (variantIndex === index ? { ...variant, ...fields } : variant)),
         );
     };
-    const updateSpecificationMode = (mode: VariantInput['specificationMode']) => {
+    const requestSpecificationMode = (mode: VariantInput['specificationMode']) => {
         if (mode === specificationMode) return;
 
-        const typeNames = data.variants.map((variant, index) => {
-            const type = types.find((option) => option.id === variant.typeId);
-
-            return type?.name || variant.customTypeName || `Custom type ${index + 1}`;
-        });
-        const removedValues = mode === 'design_property' ? 'stitch count, needle, area, height and width' : 'design property images';
         const hasDiscardedData = data.variants.some((variant) =>
             mode === 'design_property'
                 ? [variant.stitchCount, variant.needle, variant.area, variant.height, variant.width].some((value) => value.trim() !== '')
                 : Boolean(variant.image || variant.imageUri),
         );
-        const confirmed =
-            !hasDiscardedData ||
-            window.confirm(
-                `Change all selected design types to ${mode === 'design_property' ? 'Design property' : 'Technical specifications'} mode?\n\nThis global switch applies to: ${typeNames.join(', ')}.\nThe entered ${removedValues} will be removed. You will need to enter the fields required by the new mode again.`,
-            );
+        if (hasDiscardedData) {
+            setPendingSpecificationMode(mode);
+            return;
+        }
 
-        if (!confirmed) return;
+        commitSpecificationMode(mode);
+    };
+
+    const commitSpecificationMode = (mode: VariantInput['specificationMode']) => {
+        setPendingSpecificationMode(null);
 
         setData(
             'variants',
@@ -329,6 +328,44 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={editing ? 'Edit design' : 'Add design'} />
+            <Dialog open={pendingSpecificationMode !== null} onOpenChange={(open) => !open && setPendingSpecificationMode(null)}>
+                <DialogContent className="rounded-2xl sm:max-w-md">
+                    <DialogHeader>
+                        <div className="mb-2 flex size-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300">
+                            <TriangleAlert className="size-5" />
+                        </div>
+                        <DialogTitle className="text-left">
+                            Change to {pendingSpecificationMode === 'design_property' ? 'Design property' : 'Technical specifications'}?
+                        </DialogTitle>
+                        <DialogDescription className="text-left leading-6">
+                            This global switch applies to{' '}
+                            {data.variants
+                                .map((variant, index) => {
+                                    const type = types.find((option) => option.id === variant.typeId);
+                                    return type?.name || variant.customTypeName || `Custom type ${index + 1}`;
+                                })
+                                .join(', ')}
+                            . The entered{' '}
+                            {pendingSpecificationMode === 'design_property'
+                                ? 'stitch count, needle, area, height and width'
+                                : 'design property images'}{' '}
+                            will be removed. You will need to enter the required fields again.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" className="rounded-xl" onClick={() => setPendingSpecificationMode(null)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            className="rounded-xl bg-amber-600 font-semibold text-white hover:bg-amber-700"
+                            onClick={() => pendingSpecificationMode && commitSpecificationMode(pendingSpecificationMode)}
+                        >
+                            Change mode
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
             <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
                 <AdminPageHeader
                     title={editing ? 'Edit design' : 'Add design'}
@@ -495,7 +532,7 @@ export default function AdminDesignForm({ design, owners, canChooseSeller, catal
                                             aria-checked={specificationMode === 'design_property'}
                                             aria-label="Use design property mode for all selected design types"
                                             onClick={() =>
-                                                updateSpecificationMode(specificationMode === 'design_property' ? 'technical' : 'design_property')
+                                                requestSpecificationMode(specificationMode === 'design_property' ? 'technical' : 'design_property')
                                             }
                                             className={`relative h-6 w-11 rounded-full transition ${specificationMode === 'design_property' ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'}`}
                                         >
