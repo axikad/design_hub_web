@@ -7,6 +7,7 @@ use App\Models\DesignCategory;
 use App\Models\DesignType;
 use App\Models\Machine;
 use App\Models\MachineType;
+use App\Models\Purchase;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -229,6 +230,67 @@ class DesignBrowseFiltersApiTest extends TestCase
                 'needle_values.0',
                 'area_ranges.0',
             ]);
+    }
+
+    public function test_design_list_sorts_before_pagination(): void
+    {
+        $catalog = $this->catalog();
+        $low = $this->design($catalog, ['title' => 'Low price', 'price_paise' => 1000]);
+        $middle = $this->design($catalog, ['title' => 'Middle price', 'price_paise' => 2000]);
+        $high = $this->design($catalog, ['title' => 'High price', 'price_paise' => 3000]);
+
+        $ascending = $this->getJson('/api/v1/designs?'.http_build_query([
+            'sort' => 'price-asc',
+            'per_page' => 2,
+        ]))->assertOk();
+
+        $this->assertSame(
+            [$low->public_id, $middle->public_id],
+            collect($ascending->json('data'))->pluck('id')->all(),
+        );
+        $ascending->assertJsonPath('meta.total', 3)->assertJsonPath('meta.last_page', 2);
+
+        $descending = $this->getJson('/api/v1/designs?'.http_build_query([
+            'sort' => 'price-desc',
+            'per_page' => 3,
+        ]))->assertOk();
+
+        $this->assertSame(
+            [$high->public_id, $middle->public_id, $low->public_id],
+            collect($descending->json('data'))->pluck('id')->all(),
+        );
+    }
+
+    public function test_popular_sort_uses_paid_purchase_count_only(): void
+    {
+        $catalog = $this->catalog();
+        $popular = $this->design($catalog, ['title' => 'Popular']);
+        $unpaid = $this->design($catalog, ['title' => 'Unpaid']);
+
+        Purchase::query()->create([
+            'buyer_id' => User::factory()->create()->id,
+            'design_id' => $popular->id,
+            'amount_paise' => $popular->price_paise,
+            'status' => 'paid',
+            'purchased_at' => now(),
+        ]);
+        Purchase::query()->create([
+            'buyer_id' => User::factory()->create()->id,
+            'design_id' => $unpaid->id,
+            'amount_paise' => $unpaid->price_paise,
+            'status' => 'pending',
+        ]);
+
+        $response = $this->getJson('/api/v1/designs?sort=popular')->assertOk();
+
+        $this->assertSame($popular->public_id, $response->json('data.0.id'));
+    }
+
+    public function test_invalid_sort_returns_validation_error(): void
+    {
+        $this->getJson('/api/v1/designs?sort=random')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['sort']);
     }
 
     /** @return array<string, Machine|MachineType|DesignCategory|DesignType> */

@@ -54,6 +54,7 @@ class DesignController extends Controller
             'area_ranges' => ['sometimes', 'array'],
             'area_ranges.*' => ['string', 'distinct', Rule::in($this->areaRanges())],
             'search' => ['sometimes', 'string', 'max:120'],
+            'sort' => ['sometimes', 'string', Rule::in(['popular', 'newest', 'price-asc', 'price-desc'])],
         ]);
         $today = now(config('designhub.marketplace_timezone'))->toDateString();
         $yesterday = now(config('designhub.marketplace_timezone'))->subDay()->toDateString();
@@ -90,8 +91,23 @@ class DesignController extends Controller
                 });
             })
             ->with(['owner', 'type.category', 'fileType', 'variants.type'])
-            ->orderByDesc('publish_date')
-            ->latest('created_at')
+            ->when(($filters['sort'] ?? 'newest') === 'popular', fn ($query) => $query
+                ->withCount(['purchases as paid_purchase_count' => fn ($purchaseQuery) => $purchaseQuery->where('status', 'paid')])
+                ->orderByDesc('paid_purchase_count')
+                ->orderByDesc('publish_date')
+                ->orderByDesc('created_at'))
+            ->when(($filters['sort'] ?? 'newest') === 'newest', fn ($query) => $query
+                ->orderByDesc('publish_date')
+                ->orderByDesc('created_at'))
+            ->when(($filters['sort'] ?? null) === 'price-asc', fn ($query) => $query
+                ->orderBy('price_paise')
+                ->orderByDesc('publish_date')
+                ->orderByDesc('created_at'))
+            ->when(($filters['sort'] ?? null) === 'price-desc', fn ($query) => $query
+                ->orderByDesc('price_paise')
+                ->orderByDesc('publish_date')
+                ->orderByDesc('created_at'))
+            ->orderByDesc('id')
             ->paginate(Pagination::perPage($request))
             ->withQueryString();
 
