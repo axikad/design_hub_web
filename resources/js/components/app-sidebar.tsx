@@ -8,6 +8,7 @@ import {
     Cog,
     Cpu,
     FileText,
+    FileSearch,
     FileType2,
     FolderTree,
     Landmark,
@@ -92,6 +93,12 @@ const catalogNavItems: NavItem[] = [
         title: 'Design File Types',
         url: '/admin/design-file-types',
         icon: FileType2,
+        permission: 'design_file_types.read',
+    },
+    {
+        title: 'File Inspector',
+        url: '/admin/design-file-inspector',
+        icon: FileSearch,
         permission: 'design_file_types.read',
     },
 ];

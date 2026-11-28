@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\CategoryAdminController;
 use App\Http\Controllers\Admin\ContentPageAdminController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DesignAdminController;
+use App\Http\Controllers\Admin\DesignFileInspectorController;
 use App\Http\Controllers\Admin\DesignFileTypeAdminController;
 use App\Http\Controllers\Admin\FolderAdminController;
 use App\Http\Controllers\Admin\MachineAdminController;
@@ -150,6 +151,13 @@ Route::middleware(['auth', 'admin'])->group(function () {
         ->middlewareFor(['create', 'store'], 'permission:design_file_types.create')
         ->middlewareFor(['edit', 'update'], 'permission:design_file_types.update')
         ->middlewareFor('destroy', 'permission:design_file_types.delete');
+
+    Route::get('admin/design-file-inspector', [DesignFileInspectorController::class, 'index'])
+        ->middleware('permission:design_file_types.read')
+        ->name('admin.design-file-inspector.index');
+    Route::post('admin/design-file-inspector', [DesignFileInspectorController::class, 'inspect'])
+        ->middleware('permission:design_file_types.read')
+        ->name('admin.design-file-inspector.inspect');
 
     Route::post('admin/designs/search-by-image', [DesignAdminController::class, 'searchByImage'])
         ->middleware('permission:designs.read')
