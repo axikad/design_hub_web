@@ -22,7 +22,7 @@ class DesignFileInspectorAdminTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('admin/design-file-inspector/index')
-                ->where('supportedExtensions', ['dst'])
+                ->where('supportedExtensions', ['dst', 'pes'])
                 ->where('result', null));
 
         $this->actingAs($admin)

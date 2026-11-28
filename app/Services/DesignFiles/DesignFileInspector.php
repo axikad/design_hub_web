@@ -11,9 +11,9 @@ class DesignFileInspector
     /** @var array<string, DesignFileMetadataParser> */
     private array $parsers = [];
 
-    public function __construct(DstMetadataParser $dst)
+    public function __construct(DstMetadataParser $dst, PesMetadataParser $pes)
     {
-        foreach ([$dst] as $parser) {
+        foreach ([$dst, $pes] as $parser) {
             foreach ($parser->extensions() as $extension) {
                 $this->parsers[strtolower($extension)] = $parser;
             }
@@ -34,7 +34,7 @@ class DesignFileInspector
 
         if ($parser === null) {
             throw new RuntimeException(sprintf(
-                '.%s metadata parsing is not available yet. Supported demo format: %s.',
+                '.%s metadata parsing is not available yet. Supported demo formats: %s.',
                 $extension ?: 'unknown',
                 implode(', ', array_map(fn (string $item) => '.'.strtoupper($item), $this->supportedExtensions())),
             ));

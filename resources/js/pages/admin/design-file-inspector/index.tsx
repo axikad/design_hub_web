@@ -22,7 +22,10 @@ type InspectionResult = {
         heightMm: number;
         boundsMm: { left: number; right: number; top: number; bottom: number };
         finalPositionMm: { x: number; y: number };
-        header: Record<string, string>;
+        header?: Record<string, string>;
+        version?: number | null;
+        pesMetadata?: Record<string, string>;
+        pec?: Record<string, number>;
     };
 };
 
@@ -134,7 +137,7 @@ export default function DesignFileInspectorPage({ result, supportedExtensions }:
 
                         <AdminFormPanel
                             title="Full response JSON"
-                            description="Complete normalized response including file details, extracted metadata, bounds, and the original DST header fields."
+                            description="Complete normalized response including file details, extracted metadata, bounds, and format-specific fields."
                             icon={Braces}
                         >
                             <div className="mb-3 flex justify-end">
