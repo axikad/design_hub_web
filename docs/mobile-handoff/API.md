@@ -176,7 +176,7 @@ Send `POST /designs/search-by-image` as `multipart/form-data` with:
 - `machineId`, `machineTypeId`, `categoryId` (optional): reduce the candidate set when known.
 - `limit` (optional): 1 to 50, default 20.
 
-The response data is `{ engine, minimumSimilarity, results }`. `engine` is `ai_embedding` when Qdrant AI image matching is configured and available; otherwise it is `local_visual`. Local matching uses the same weighted method as the app prototype: 45% RGB colour histogram, 35% 8x8 grayscale layout, and 20% difference hash. The backend searches the central published catalog rather than a device-only cache.
+The response data is `{ engine, minimumSimilarity, results }`. `engine` is `gemini_embedding_2` when Gemini image matching is configured and available; otherwise it is `local_visual`. Gemini vectors are stored in the DesignHub database and compared using cosine similarity. Local matching uses the same weighted method as the app prototype: 45% RGB colour histogram, 35% 8x8 grayscale layout, and 20% difference hash. The backend searches the central published catalog rather than a device-only cache.
 
 Each result is a normal `Design` plus `similarityScore` and `similarityLabel`. Scores above 97 are `Very close`, above 80 are `Similar`, and the remaining results that meet the configured minimum are `Related`.
 

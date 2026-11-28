@@ -15,14 +15,10 @@ class DesignImageFingerprint extends Model
         'perceptual_hash',
         'color_histogram',
         'grayscale_layout',
-        'vector_id',
-        'vector_status',
-        'vector_error',
-        'google_product_id',
-        'google_reference_image_id',
-        'google_gcs_uri',
-        'google_status',
-        'google_error',
+        'embedding',
+        'embedding_model',
+        'embedding_status',
+        'embedding_error',
     ];
 
     protected function casts(): array
@@ -31,6 +27,7 @@ class DesignImageFingerprint extends Model
             'image_index' => 'integer',
             'color_histogram' => 'array',
             'grayscale_layout' => 'array',
+            'embedding' => 'array',
         ];
     }
 

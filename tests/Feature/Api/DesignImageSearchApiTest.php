@@ -5,7 +5,7 @@ namespace Tests\Feature\Api;
 use App\Models\Design;
 use App\Models\User;
 use App\Services\DesignImageMatchingService;
-use App\Services\GoogleProductSearchIndex;
+use App\Services\GeminiImageEmbeddingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -23,9 +23,7 @@ class DesignImageSearchApiTest extends TestCase
         }
 
         config([
-            'designhub.image_matching.qdrant_url' => null,
-            'designhub.image_matching.qdrant_api_key' => null,
-            'designhub.image_matching.google.enabled' => false,
+            'designhub.image_matching.gemini.enabled' => false,
         ]);
         Storage::fake('public');
         $owner = User::factory()->create();
@@ -68,19 +66,16 @@ class DesignImageSearchApiTest extends TestCase
             ->assertJsonStructure(['errors' => ['image']]);
     }
 
-    public function test_design_sync_records_google_product_search_metadata(): void
+    public function test_design_sync_stores_gemini_embedding_in_the_database(): void
     {
         if (! function_exists('imagecreatetruecolor')) {
             $this->markTestSkipped('GD is not installed.');
         }
 
-        config([
-            'designhub.image_matching.qdrant_url' => null,
-            'designhub.image_matching.qdrant_api_key' => null,
-        ]);
         Storage::fake('public');
         $owner = User::factory()->create();
         $image = UploadedFile::fake()->image('reference.png', 320, 240);
+        $contents = file_get_contents($image->getRealPath());
         $path = $image->store('previews/'.$owner->public_id, 'public');
         $design = Design::query()->create([
             'user_id' => $owner->id,
@@ -91,33 +86,32 @@ class DesignImageSearchApiTest extends TestCase
             'images' => [['name' => 'reference.png', 'path' => $path]],
         ]);
 
-        $google = $this->mock(GoogleProductSearchIndex::class);
-        $google->shouldReceive('enabled')->andReturnTrue();
-        $google->shouldReceive('upsertDesign')
-            ->once()
-            ->withArgs(function (Design $indexedDesign, array $images) use ($design): bool {
-                return $indexedDesign->is($design)
-                    && count($images) === 1
-                    && $images[0]['mime'] === 'image/png'
-                    && $images[0]['extension'] === 'png'
-                    && $images[0]['index'] === 0;
+        $embeddings = $this->mock(GeminiImageEmbeddingService::class);
+        $embeddings->shouldReceive('enabled')->andReturnTrue();
+        $embeddings->shouldReceive('embedImage')
+            ->twice()
+            ->withArgs(function (string $contents, string $mime): bool {
+                return $contents !== '' && $mime === 'image/png';
             })
-            ->andReturn([[
-                'index' => 0,
-                'productId' => $design->public_id,
-                'referenceImageId' => 'image-0-reference',
-                'gcsUri' => 'gs://designhub-test/designs/'.$design->public_id.'/reference.png',
-            ]]);
+            ->andReturn(array_fill(0, 512, 0.01));
 
         app(DesignImageMatchingService::class)->syncDesign($design);
+
+        $record = $design->imageFingerprints()->firstOrFail();
 
         $this->assertDatabaseHas('design_image_fingerprints', [
             'design_id' => $design->id,
             'image_index' => 0,
-            'google_product_id' => $design->public_id,
-            'google_reference_image_id' => 'image-0-reference',
-            'google_status' => 'ready',
-            'google_error' => null,
+            'embedding_model' => 'gemini-embedding-2',
+            'embedding_status' => 'ready',
+            'embedding_error' => null,
         ]);
+        $this->assertCount(512, $record->embedding);
+
+        $search = app(DesignImageMatchingService::class)->searchWithMeta($contents, 'image/png');
+
+        $this->assertSame('gemini_embedding_2', $search['engine']);
+        $this->assertSame($design->public_id, $search['matches'][0]['designId']);
+        $this->assertSame(100.0, $search['matches'][0]['score']);
     }
 }

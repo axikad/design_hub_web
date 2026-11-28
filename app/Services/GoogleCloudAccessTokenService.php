@@ -11,7 +11,7 @@ class GoogleCloudAccessTokenService
     public function token(): string
     {
         return Cache::remember('designhub.google_cloud.access_token', now()->addMinutes(50), function (): string {
-            $credentialsPath = (string) config('designhub.image_matching.google.credentials');
+            $credentialsPath = (string) config('designhub.image_matching.gemini.credentials');
 
             if ($credentialsPath === '' || ! is_file($credentialsPath)) {
                 throw new RuntimeException('Google Cloud service-account credentials are unavailable.');

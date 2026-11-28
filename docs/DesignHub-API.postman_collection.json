@@ -2772,7 +2772,7 @@
                             ]
                         },
                         "url": "{{base_url}}/designs/search-by-image",
-                        "description": "Searches the central published catalog. Uses Qdrant AI embeddings when configured; otherwise uses local colour, layout, and difference-hash matching."
+                        "description": "Searches the central published catalog. Uses Gemini Embedding 2 vectors stored by DesignHub when configured; otherwise uses local colour, layout, and difference-hash matching."
                     },
                     "response": [
                         {

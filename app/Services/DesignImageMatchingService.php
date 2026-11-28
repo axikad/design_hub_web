@@ -17,8 +17,7 @@ class DesignImageMatchingService
 {
     public function __construct(
         private readonly ImageFingerprintService $fingerprints,
-        private readonly QdrantImageIndex $vectors,
-        private readonly GoogleProductSearchIndex $google,
+        private readonly GeminiImageEmbeddingService $embeddings,
     ) {}
 
     /** @param list<array{path: string}> $images */
@@ -61,34 +60,14 @@ class DesignImageMatchingService
         $fingerprint = $this->fingerprints->fromContents($contents, $mime);
         $minimum = (float) SiteSetting::current()->image_search_similarity;
 
-        if ($this->google->enabled()) {
+        if ($this->aiSearchEnabled()) {
             try {
-                $matches = $this->uniqueDesignMatches(
-                    $this->google->search($contents, $filters, $minimum, $limit),
-                    $limit,
-                );
+                $vector = $this->embeddings->embedImage($contents, $mime);
 
-                if ($matches !== []) {
-                    return [
-                        'engine' => 'google_product_search',
-                        'matches' => $matches,
-                    ];
-                }
-
-                Log::info('Google Product Search returned no matches; trying the configured fallback.');
-            } catch (Throwable $exception) {
-                Log::warning('Google Product Search failed; trying the configured fallback.', [
-                    'error' => $exception->getMessage(),
-                ]);
-            }
-        }
-
-        if ($this->vectors->enabled()) {
-            try {
                 return [
-                    'engine' => 'ai_embedding',
+                    'engine' => 'gemini_embedding_2',
                     'matches' => $this->uniqueDesignMatches(
-                        $this->vectors->search($contents, $filters, $minimum, $limit),
+                        $this->databaseEmbeddingMatches($vector, $filters, $minimum, $limit),
                     ),
                 ];
             } catch (Throwable $exception) {
@@ -107,26 +86,11 @@ class DesignImageMatchingService
     public function syncDesign(Design $design): void
     {
         $design->loadMissing(['machine', 'machineType.machine']);
-        $oldPointIds = $design->imageFingerprints()->whereNotNull('vector_id')->pluck('vector_id')->all();
-
-        try {
-            $this->vectors->delete($oldPointIds);
-        } catch (Throwable $exception) {
-            Log::warning('Unable to remove previous design image vectors.', [
-                'design' => $design->public_id,
-                'error' => $exception->getMessage(),
-            ]);
-        }
-
         $design->imageFingerprints()->delete();
-        $points = [];
-        $googleImages = [];
-        $recordsByIndex = [];
 
         foreach ($this->designImages($design) as $index => $image) {
             try {
                 $fingerprint = $this->fingerprints->fromPublicPath($image['path']);
-                $vectorId = (string) Str::uuid();
                 $record = $design->imageFingerprints()->create([
                     'image_index' => $index,
                     'image_path' => $image['path'],
@@ -134,35 +98,31 @@ class DesignImageMatchingService
                     'perceptual_hash' => $fingerprint['perceptual_hash'],
                     'color_histogram' => $fingerprint['color_histogram'],
                     'grayscale_layout' => $fingerprint['grayscale_layout'],
-                    'vector_id' => $this->vectors->enabled() ? $vectorId : null,
-                    'vector_status' => $this->vectors->enabled() ? 'pending' : 'disabled',
-                    'google_status' => $this->google->enabled() ? 'pending' : 'disabled',
+                    'embedding_model' => $this->aiSearchEnabled()
+                        ? config('designhub.image_matching.gemini.model')
+                        : null,
+                    'embedding_status' => $this->aiSearchEnabled() ? 'pending' : 'disabled',
                 ]);
-                $recordsByIndex[$index] = $record;
 
-                if ($this->google->enabled()) {
-                    $googleImages[] = [
-                        'contents' => $fingerprint['contents'],
-                        'mime' => $fingerprint['mime'],
-                        'extension' => $this->imageExtension($fingerprint['mime'], $image['name'] ?? $image['path']),
-                        'index' => $index,
-                    ];
-                }
+                if ($this->aiSearchEnabled()) {
+                    try {
+                        $record->update([
+                            'embedding' => $this->embeddings->embedImage($fingerprint['contents'], $fingerprint['mime']),
+                            'embedding_status' => 'ready',
+                            'embedding_error' => null,
+                        ]);
+                    } catch (Throwable $exception) {
+                        $record->update([
+                            'embedding_status' => 'failed',
+                            'embedding_error' => Str::limit($exception->getMessage(), 1000),
+                        ]);
 
-                if ($this->vectors->enabled()) {
-                    $points[] = [
-                        'id' => $vectorId,
-                        'contents' => $fingerprint['contents'],
-                        'payload' => [
-                            'design_id' => $design->public_id,
-                            'image_index' => $index,
-                            'machine_id' => $design->machine?->public_id ?? $design->machineType?->machine?->public_id,
-                            'machine_type_id' => $design->machine_type_id,
-                            'category_id' => $design->category_id,
-                            'listed' => $design->deleted_at === null,
-                        ],
-                        'record' => $record,
-                    ];
+                        Log::error('Unable to generate a Gemini image embedding.', [
+                            'design' => $design->public_id,
+                            'image' => $image['path'],
+                            'error' => $exception->getMessage(),
+                        ]);
+                    }
                 }
             } catch (Throwable $exception) {
                 Log::warning('Unable to fingerprint a design image.', [
@@ -173,83 +133,10 @@ class DesignImageMatchingService
             }
         }
 
-        if ($points !== []) {
-            try {
-                $this->vectors->upsert(collect($points)->map(fn (array $point) => [
-                    'id' => $point['id'],
-                    'contents' => $point['contents'],
-                    'payload' => $point['payload'],
-                ])->all());
-
-                DesignImageFingerprint::query()
-                    ->whereIn('id', collect($points)->pluck('record.id'))
-                    ->update(['vector_status' => 'ready', 'vector_error' => null]);
-            } catch (Throwable $exception) {
-                DesignImageFingerprint::query()
-                    ->whereIn('id', collect($points)->pluck('record.id'))
-                    ->update([
-                        'vector_status' => 'failed',
-                        'vector_error' => Str::limit($exception->getMessage(), 1000),
-                    ]);
-
-                Log::error('Unable to index design images in Qdrant.', [
-                    'design' => $design->public_id,
-                    'error' => $exception->getMessage(),
-                ]);
-            }
-        }
-
-        if ($googleImages !== []) {
-            try {
-                foreach ($this->google->upsertDesign($design, $googleImages) as $indexedImage) {
-                    $record = $recordsByIndex[$indexedImage['index']] ?? null;
-
-                    $record?->update([
-                        'google_product_id' => $indexedImage['productId'],
-                        'google_reference_image_id' => $indexedImage['referenceImageId'],
-                        'google_gcs_uri' => $indexedImage['gcsUri'],
-                        'google_status' => 'ready',
-                        'google_error' => null,
-                    ]);
-                }
-            } catch (Throwable $exception) {
-                DesignImageFingerprint::query()
-                    ->whereIn('id', collect($recordsByIndex)->pluck('id'))
-                    ->update([
-                        'google_status' => 'failed',
-                        'google_error' => Str::limit($exception->getMessage(), 1000),
-                    ]);
-
-                Log::error('Unable to index design images in Google Product Search.', [
-                    'design' => $design->public_id,
-                    'error' => $exception->getMessage(),
-                ]);
-            }
-        }
     }
 
     public function removeDesign(Design $design): void
     {
-        $pointIds = $design->imageFingerprints()->whereNotNull('vector_id')->pluck('vector_id')->all();
-
-        try {
-            $this->vectors->delete($pointIds);
-        } catch (Throwable $exception) {
-            Log::warning('Unable to remove design image vectors.', [
-                'design' => $design->public_id,
-                'error' => $exception->getMessage(),
-            ]);
-        }
-
-        try {
-            $this->google->removeDesign($design);
-        } catch (Throwable $exception) {
-            Log::warning('Unable to remove design images from Google Product Search.', [
-                'design' => $design->public_id,
-                'error' => $exception->getMessage(),
-            ]);
-        }
-
         $design->imageFingerprints()->delete();
     }
 
@@ -269,10 +156,11 @@ class DesignImageMatchingService
 
         $minimum = (float) SiteSetting::current()->duplicate_image_similarity;
 
-        if ($this->vectors->enabled()) {
+        if ($this->aiSearchEnabled()) {
             try {
-                $match = collect($this->vectors->search(
-                    $fingerprint['contents'],
+                $vector = $this->embeddings->embedImage($fingerprint['contents'], $fingerprint['mime']);
+                $match = collect($this->databaseEmbeddingMatches(
+                    $vector,
                     [],
                     $minimum,
                     1,
@@ -392,16 +280,87 @@ class DesignImageMatchingService
         ]];
     }
 
-    private function imageExtension(string $mime, string $name): string
+    private function aiSearchEnabled(): bool
     {
-        return match (strtolower($mime)) {
-            'image/jpeg', 'image/jpg' => 'jpg',
-            'image/png' => 'png',
-            'image/webp' => 'webp',
-            'image/gif' => 'gif',
-            'image/bmp' => 'bmp',
-            'image/tiff' => 'tiff',
-            default => strtolower(pathinfo($name, PATHINFO_EXTENSION)) ?: 'jpg',
-        };
+        return $this->embeddings->enabled();
+    }
+
+    /**
+     * @param  list<float>  $queryEmbedding
+     * @param  array<string, string|null>  $filters
+     * @return list<array{designId: string, score: float}>
+     */
+    private function databaseEmbeddingMatches(
+        array $queryEmbedding,
+        array $filters,
+        float $minimum,
+        int $limit,
+        ?string $excludeDesignId = null,
+    ): array {
+        $matches = collect();
+
+        DesignImageFingerprint::query()
+            ->with('design:id,public_id')
+            ->where('embedding_status', 'ready')
+            ->whereNotNull('embedding')
+            ->whereHas('design', function ($designQuery) use ($filters, $excludeDesignId) {
+                $designQuery->listed()
+                    ->when($excludeDesignId, fn ($query, $id) => $query->where('public_id', '!=', $id))
+                    ->when($filters['categoryId'] ?? null, fn ($query, $id) => $query->where('category_id', $id))
+                    ->when($filters['machineTypeId'] ?? null, fn ($query, $id) => $query->where('machine_type_id', $id))
+                    ->when($filters['machineId'] ?? null, fn ($query, $id) => $query->where(function ($machineFilter) use ($id) {
+                        $machineFilter
+                            ->whereHas('machine', fn ($machineQuery) => $machineQuery->where('public_id', $id))
+                            ->orWhere(function ($legacyQuery) use ($id) {
+                                $legacyQuery
+                                    ->whereNull('machine_id')
+                                    ->whereHas('machineType.machine', fn ($machineQuery) => $machineQuery->where('public_id', $id));
+                            });
+                    }));
+            })
+            ->chunkById(200, function (Collection $records) use ($queryEmbedding, $minimum, $matches) {
+                foreach ($records as $record) {
+                    if (! is_array($record->embedding) || $record->design === null) {
+                        continue;
+                    }
+
+                    $score = round($this->cosineSimilarity($queryEmbedding, $record->embedding) * 100, 2);
+
+                    if ($score >= $minimum) {
+                        $matches->push([
+                            'designId' => $record->design->public_id,
+                            'score' => $score,
+                        ]);
+                    }
+                }
+            });
+
+        return $this->uniqueDesignMatches($matches->all(), $limit);
+    }
+
+    /** @param list<float|int|string> $left @param list<float|int|string> $right */
+    private function cosineSimilarity(array $left, array $right): float
+    {
+        if ($left === [] || count($left) !== count($right)) {
+            return 0.0;
+        }
+
+        $dot = 0.0;
+        $leftMagnitude = 0.0;
+        $rightMagnitude = 0.0;
+
+        foreach ($left as $index => $value) {
+            $leftValue = (float) $value;
+            $rightValue = (float) $right[$index];
+            $dot += $leftValue * $rightValue;
+            $leftMagnitude += $leftValue ** 2;
+            $rightMagnitude += $rightValue ** 2;
+        }
+
+        if ($leftMagnitude <= 0.0 || $rightMagnitude <= 0.0) {
+            return 0.0;
+        }
+
+        return max(0.0, min(1.0, $dot / (sqrt($leftMagnitude) * sqrt($rightMagnitude))));
     }
 }
