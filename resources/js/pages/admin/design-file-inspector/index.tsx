@@ -7,8 +7,8 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
-import { CheckCircle2, FileSearch, LoaderCircle, Ruler, ScanLine, ShieldCheck, Upload } from 'lucide-react';
-import { type FormEventHandler } from 'react';
+import { Braces, Check, CheckCircle2, Copy, FileSearch, LoaderCircle, Ruler, ScanLine, ShieldCheck, Upload } from 'lucide-react';
+import { type FormEventHandler, useState } from 'react';
 
 type InspectionResult = {
     file: { name: string; extension: string; mimeType: string; sizeBytes: number; sha256: string };
@@ -48,10 +48,18 @@ const metricCards = (result: InspectionResult) => [
 
 export default function DesignFileInspectorPage({ result, supportedExtensions }: Props) {
     const { data, setData, post, processing, errors, progress } = useForm({ designFile: null as File | null });
+    const [copied, setCopied] = useState(false);
+    const responseJson = result ? JSON.stringify(result, null, 2) : '';
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
         post(route('admin.design-file-inspector.inspect'), { forceFormData: true, preserveScroll: true });
+    };
+
+    const copyResponse = async () => {
+        await navigator.clipboard.writeText(responseJson);
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 2000);
     };
 
     return (
@@ -122,6 +130,22 @@ export default function DesignFileInspectorPage({ result, supportedExtensions }:
                                 <div><p className="text-xs font-medium text-slate-500">SHA-256</p><code className="mt-1 block break-all rounded-xl bg-slate-950 p-3 text-xs text-slate-100">{result.file.sha256}</code></div>
                                 <p className="text-xs leading-5 text-slate-500">Demo inspection is read-only. The uploaded temporary file is discarded after the request and no database record is created.</p>
                             </div>
+                        </AdminFormPanel>
+
+                        <AdminFormPanel
+                            title="Full response JSON"
+                            description="Complete normalized response including file details, extracted metadata, bounds, and the original DST header fields."
+                            icon={Braces}
+                        >
+                            <div className="mb-3 flex justify-end">
+                                <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={copyResponse}>
+                                    {copied ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}
+                                    {copied ? 'Copied' : 'Copy JSON'}
+                                </Button>
+                            </div>
+                            <pre className="max-h-[32rem] overflow-auto rounded-xl bg-slate-950 p-4 font-mono text-xs leading-5 text-slate-100 shadow-inner">
+                                <code>{responseJson}</code>
+                            </pre>
                         </AdminFormPanel>
                     </>
                 ) : null}
