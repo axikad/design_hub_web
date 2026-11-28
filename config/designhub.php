@@ -22,6 +22,15 @@ return [
     'image_matching' => [
         'dimensions' => (int) env('DESIGNHUB_IMAGE_EMBEDDING_DIMENSIONS', 512),
         'timeout_seconds' => (int) env('DESIGNHUB_IMAGE_MATCHING_TIMEOUT', 30),
+        'preprocessing' => [
+            'max_dimension' => (int) env('DESIGNHUB_IMAGE_EMBEDDING_MAX_DIMENSION', 1600),
+            'jpeg_quality' => (int) env('DESIGNHUB_IMAGE_EMBEDDING_JPEG_QUALITY', 85),
+        ],
+        'retry' => [
+            'attempts' => (int) env('DESIGNHUB_IMAGE_EMBEDDING_RETRY_ATTEMPTS', 3),
+            'base_delay_ms' => (int) env('DESIGNHUB_IMAGE_EMBEDDING_RETRY_BASE_DELAY_MS', 1000),
+        ],
+        'index_delay_ms' => (int) env('DESIGNHUB_IMAGE_INDEX_DELAY_MS', 1000),
         'gemini' => [
             'enabled' => env('DESIGNHUB_GEMINI_IMAGE_SEARCH_ENABLED', false),
             'project_id' => env('DESIGNHUB_GOOGLE_PROJECT_ID'),

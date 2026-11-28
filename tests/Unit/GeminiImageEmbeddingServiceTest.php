@@ -33,7 +33,7 @@ class GeminiImageEmbeddingServiceTest extends TestCase
         ]);
 
         $this->mock(GoogleCloudAccessTokenService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('token')->once()->andReturn('test-access-token');
+            $mock->shouldReceive('token')->andReturn('test-access-token');
         });
     }
 
@@ -65,5 +65,25 @@ class GeminiImageEmbeddingServiceTest extends TestCase
                 && $request['embedContentConfig']['outputDimensionality'] === 512
                 && $request->hasHeader('Authorization', 'Bearer test-access-token');
         });
+    }
+
+    public function test_it_retries_a_transient_google_failure(): void
+    {
+        config([
+            'designhub.image_matching.retry.attempts' => 3,
+            'designhub.image_matching.retry.base_delay_ms' => 0,
+        ]);
+
+        Http::fakeSequence()
+            ->push('Google temporary error', 503)
+            ->push([
+                'embedding' => ['values' => array_fill(0, 512, 0.25)],
+            ]);
+
+        $vector = app(GeminiImageEmbeddingService::class)->embedImage('image-contents', 'image/png');
+
+        $this->assertCount(512, $vector);
+        $this->assertSame(0.25, $vector[0]);
+        Http::assertSentCount(2);
     }
 }

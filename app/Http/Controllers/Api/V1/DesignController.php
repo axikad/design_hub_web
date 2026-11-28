@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exceptions\DuplicateDesignImageException;
+use App\Exceptions\ImageMatchingUnavailableException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\DesignResource;
 use App\Models\Design;
@@ -180,6 +182,7 @@ class DesignController extends Controller
     public function store(Request $request)
     {
         $validated = $this->validatedDesignPayload($request);
+        $this->validateStoredPreviewUniqueness($validated['images']);
 
         $design = DB::transaction(function () use ($request, $validated) {
             $design = Design::query()->create([
@@ -235,6 +238,10 @@ class DesignController extends Controller
 
         $validated = $this->validatedDesignPayload($request, $design);
 
+        if ($request->hasAny(['images', 'imageUri'])) {
+            $this->validateStoredPreviewUniqueness($validated['images'], $design);
+        }
+
         DB::transaction(function () use ($design, $validated) {
             $design->update([
                 'design_type_id' => $validated['design_type_id'],
@@ -288,6 +295,41 @@ class DesignController extends Controller
         $this->imageMatching->removeDesign($design);
 
         return ApiResponse::success('Design deleted successfully.');
+    }
+
+    /** @param list<array{path: string}> $images */
+    private function validateStoredPreviewUniqueness(array $images, ?Design $ignore = null): void
+    {
+        // Keep compatibility with legacy clients and contract fixtures that can
+        // submit an upload URL before its local file has been materialized.
+        // The indexing service reports unavailable files separately.
+        $images = collect($images)
+            ->filter(fn (array $image): bool => filled($image['path'] ?? null)
+                && Storage::disk('public')->exists($image['path']))
+            ->values()
+            ->all();
+
+        if ($images === []) {
+            return;
+        }
+
+        try {
+            $this->imageMatching->assertStoredImagesAreUnique($images, $ignore);
+        } catch (DuplicateDesignImageException $exception) {
+            $match = $exception->matchedDesignId ? ' Existing design: '.$exception->matchedDesignId.'.' : '';
+
+            throw ValidationException::withMessages([
+                'images' => sprintf(
+                    'This image is already used or is too similar to an existing design (%.2f%% match).%s Upload a different image.',
+                    $exception->similarityScore,
+                    $match,
+                ),
+            ]);
+        } catch (ImageMatchingUnavailableException) {
+            throw ValidationException::withMessages([
+                'images' => 'Duplicate image validation is temporarily unavailable. Please try again.',
+            ]);
+        }
     }
 
     public function download(Request $request, string $designId)

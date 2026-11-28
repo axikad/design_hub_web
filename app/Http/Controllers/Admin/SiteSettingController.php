@@ -25,6 +25,7 @@ class SiteSettingController extends Controller
                 'defaultMobileRegistrationRoleId' => $settings->default_mobile_registration_role_id
                     ?? Role::query()->where('slug', 'marketplace_user')->value('id'),
                 'imageSearchSimilarity' => $settings->image_search_similarity,
+                'duplicateImageSimilarity' => $settings->duplicate_image_similarity,
             ],
             'registrationRoles' => Role::query()
                 ->where('slug', '!=', 'super_admin')
@@ -57,6 +58,7 @@ class SiteSettingController extends Controller
                 Rule::exists('roles', 'id')->where(fn ($query) => $query->where('slug', '!=', 'super_admin')),
             ],
             'imageSearchSimilarity' => ['required', 'integer', 'between:1,100'],
+            'duplicateImageSimilarity' => ['required', 'integer', 'between:1,100', 'gte:imageSearchSimilarity'],
         ]);
 
         $setting = SiteSetting::current();
@@ -81,6 +83,7 @@ class SiteSettingController extends Controller
             'default_registration_role_id' => $registrationRole->id,
             'default_mobile_registration_role_id' => $mobileRegistrationRole->id,
             'image_search_similarity' => $validated['imageSearchSimilarity'],
+            'duplicate_image_similarity' => $validated['duplicateImageSimilarity'],
         ];
 
         if ($request->hasFile('logo')) {

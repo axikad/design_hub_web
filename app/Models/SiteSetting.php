@@ -13,6 +13,8 @@ class SiteSetting extends Model
         'platform_commission_basis_points' => 2000,
         'gst_seller_commission_basis_points' => 2000,
         'non_gst_seller_commission_basis_points' => 1500,
+        'image_search_similarity' => 85,
+        'duplicate_image_similarity' => 95,
         'earning_hold_days' => 7,
         'minimum_withdrawal_paise' => 50000,
         'buyer_gst_enabled' => false,

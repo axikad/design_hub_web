@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::table('site_settings', function (Blueprint $table) {
             $table->unsignedTinyInteger('image_search_similarity')->default(60);
-            $table->unsignedTinyInteger('duplicate_image_similarity')->default(80);
+            $table->unsignedTinyInteger('duplicate_image_similarity')->default(95);
         });
     }
 

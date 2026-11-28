@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\DuplicateDesignImageException;
 use App\Exceptions\ImageMatchingUnavailableException;
 use App\Http\Controllers\Controller;
 use App\Models\Design;
@@ -215,6 +216,7 @@ class DesignAdminController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $this->validateDesign($request, true);
+        $this->validateUploadedPreviewUniqueness($request);
 
         $owner = User::query()->where('public_id', $validated['ownerId'])->firstOrFail();
         $validated['variants'] = $this->storeVariantImages($request, $owner, $validated['variants']);
@@ -300,6 +302,7 @@ class DesignAdminController extends Controller
         $model = Design::query()->listed()->where('public_id', $design)->firstOrFail();
         abort_if($request->user()->mustScopeMarketplaceContentToSelf() && $model->user_id !== $request->user()->id, 404);
         $validated = $this->validateDesign($request, false, $model);
+        $this->validateUploadedPreviewUniqueness($request, $model);
 
         $owner = User::query()->where('public_id', $validated['ownerId'])->firstOrFail();
         $oldVariantImagePaths = $model->variants()->pluck('image_path')->filter()->all();
@@ -379,6 +382,41 @@ class DesignAdminController extends Controller
         $this->imageMatching->removeDesign($model);
 
         return redirect()->route('admin.designs.index')->with('success', 'Design removed from marketplace.');
+    }
+
+    private function validateUploadedPreviewUniqueness(Request $request, ?Design $ignore = null): void
+    {
+        $uploads = collect($request->file('previewImages', []))
+            ->flatten()
+            ->when($request->hasFile('previewImage'), fn ($files) => $files->push($request->file('previewImage')))
+            ->filter();
+
+        if ($uploads->isEmpty()) {
+            return;
+        }
+
+        try {
+            $this->imageMatching->assertUploadedImagesAreUnique($uploads, $ignore);
+        } catch (DuplicateDesignImageException $exception) {
+            throw ValidationException::withMessages([
+                'previewImages' => $this->duplicateImageMessage($exception),
+            ]);
+        } catch (ImageMatchingUnavailableException) {
+            throw ValidationException::withMessages([
+                'previewImages' => 'Duplicate image validation is temporarily unavailable. Please try again.',
+            ]);
+        }
+    }
+
+    private function duplicateImageMessage(DuplicateDesignImageException $exception): string
+    {
+        $match = $exception->matchedDesignId ? ' Existing design: '.$exception->matchedDesignId.'.' : '';
+
+        return sprintf(
+            'This image is already used or is too similar to an existing design (%.2f%% match).%s Upload a different image.',
+            $exception->similarityScore,
+            $match,
+        );
     }
 
     /** @return list<array{id: string, label: string}> */

@@ -23,22 +23,34 @@ class DesignImageMatchingService
     /** @param list<array{path: string}> $images */
     public function assertStoredImagesAreUnique(array $images, ?Design $ignore = null): void
     {
+        $seen = [];
+
         foreach ($images as $image) {
-            $this->assertFingerprintIsUnique(
-                $this->fingerprints->fromPublicPath($image['path']),
-                $ignore,
-            );
+            $fingerprint = $this->fingerprints->fromPublicPath($image['path']);
+
+            if (isset($seen[$fingerprint['sha256']])) {
+                throw new DuplicateDesignImageException(100);
+            }
+
+            $seen[$fingerprint['sha256']] = true;
+            $this->assertFingerprintIsUnique($fingerprint, $ignore);
         }
     }
 
     /** @param iterable<UploadedFile> $images */
     public function assertUploadedImagesAreUnique(iterable $images, ?Design $ignore = null): void
     {
+        $seen = [];
+
         foreach ($images as $image) {
-            $this->assertFingerprintIsUnique(
-                $this->fingerprints->fromUploadedFile($image),
-                $ignore,
-            );
+            $fingerprint = $this->fingerprints->fromUploadedFile($image);
+
+            if (isset($seen[$fingerprint['sha256']])) {
+                throw new DuplicateDesignImageException(100);
+            }
+
+            $seen[$fingerprint['sha256']] = true;
+            $this->assertFingerprintIsUnique($fingerprint, $ignore);
         }
     }
 

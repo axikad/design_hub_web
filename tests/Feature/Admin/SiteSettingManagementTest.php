@@ -21,6 +21,7 @@ class SiteSettingManagementTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('admin/settings/site')
+                ->where('settings.duplicateImageSimilarity', 95)
                 ->has('mobileRegistrationRoles', 1)
                 ->where('mobileRegistrationRoles.0.slug', 'marketplace_user'));
 

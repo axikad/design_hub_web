@@ -18,6 +18,7 @@ type SiteSettings = {
     defaultRegistrationRoleId: number | null;
     defaultMobileRegistrationRoleId: number | null;
     imageSearchSimilarity: number;
+    duplicateImageSimilarity: number;
 };
 type RegistrationRole = { id: number; name: string; slug: string };
 type Props = { settings: SiteSettings; registrationRoles: RegistrationRole[]; mobileRegistrationRoles: RegistrationRole[] };
@@ -35,6 +36,7 @@ export default function AdminSiteSettings({ settings, registrationRoles, mobileR
         defaultRegistrationRoleId: settings.defaultRegistrationRoleId?.toString() ?? '',
         defaultMobileRegistrationRoleId: settings.defaultMobileRegistrationRoleId?.toString() ?? '',
         imageSearchSimilarity: settings.imageSearchSimilarity.toString(),
+        duplicateImageSimilarity: settings.duplicateImageSimilarity.toString(),
     });
     const { data, setData, post, processing, errors } = form;
     const submit: FormEventHandler = (event) => {
@@ -119,7 +121,7 @@ export default function AdminSiteSettings({ settings, registrationRoles, mobileR
                         description="Control which visually similar designs appear in image-search results."
                         icon={ScanSearch}
                     >
-                        <div className="max-w-sm">
+                        <div className="grid gap-5 sm:grid-cols-2">
                             <div className="grid gap-2">
                                 <Label htmlFor="imageSearchSimilarity">Search minimum similarity (%)</Label>
                                 <Input
@@ -134,6 +136,23 @@ export default function AdminSiteSettings({ settings, registrationRoles, mobileR
                                 />
                                 <p className="text-xs leading-5 text-slate-500">Only designs at or above this score appear in image search.</p>
                                 <InputError message={errors.imageSearchSimilarity} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="duplicateImageSimilarity">Duplicate rejection similarity (%)</Label>
+                                <Input
+                                    id="duplicateImageSimilarity"
+                                    type="number"
+                                    min={1}
+                                    max={100}
+                                    value={data.duplicateImageSimilarity}
+                                    onChange={(event) => setData('duplicateImageSimilarity', event.target.value)}
+                                    className={inputClass}
+                                    required
+                                />
+                                <p className="text-xs leading-5 text-slate-500">
+                                    New uploads at or above this score are rejected. Recommended: 95%.
+                                </p>
+                                <InputError message={errors.duplicateImageSimilarity} />
                             </div>
                         </div>
                     </AdminFormPanel>
